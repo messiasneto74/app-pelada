@@ -13,3 +13,7 @@ Thumbs.db
 *.log
 .idea/
 .vscode/
+
+# Resultados locais de testes de navegador
+prototipo/test-results/
+prototipo/playwright-report/
