@@ -49,3 +49,7 @@ npm test
 Quando `/usr/bin/chromium` existe, a configuração de testes o usa automaticamente; a instalação pelo Playwright é dispensável. Outra localização pode ser informada com `CHROMIUM_PATH`.
 
 A suíte executa os fluxos no Chromium em desktop e com viewport/dispositivo móvel emulado. Não equivale a teste em Safari/iPhone físico. Inicia seu próprio servidor na porta 8001; deixe essa porta livre. Os testes usam contextos isolados e não alteram os dados do seu navegador.
+
+## Galeria visual
+
+Veja as [16 telas e estados em mobile e desktop](visual/README.md). Para atualizar as 32 capturas com dados de exemplo isolados, rode `npm run screenshots`. O comando inicia e encerra seu próprio servidor na porta 8002, que deve estar livre.

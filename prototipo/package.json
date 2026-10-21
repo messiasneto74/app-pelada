@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "python3 -m http.server 8000 --bind 0.0.0.0",
     "test": "playwright test",
-    "check": "node --check app.js"
+    "check": "node --check app.js",
+    "screenshots": "node scripts/capture-visuals.cjs"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1"

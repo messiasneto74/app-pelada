@@ -18,6 +18,10 @@ Nova interface responsiva com navegação, partidas, presença e fila, sorteio, 
 
 ### Novo visual
 
+**[Abrir galeria completa: 16 telas e estados em mobile e desktop](prototipo/visual/README.md)**
+
+[Prints mobile](prototipo/visual/mobile) · [Prints desktop](prototipo/visual/desktop)
+
 ![Painel do Resenha](prototipo/novo-visual.png)
 
 [Abra o print em tamanho original](prototipo/novo-visual.png).
