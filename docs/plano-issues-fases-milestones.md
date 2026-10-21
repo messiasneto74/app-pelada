@@ -74,8 +74,11 @@ Ver detalhes em [arquitetura-backend-frontend.md](arquitetura-backend-frontend.m
 | **F0-5** | Angular: OIDC (keycloak-angular ou oauth2-oidc) + `/entrar` + completar telefone | frontend | F0-4 | — |
 | **F0-6** | `HttpClient` + interceptor Bearer + `authGuard` / `organizadorGuard` | frontend | F0-4b, F0-5 | — |
 | **F0-7** | Docker Compose: keycloak + postgres (×2) + api — doc deploy Opção A | devops | F0-4, F0-1 | §1.2 |
+| **CI-1** | GitHub Actions: install, lint, `test:core`, `test:api` em todo PR | devops | F0-1 | [estrategia-testes.md](estrategia-testes.md) |
+| **TEST-API-HARNESS** | Harness API: Postgres teste, factories, mock JWT, 1º teste integração | backend | F0-2, F0-3 | [estrategia-testes.md](estrategia-testes.md) §B |
+| **TEST-WEB-HARNESS** | Harness Angular: runner + testes exemplo (guard/interceptor) | frontend | F0-1 | [estrategia-testes.md](estrategia-testes.md) §C |
 
-**Aceite M0 parcial:** login Google ou e-mail → completar telefone se faltar → redireciona para shell.
+**Aceite M0 parcial:** login Google ou e-mail → completar telefone se faltar → redireciona para shell. **CI verde** antes de fechar issues F0.
 
 ---
 
@@ -176,7 +179,7 @@ Ver detalhes em [arquitetura-backend-frontend.md](arquitetura-backend-frontend.m
 
 | ID | Título | Tipo | Depende |
 |----|--------|------|---------|
-| **E2E-1** | E2E: criar pelada → jogador → partida → presença → sorteio → campo | qa | M4 |
+| **E2E-1** | E2E Playwright: fluxo MVP + 2 smoke (ver [estrategia-testes.md](estrategia-testes.md) §D) | qa | M4 |
 | **DEPLOY-1** | Deploy staging API + web + env secrets | devops | F0 |
 | **DOC-1** | README desenvolvimento + `.env.example` | docs | F0-1 |
 | **A11Y-1** | Revisão contraste tokens T1 e foco em formulários | frontend | T1 |
@@ -216,7 +219,7 @@ flowchart TD
 
 | Sprint | Meta | Issues principais |
 |--------|------|-------------------|
-| **S1** | M0 | F0-1…F0-6, T1, T2, T3, T4, T6 |
+| **S1** | M0 | F0-1…F0-7, CI-1, TEST-API-HARNESS, TEST-WEB-HARNESS, T1, T2, T3, T4, T6 |
 | **S2** | M1 início | T5, L1, L1-API, 3.2, 3.2-API, L27 |
 | **S3** | M1 fim | 3.1, 3.1-API, 3.7, 3.7-API, 3.8, CORE-1 spike |
 | **S4** | M2 | 3.3, 3.3-API, 3.4, 3.4-API, L45, L45-CORE |
@@ -227,11 +230,14 @@ flowchart TD
 
 ## Template de issue (copiar no GitHub)
 
+Ver também [estrategia-testes.md](estrategia-testes.md) (anexo: blocos por tipo).
+
 ```markdown
 ## Contexto
-Tela: §3.X — [nome]
+Tela: §3.X — [nome]  _(ou F0 / CORE / CI — se não for tela)_
 Histórias: [IDs]
 Milestone: M?
+Issue plano: [ID ex. 3.4-API]
 
 ## Escopo
 - [ ] ...
@@ -240,7 +246,7 @@ Milestone: M?
 - ...
 
 ## Critérios de aceite
-(copiar checkboxes da spec §3)
+(copiar checkboxes da spec §3 ou critérios da issue no plano)
 
 ## API / Core
 - Endpoints: ...
@@ -248,6 +254,37 @@ Milestone: M?
 
 ## Design
 Tokens T1, componentes T2, header T4
+
+## Testes obrigatórios (não fechar issue sem isso)
+_Marcar no PR quais itens foram feitos. CI verde (`CI-1`). Detalhes: [estrategia-testes.md](estrategia-testes.md)._
+
+### Se issue `core` (CORE-*, L45-CORE)
+- [ ] Novos casos Vitest em `packages/core` (meta: ver §A do doc)
+- [ ] `npm run test:core` verde local e no CI
+
+### Se issue `backend` (*-API, F0-2…F0-4b, F0-3, T5)
+- [ ] Testes integração Supertest + Postgres teste (`TEST-API-HARNESS`)
+- [ ] Casos mínimos do módulo (ver §B do doc — linha desta issue)
+- [ ] `npm run test:api` verde local e no CI
+- [ ] Migration Prisma se schema mudou
+
+### Se issue `frontend` (3.x, L*, T*, F0-5, F0-6)
+- [ ] Se há lógica (guard, form, chamada API): testes unitários (`TEST-WEB-HARNESS`)
+- [ ] Se só layout: checklist spec + **screenshot** no PR (até E2E-1)
+- [ ] Critérios de aceite da tela §3 testados manualmente
+
+### Se issue `qa` (E2E-1)
+- [ ] Playwright: fluxo MVP §D + 2 smoke
+- [ ] Roda contra staging (`DEPLOY-1`)
+
+### Se issue `devops` (CI-1, DEPLOY-1, F0-7)
+- [ ] CI-1: workflow bloqueia merge se testes falharem
+- [ ] DEPLOY-1: env documentados; smoke pós-deploy
+
+## Definition of Done
+- [ ] Aceite spec/plano
+- [ ] Testes acima
+- [ ] PR linkado à issue
 ```
 
 ---
