@@ -1,6 +1,6 @@
 # O que existe hoje no repositório (vs produto)
 
-Monorepo **F0-1**; API/Prisma **F0-2**; erros/CORS **F0-3**; Keycloak Docker + realm **F0-4** (`npm run keycloak:up`). Login no Angular (**F0-5**) e JWT na API (**F0-4b**) vêm a seguir.
+Monorepo **F0-1**; API/Prisma **F0-2**; erros/CORS **F0-3**; Keycloak **F0-4**; API JWT + `GET/PATCH /me` (**F0-4b**). Login Angular (**F0-5**) e interceptor (**F0-6**) a seguir.
 
 ## O que já temos (agora)
 
