@@ -135,14 +135,36 @@ Cadastrar **as três URLs de produção** no client Keycloak (redirect, logout, 
 
 ---
 
+## O que é automático vs o que é você (F0-4)
+
+| Automático (`npm run keycloak:up`) | Opcional / depois |
+|-----------------------------------|-------------------|
+| Container Keycloak + Postgres do Keycloak | Sua conta Google no login |
+| Realm **pelada**, client **pelada-web** (PKCE) | IdP Google (Admin Console + OAuth Google Cloud) |
+| Atributo de perfil **phone** no realm | Produção / HTTPS / domínios reais |
+| Usuário dev `dev@pelada.local` (só local) | Login no Angular (**F0-5**) |
+
+**Não** é preciso “configurar Keycloak com sua conta” antes do smoke. O `smoke:keycloak` só pergunta se o servidor em `:8080` já está de pé e se o realm responde OIDC.
+
 ## Subir Keycloak local (F0-4)
 
 Na raiz do monorepo (`.env` alinhado com `.env.example`):
 
 ```powershell
 npm.cmd run keycloak:up
+# 1ª subida com import: espere 1–4 min antes do smoke
 npm.cmd run smoke:keycloak
 ```
+
+Se o smoke falhar com `fetch failed`:
+
+```powershell
+docker ps -a --filter name=pelada-keycloak
+docker logs pelada-keycloak --tail 80
+```
+
+- **Restarting / erro de DB:** `POSTGRES_KEYCLOAK_PASSWORD` no `.env` deve ser a mesma da **primeira** criação do volume (ou apague o volume `pelada_pg_keycloak` e suba de novo).
+- **Porta 8080:** outro programa usando 8080? Mude `KEYCLOAK_HTTP_PORT` no `.env` e `KEYCLOAK_ISSUER` / URLs no Angular depois.
 
 - Admin: http://localhost:8080 — usuário `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` (padrão dev: `admin` / `keycloak_admin_dev`).
 - Realm **pelada** e client **pelada-web** vêm de `infra/keycloak/import/pelada-realm.json` na **primeira** subida do Postgres do Keycloak.
