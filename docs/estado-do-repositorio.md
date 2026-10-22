@@ -1,6 +1,6 @@
 # O que existe hoje no repositório (vs produto)
 
-O monorepo foi criado na issue **F0-1** (`apps/`, `packages/core`). Telas MVP e auth Keycloak entram nas issues seguintes (F0-4…F0-6, T1–T3, 3.x).
+Monorepo **F0-1**; API/Prisma **F0-2**; erros/CORS **F0-3**; Keycloak Docker + realm **F0-4** (`npm run keycloak:up`). Login no Angular (**F0-5**) e JWT na API (**F0-4b**) vêm a seguir.
 
 ## O que já temos (agora)
 

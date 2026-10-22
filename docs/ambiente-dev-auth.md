@@ -51,7 +51,13 @@ Variáveis em `.env.example`: `KEYCLOAK_ISSUER`, `KEYCLOAK_JWKS_URI`.
 
 ### Google (IdP)
 
-No realm `pelada`: Identity provider **Google** (Client ID/Secret do Google Cloud Console). Redirect do Google aponta para o Keycloak, não para o Angular.
+O realm importado (**F0-4**) traz o provider **Google** **desligado** (`enabled: false`). Para testar:
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → OAuth client (Web).
+2. Redirect autorizado: `http://localhost:8080/realms/pelada/broker/google/endpoint`
+3. Admin Keycloak → Realm **pelada** → Identity providers → **Google** → colar Client ID/Secret → **Save** → **Enable**.
+
+Redirect do Google aponta para o Keycloak, não para o Angular.
 
 ---
 
@@ -129,12 +135,62 @@ Cadastrar **as três URLs de produção** no client Keycloak (redirect, logout, 
 
 ---
 
+## O que é automático vs o que é você (F0-4)
+
+| Automático (`npm run keycloak:up`) | Opcional / depois |
+|-----------------------------------|-------------------|
+| Container Keycloak + Postgres do Keycloak | Sua conta Google no login |
+| Realm **pelada**, client **pelada-web** (PKCE) | IdP Google (Admin Console + OAuth Google Cloud) |
+| Atributo **phone** no usuário dev (import) | Perfil **phone** no realm: Admin → Realm settings → User profile (1 min) |
+| Usuário dev `dev@pelada.local` (só local) | Login no Angular (**F0-5**) |
+
+**Não** é preciso “configurar Keycloak com sua conta” antes do smoke. O `smoke:keycloak` só pergunta se o servidor em `:8080` já está de pé e se o realm responde OIDC.
+
+## Subir Keycloak local (F0-4)
+
+Na raiz do monorepo (`.env` alinhado com `.env.example`):
+
+```powershell
+npm.cmd run keycloak:up
+# 1ª subida com import: espere 1–4 min antes do smoke
+npm.cmd run smoke:keycloak
+```
+
+Se o smoke falhar com `fetch failed`:
+
+```powershell
+docker ps -a --filter name=pelada-keycloak
+docker logs pelada-keycloak --tail 80
+```
+
+- **Restarting / erro de DB:** `POSTGRES_KEYCLOAK_PASSWORD` no `.env` deve ser a mesma da **primeira** criação do volume (ou apague o volume `pelada_pg_keycloak` e suba de novo).
+- **Porta 8080:** outro programa usando 8080? Mude `KEYCLOAK_HTTP_PORT` no `.env` e `KEYCLOAK_ISSUER` / URLs no Angular depois.
+
+- Admin: http://localhost:8080 — usuário `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` (padrão dev: `admin` / `keycloak_admin_dev`).
+- Realm **pelada** e client **pelada-web** vêm de `infra/keycloak/import/pelada-realm.json` na **primeira** subida do Postgres do Keycloak.
+- Se o realm não aparecer ou logs mostram `Failed to run import`: atualize o repo (`git pull`), `docker compose stop keycloak`, `docker compose up -d keycloak`. Se import falhou várias vezes, apague o volume `pelada_pg_keycloak` e suba de novo.
+
+### Atributo `phone` (após 1º login no Admin)
+
+Realm **pelada** → **Realm settings** → **User profile** → **Create attribute** → Name: `phone`, Display name: Telefone → Save. (O JSON de import do KC 26 não aceita `userProfile` no realm export.)
+
+### Usuário de teste (dev, só local)
+
+| Campo | Valor |
+|-------|--------|
+| E-mail | `dev@pelada.local` |
+| Senha | `dev-pelada-local` |
+| Atributo `phone` | `11999990000` (exemplo no import) |
+
+**Não** usar em produção.
+
 ## Checklist F0-4 (smoke manual)
 
+- [ ] `npm.cmd run smoke:keycloak` → `OK Keycloak smoke`
 - [ ] Admin console abre em :8080
 - [ ] Realm `pelada` e client `pelada-web` com URIs acima
-- [ ] Usuário teste consegue login e-mail/senha
-- [ ] (Opcional) Google IdP testado
+- [ ] Login `dev@pelada.local` / `dev-pelada-local`
+- [ ] (Opcional) Google IdP habilitado e testado
 - [ ] Token em https://jwt.io mostra `iss` = `KEYCLOAK_ISSUER` e `sub` estável
 
 Issue GitHub: **F0-4**, **F0-4b**, **F0-5**, **F0-6**, **F0-7**.

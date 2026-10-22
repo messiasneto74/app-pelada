@@ -26,6 +26,8 @@ npm run dev:api    # :3000
 npm run dev:web    # :4200
 npm run db:up      # Docker Postgres :5433
 npm run db:migrate
+npm run keycloak:up
+npm run smoke:keycloak
 ```
 
 No Windows PowerShell, use `npm.cmd` se scripts estiverem bloqueados.
