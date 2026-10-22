@@ -39,7 +39,6 @@ import { environment } from '../../../environments/environment';
       }
     `,
   ],
-  imports: [],
 })
 export class EntrarComponent {
   readonly environment = environment;
