@@ -1,0 +1,17 @@
+---
+description: Checklist ao revisar PRs e diffs deste repositório
+alwaysApply: true
+---
+
+# Revisão de PR — app-pelada
+
+Quando o usuário pedir revisão, ou em automação de PR:
+
+1. **Escopo:** diff alinhado à issue? Sem features extras nem docs não pedidos.
+2. **Testes:** há testes para comportamento novo? `npm run test:core|api|web` aplicáveis devem passar.
+3. **API:** ValidationPipe global; filtro de exceções; CORS via `CORS_ORIGIN`; Prisma migrations se schema mudou.
+4. **Web:** rotas em `apps/pelada-web`; environments em `environment*.ts`; sem vazar tokens.
+5. **Segurança:** sem credenciais; rotas privadas exigem JWT só após F0-4b.
+6. **DX Windows:** comandos documentados com `npm.cmd` quando relevante.
+
+Formato de feedback: resumo em 2–4 frases + lista de achados (bloqueante / sugestão) + checklist DoD da issue.
