@@ -40,6 +40,7 @@ No Windows PowerShell, use `npm.cmd` se scripts estiverem bloqueados.
 - Processo oficial: `docs/processo-testes-e-qualidade.md`
 - Estratégia por módulo: `docs/estrategia-testes.md`
 - Dev local: `docs/desenvolvimento-local.md`
+- Credenciais Keycloak dev: `docs/credenciais-dev-local.md`
 
 **Antes de considerar um PR pronto:** rodar os `test:*` relevantes ao escopo da issue; o humano valida antes do merge (CI `CI-1` ainda não é obrigatório).
 

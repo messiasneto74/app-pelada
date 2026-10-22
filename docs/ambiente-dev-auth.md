@@ -4,6 +4,8 @@ Contrato de portas e OIDC para **dev na sua máquina**. Produção troca hosts p
 
 Copie [.env.example](../.env.example) para `.env` na raiz (Compose: `npm run stack:up` ou serviços parciais — ver [desenvolvimento-local.md](desenvolvimento-local.md)).
 
+**Credenciais dev (admin, usuário `dev`, smoke):** [credenciais-dev-local.md](credenciais-dev-local.md).
+
 ---
 
 ## Mapa de serviços (dev)

@@ -64,6 +64,7 @@ npm.cmd run test:web     # após TEST-WEB-HARNESS
 
 1. Copie [.env.example](../.env.example) → `.env` na raiz.
 2. Siga o guia **[ambiente-dev-auth.md](ambiente-dev-auth.md)** — portas, client `pelada-web`, redirect URIs, fluxo Angular ↔ Keycloak ↔ API.
+3. **Login/senhas dev:** [credenciais-dev-local.md](credenciais-dev-local.md) (admin `admin` / `keycloak_admin_dev`, app `dev` / `dev-pelada-local`).
 3. O que **não** entra no MVP de segurança/produto: **[escopo-seguranca-fora-mvp.md](escopo-seguranca-fora-mvp.md)** (convite grupo, WAF, CI-1, Pix 18).
 
 ## Postgres (F0-2)

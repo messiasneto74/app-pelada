@@ -1,7 +1,26 @@
 /**
- * Smoke F0-4 — Keycloak realm pelada e OIDC metadata (sem credenciais).
+ * Smoke F0-4 — Keycloak realm pelada e OIDC metadata.
  * Uso: npm run smoke:keycloak (após npm run keycloak:up; 1ª subida ~30–90s).
+ * Credenciais: docs/credenciais-dev-local.md
  */
+
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+function envFromDotenv(key, fallback) {
+  if (process.env[key]) return process.env[key];
+  const envPath = join(root, '.env');
+  if (!existsSync(envPath)) return fallback;
+  const line = readFileSync(envPath, 'utf8')
+    .split(/\r?\n/)
+    .find((l) => l.startsWith(`${key}=`));
+  if (!line) return fallback;
+  const raw = line.slice(key.length + 1).trim();
+  return raw.replace(/^["']|["']$/g, '') || fallback;
+}
 
 const issuer =
   process.env.KEYCLOAK_ISSUER ?? 'http://localhost:8080/realms/pelada';
@@ -87,9 +106,11 @@ async function main() {
   console.log('OK Keycloak smoke');
   console.log(`  issuer: ${metadata.issuer}`);
   console.log(`  client esperado no realm: ${clientId}`);
-  console.log('  Admin console (realm master): admin / KEYCLOAK_ADMIN_PASSWORD no .env');
+  const adminUser = envFromDotenv('KEYCLOAK_ADMIN', 'admin');
+  const adminPass = envFromDotenv('KEYCLOAK_ADMIN_PASSWORD', 'keycloak_admin_dev');
+  console.log(`  Admin console (realm master): ${adminUser} / ${adminPass}`);
   console.log('  Login app (realm pelada): dev ou dev@pelada.local / dev-pelada-local');
-  console.log('  Detalhes: docs/ambiente-dev-auth.md');
+  console.log('  Referência: docs/credenciais-dev-local.md');
 }
 
 main();
