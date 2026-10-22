@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { configureNestApp } from './../src/bootstrap';
 import { PrismaService } from './../src/prisma/prisma.service';
 
 describe('AppController (e2e)', () => {
@@ -23,6 +24,7 @@ describe('AppController (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    configureNestApp(app);
     await app.init();
   });
 
@@ -38,6 +40,37 @@ describe('AppController (e2e)', () => {
         status: 'ok',
         service: 'pelada-api',
         database: 'ok',
+      });
+  });
+
+  it('unknown route returns standard error body', () => {
+    return request(app.getHttpServer())
+      .get('/rota-inexistente')
+      .expect(404)
+      .expect((res) => {
+        expect(res.body).toMatchObject({
+          statusCode: 404,
+          error: 'Not Found',
+          path: '/rota-inexistente',
+        });
+        expect(res.body.message).toBeDefined();
+        expect(res.body.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      });
+  });
+
+  it('validation pipe returns 400 with standard error body', () => {
+    return request(app.getHttpServer())
+      .post('/_probe/validate')
+      .send({ name: '', extra: 'x' })
+      .expect(400)
+      .expect((res) => {
+        expect(res.body).toMatchObject({
+          statusCode: 400,
+          error: 'Bad Request',
+          path: '/_probe/validate',
+        });
+        expect(res.body.message).toBeDefined();
+        expect(res.body.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
       });
   });
 });

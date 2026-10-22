@@ -68,11 +68,38 @@ npm.cmd run test:web     # após TEST-WEB-HARNESS
 
 ## Postgres (F0-2)
 
-Copie `.env.example` → `.env` na raiz e ajuste `DATABASE_URL` se necessário.
+Copie `.env.example` → `.env` na raiz (obrigatório para `db:migrate` e para a API enxergar o banco).
+
+- **`Environment variable not found: DATABASE_URL`:** falta o `.env` na **raiz** do repo (`app-futebol`, não `D:\desenvolvimento`).
+- **`P1000` / credenciais inválidas:** a senha em `DATABASE_URL` deve ser a **mesma** que `POSTGRES_APP_PASSWORD` usada na **primeira** subida do container. Se você mudou a senha depois, ajuste `DATABASE_URL` ou recrie o volume: `docker compose down -v` e `docker compose up -d postgres-app` (apaga dados locais).
 
 ### Opção A — Docker (recomendado para F0-7)
 
 Requer **Docker Desktop** instalado e no PATH (`docker version` no PowerShell).
+
+**Docker instalado mas o terminal não reconhece `docker`:**
+
+1. Feche **todos** os terminais (PowerShell, CMD, Cursor) e abra um **novo** — o PATH só atualiza em sessões novas.
+2. Se ainda falhar, reinicie o **Windows** (comum após a primeira instalação).
+3. Teste o caminho completo (ajuste se não existir):
+
+```powershell
+& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" version
+```
+
+4. Se o comando acima funcionar, adicione ao PATH do **usuário** (feche e abra o terminal de novo):
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+  "Path",
+  $env:Path + ";C:\Program Files\Docker\Docker\resources\bin",
+  "User"
+)
+```
+
+5. No Docker Desktop: **Settings** → confirme que o engine está **Running**; em versões recentes, verifique opções de integração com terminal/WSL.
+
+6. Último recurso: **Settings** → **Troubleshoot** → **Reset to factory defaults** ou reinstale marcando integração com CLI.
 
 ```powershell
 winget install -e --id Docker.DockerDesktop
