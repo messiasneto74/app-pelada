@@ -17,8 +17,8 @@
     { "name": "docs", "color": "0075CA", "description": "Documentação" }
   ],
   "issues": [
-    { "id": "F0-1", "title": "Monorepo: apps/pelada-web (Angular), apps/api, packages/core, scripts dev", "labels": ["mvp", "backend"], "milestone": "M0: Fundação", "depends": "—", "stories": "—", "fase": "F0" },
-    { "id": "F0-2", "title": "PostgreSQL + Prisma schema inicial + migrations", "labels": ["mvp", "backend"], "milestone": "M0: Fundação", "depends": "F0-1", "stories": "T5 / história 5", "fase": "F0" },
+    { "id": "F0-1", "title": "Monorepo: apps/pelada-web (Angular), apps/api, packages/core, scripts dev", "labels": ["mvp", "backend", "frontend"], "milestone": "M0: Fundação", "depends": "—", "stories": "—", "fase": "F0" },
+    { "id": "F0-2", "title": "PostgreSQL + Prisma bootstrap (User, Pelada mínimo) + migrations", "labels": ["mvp", "backend"], "milestone": "M0: Fundação", "depends": "F0-1", "stories": "T5 / história 5", "fase": "F0" },
     { "id": "F0-3", "title": "API: health, CORS, validação, tratamento de erro padrão", "labels": ["mvp", "backend"], "milestone": "M0: Fundação", "depends": "F0-1", "stories": "—", "fase": "F0" },
     { "id": "F0-4", "title": "Keycloak: realm pelada, client web PKCE, IdP Google, atributo phone", "labels": ["mvp", "devops"], "milestone": "M0: Fundação", "depends": "—", "stories": "arquitetura §1.1", "fase": "F0" },
     { "id": "F0-4b", "title": "API: validação JWT (JWKS), JIT User por sub, sem rotas /auth/*", "labels": ["mvp", "backend"], "milestone": "M0: Fundação", "depends": "F0-2, F0-4", "stories": "arquitetura §1.1", "fase": "F0" },
@@ -26,9 +26,11 @@
     { "id": "F0-6", "title": "HttpClient + interceptor Bearer + authGuard / organizadorGuard", "labels": ["mvp", "frontend"], "milestone": "M0: Fundação", "depends": "F0-4b, F0-5", "stories": "—", "fase": "F0" },
     { "id": "F0-7", "title": "Docker Compose: keycloak + postgres (×2) + api — doc deploy Opção A", "labels": ["mvp", "devops"], "milestone": "M0: Fundação", "depends": "F0-4, F0-1", "stories": "arquitetura §1.2", "fase": "F0" },
     { "id": "CI-1", "title": "GitHub Actions: lint, test:core, test:api em todo PR", "labels": ["mvp", "devops", "qa"], "milestone": "M0: Fundação", "depends": "F0-1", "stories": "estrategia-testes.md", "fase": "F0" },
+    { "id": "LOCAL-DEV-1", "title": "Doc e scripts — desenvolvimento e testes na máquina", "labels": ["mvp", "docs"], "milestone": "M0: Fundação", "depends": "F0-1", "stories": "desenvolvimento-local.md", "fase": "F0" },
+    { "id": "STORAGE-1", "title": "Upload de fotos (pelada/jogador) — MVP filesystem", "labels": ["mvp", "backend"], "milestone": "M0: Fundação", "depends": "F0-1, T5", "stories": "L1-API", "fase": "F0" },
     { "id": "TEST-API-HARNESS", "title": "Harness API: Postgres teste, factories, mock JWT, Supertest", "labels": ["mvp", "backend", "qa"], "milestone": "M0: Fundação", "depends": "F0-2, F0-3", "stories": "estrategia-testes §B", "fase": "F0" },
     { "id": "TEST-WEB-HARNESS", "title": "Runner de testes Angular + guard/interceptor", "labels": ["mvp", "frontend", "qa"], "milestone": "M0: Fundação", "depends": "F0-1", "stories": "estrategia-testes §C", "fase": "F0" },
-    { "id": "T1", "title": "Tema e design tokens (verde-escuro, limão, Inter + título condensado)", "labels": ["mvp", "design", "frontend"], "milestone": "M0: Fundação", "depends": "F0-1", "stories": "spec §2 T1", "fase": "F1" },
+    { "id": "T1", "title": "Tema e design tokens Resenha (Barlow Condensed + DM Sans, verde #173d32, lime #dcf58a)", "labels": ["mvp", "design", "frontend"], "milestone": "M0: Fundação", "depends": "F0-1", "stories": "spec §2 T1, ui-referencia-resenha.md", "fase": "F1" },
     { "id": "T2", "title": "Componentes base (Card, Chip, Avatar, Progress, Switch, Segment, Input, Botões 44px)", "labels": ["mvp", "frontend"], "milestone": "M0: Fundação", "depends": "T1", "stories": "spec §2 T2", "fase": "F1" },
     { "id": "T3", "title": "Bottom nav 4 abas + rotas placeholder", "labels": ["mvp", "frontend"], "milestone": "M0: Fundação", "depends": "T2", "stories": "spec §1, §2 T3", "fase": "F1" },
     { "id": "T4", "title": "ScreenHeader (rótulo, título, ação direita)", "labels": ["mvp", "frontend"], "milestone": "M0: Fundação", "depends": "T2", "stories": "spec §2 T4", "fase": "F1" },

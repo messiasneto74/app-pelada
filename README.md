@@ -14,7 +14,7 @@ Projeto com **protótipo interativo Resenha** e documentação de planejamento (
 - [Desenvolvimento e testes na sua máquina](docs/desenvolvimento-local.md)
 - [Processo de testes (você + agente Cursor)](docs/processo-testes-e-qualidade.md)
 
-O monorepo Angular + API + `packages/core` **ainda não está neste repositório** — será criado issue a issue conforme o plano.
+O monorepo (`apps/pelada-web`, `apps/api`, `packages/core`) **ainda não foi criado** — começa na issue **F0-1**. Leia [o que existe hoje vs produto](docs/estado-do-repositorio.md).
 
 ## Protótipo Resenha
 

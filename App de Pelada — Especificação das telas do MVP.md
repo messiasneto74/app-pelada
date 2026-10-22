@@ -288,7 +288,9 @@ Estas histórias do MVP ainda não têm tela ou controle. Sugiro abrir uma issue
 
 ## 6. Fora do MVP (marcadas como "Depois")
 
-Convite por link ou QR, mais de um adm, partidas recorrentes, cobrança no WhatsApp com Pix, caixa com entradas e saídas, fila automática, notificações, gols e assistências, rankings, histórico, copa, integração com WhatsApp e uso offline.
+Convite por link ou QR **para entrar no grupo** (hist. 11), mais de um adm, partidas recorrentes, cobrança no WhatsApp com Pix (hist. 18), caixa com entradas e saídas, fila automática, notificações, gols e assistências, rankings, histórico, copa, integração com WhatsApp e uso offline.
+
+**No MVP entram:** aprovar convidado na presença (42–43) e fluxo de presença da partida — ver issues `3.4` / `3.4-API`, não confundir com convite de grupo (11).
 
 ## 7. Plano de execução
 

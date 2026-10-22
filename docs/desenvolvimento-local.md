@@ -17,11 +17,11 @@
 
 ```powershell
 cd D:\desenvolvimento\app-futebol\prototipo
-py -m http.server 8000
-# http://localhost:8000/#inicio
+npm.cmd run dev
+# http://127.0.0.1:8000/#inicio
 ```
 
-Testes do protótipo: `npm.cmd ci` e `npm.cmd test` (porta 8001). Galeria: [prototipo/visual/README.md](../prototipo/visual/README.md).
+Testes do protótipo: `npm.cmd ci`, `npx.cmd playwright install chromium`, `npm.cmd test` (servidor Node na porta 8001). Galeria: [prototipo/visual/README.md](../prototipo/visual/README.md).
 
 ## Estrutura (após F0-1)
 

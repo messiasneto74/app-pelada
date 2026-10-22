@@ -18,7 +18,7 @@ const PROCESSO_BLOCK = `## Processo de testes (oficial)
 | Quem | O quê |
 |------|--------|
 | **Você** | Antes de fechar esta issue: rodar na **sua máquina** os comandos em **Testes obrigatórios** abaixo (\`npm.cmd run test:core\` / \`test:api\` / \`test:web\` conforme o caso). |
-| **Agente Cursor** | Se você pedir *implementar esta issue*: o agente escreve código + testes e **executa os mesmos comandos no seu PC** até passar — **apenas o escopo desta issue**, não as 58 de uma vez. |
+| **Agente Cursor** | Se você pedir *implementar esta issue*: o agente escreve código + testes e **executa os mesmos comandos no seu PC** até passar — **apenas o escopo desta issue**, não a suíte inteira de uma vez. |
 | **CI (CI-1)** | Opcional / depois — **não** é obrigatório para fechar issues agora. |
 
 Documentação: [processo-testes-e-qualidade.md](${PROCESSO}) · [desenvolvimento-local.md](${LOCAL_DOC})`;

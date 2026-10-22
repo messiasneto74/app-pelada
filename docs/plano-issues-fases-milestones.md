@@ -32,7 +32,7 @@ flowchart LR
 
 | Fase | Conteúdo | Milestone | Duração relativa |
 |------|----------|-----------|------------------|
-| **F0** | Monorepo, CI, Postgres, API skeleton, Auth Google/e-mail | M0 | 1 sprint |
+| **F0** | Monorepo, Postgres, API skeleton, Keycloak (CI = `depois`) | M0 | 1 sprint |
 | **F1** | T1–T6 (tema, componentes, nav 4 abas, header, modelo dados, mobile UX) | M0 | 1 sprint |
 | **F2** | Onboarding criar pelada + Regras + Início | M1 | 1 sprint |
 | **F3** | Jogadores + Perfil (+ lacuna 27 nas Regras) | M1 | 1 sprint |
@@ -67,7 +67,7 @@ Ver detalhes em [arquitetura-backend-frontend.md](arquitetura-backend-frontend.m
 | ID | Título | Tipo | Depende | Histórias |
 |----|--------|------|---------|-----------|
 | **F0-1** | Monorepo: `apps/pelada-web` (Angular), `apps/api`, `packages/core`, scripts dev | backend | — | — |
-| **F0-2** | PostgreSQL + Prisma schema inicial + migrations | backend | F0-1 | T5 |
+| **F0-2** | PostgreSQL + Prisma **bootstrap** (`User`, `Pelada` mínimo) + migrations | backend | F0-1 | T5 |
 | **F0-3** | API: health, CORS, validação, tratamento de erro padrão | backend | F0-1 | — |
 | **F0-4** | Keycloak: realm `pelada`, client web PKCE, IdP Google, atributo phone | devops | — | §1.1 |
 | **F0-4b** | API: validação JWT (JWKS), JIT `User` por `sub`, sem rotas `/auth/*` | backend | F0-2, F0-4 | §1.1 |
@@ -88,11 +88,11 @@ Ver detalhes em [arquitetura-backend-frontend.md](arquitetura-backend-frontend.m
 
 | ID | Título | Tipo | Depende | Ref spec |
 |----|--------|------|---------|----------|
-| **T1** | Tema e design tokens (verde-escuro, limão, Inter + título condensado) | design | F0-1 | §2 T1 |
+| **T1** | Tema e tokens **Resenha** (Barlow Condensed + DM Sans, `#173d32`, `#dcf58a`) | design | F0-1 | §2 T1, [ui-referencia-resenha.md](ui-referencia-resenha.md) |
 | **T2** | Componentes base (Card, Chip, Avatar, Progress, Switch, Segment, Input, Botões 44px) | frontend | T1 | §2 T2 |
 | **T3** | Bottom nav 4 abas (Início, Partida, Jogadores, Caixa) + rotas placeholder | frontend | T2 | §1, §2 T3 |
 | **T4** | ScreenHeader (rótulo, título, ação direita) | frontend | T2 | §2 T4 |
-| **T5** | Modelo de dados Prisma + DTOs: Pelada, Jogador, Partida, Presença, Time, Pagamento, Regras | backend | F0-2 | §2 T5 |
+| **T5** | Modelo **completo** Prisma + DTOs: Jogador, Partida, Presença, Time, Pagamento, Regras (expande F0-2) | backend | F0-2 | §2 T5 |
 | **T6** | Layout mobile 390px, touch targets, checklist história 84 | frontend | T3 | §2 T6 |
 
 ---

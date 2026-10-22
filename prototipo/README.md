@@ -9,12 +9,12 @@ Interface responsiva para organizar a pelada, com HTML, CSS e JavaScript sem dep
 A partir de `prototipo/`, execute:
 
 ```sh
-python3 -m http.server 8000 --bind 0.0.0.0
+npm run dev
 ```
 
-No Windows, também: `py -m http.server 8000`. Ou `npm run dev` (mesmo comando via npm).
+Alternativa: `python3 -m http.server 8000` (se tiver Python). O `npm run dev` usa `node scripts/static-server.cjs` (funciona no Windows sem Python).
 
-O servidor deve servir **esta pasta**; não é necessário instalar pacotes para usar o app. Abra `http://localhost:8000/` (navegação por `#inicio`, `#partida`, etc.). Os arquivos podem ser hospedados em um servidor estático.
+Abra `http://127.0.0.1:8000/#inicio`. Não precisa `npm ci` só para navegar; para testes, sim.
 
 ## O que funciona
 

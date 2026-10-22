@@ -22,8 +22,8 @@ module.exports = defineConfig({
     },
   ],
   webServer: {
-    command: "python3 -m http.server 8001 --bind 127.0.0.1",
+    command: "node scripts/static-server.cjs 8001",
     url: "http://127.0.0.1:8001",
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
   },
 });

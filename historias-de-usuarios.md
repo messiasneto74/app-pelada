@@ -2,6 +2,8 @@
 
 Documento para validação. Marque na coluna **Validação**: `ok` | `mvp` | `depois` | `tirar` | `ajustar`.
 
+> **Validação (2026-10-22):** coluna preenchida alinhada ao plano de issues — **45** histórias `ok` (MVP), **43** `depois`. Ajuste manual se mudar escopo.
+
 **Arquitetura (backend, frontend, rotas e navegação):** [docs/arquitetura-backend-frontend.md](docs/arquitetura-backend-frontend.md)
 
 **Especificação de telas MVP:** [App de Pelada — Especificação das telas do MVP.md](App%20de%20Pelada%20—%20Especificação%20das%20telas%20do%20MVP.md)
@@ -48,19 +50,19 @@ Documento para validação. Marque na coluna **Validação**: `ok` | `mvp` | `de
 
 | ID | Como | Quero | Para | Fase sugerida | Validação |
 |----|------|-------|------|---------------|-----------|
-| 1 | organizador | criar a pelada (nome, foto, dia habitual, local padrão) | ter um lugar único do nosso racha | MVP | |
-| 2 | organizador | definir quantos jogadores de linha cada time usa (5, 6, 7…) | refletir “pelada de 6” e variações | MVP | |
-| 3 | organizador | definir quantos times o sorteio forma (2 a 6) | ex.: 21 jogadores em 3 times | MVP | |
-| 4 | organizador | escolher modalidade (futsal, society, campo) e tamanho habitual | alinhar vagas e expectativa | MVP | |
-| 5 | organizador | ter a opção de um goleiro por time (GK fora da linha) | peladas com GK em cada time | MVP | |
-| 6 | organizador | ter a opção de goleiros fixos no gol (linha sorteia/roda à parte) | mesmos no gol sempre | MVP | |
-| 7 | organizador | ter a opção de definir se o GK fixo troca de time (resultado / lado / só adm manual) | copiar como jogamos | MVP | |
-| 8 | organizador | salvar regras da pelada como padrão do grupo | não reconfigurar toda semana | MVP | |
-| 9 | organizador | ajustar só nesta partida regras que são padrão | exceções (chuva, menos gente) | MVP | |
-| 10 | organizador | definir regras do sorteio (modo, pesos, atributos, tags, posições) | balanceamento do nosso jeito | MVP | |
-| 11 | organizador | convidar jogadores por link ou QR | entrada no grupo da pelada | Depois | |
-| 12 | organizador | ter mais de um adm na mesma pelada | dividir organização | Depois | |
-| 13 | organizador | partidas recorrentes (ex.: toda terça 19h) | não criar jogo manualmente | Depois | |
+| 1 | organizador | criar a pelada (nome, foto, dia habitual, local padrão) | ter um lugar único do nosso racha | MVP | ok |
+| 2 | organizador | definir quantos jogadores de linha cada time usa (5, 6, 7…) | refletir “pelada de 6” e variações | MVP | ok |
+| 3 | organizador | definir quantos times o sorteio forma (2 a 6) | ex.: 21 jogadores em 3 times | MVP | ok |
+| 4 | organizador | escolher modalidade (futsal, society, campo) e tamanho habitual | alinhar vagas e expectativa | MVP | ok |
+| 5 | organizador | ter a opção de um goleiro por time (GK fora da linha) | peladas com GK em cada time | MVP | ok |
+| 6 | organizador | ter a opção de goleiros fixos no gol (linha sorteia/roda à parte) | mesmos no gol sempre | MVP | ok |
+| 7 | organizador | ter a opção de definir se o GK fixo troca de time (resultado / lado / só adm manual) | copiar como jogamos | MVP | ok |
+| 8 | organizador | salvar regras da pelada como padrão do grupo | não reconfigurar toda semana | MVP | ok |
+| 9 | organizador | ajustar só nesta partida regras que são padrão | exceções (chuva, menos gente) | MVP | ok |
+| 10 | organizador | definir regras do sorteio (modo, pesos, atributos, tags, posições) | balanceamento do nosso jeito | MVP | ok |
+| 11 | organizador | convidar jogadores por link ou QR | entrada no grupo da pelada | Depois | depois |
+| 12 | organizador | ter mais de um adm na mesma pelada | dividir organização | Depois | depois |
+| 13 | organizador | partidas recorrentes (ex.: toda terça 19h) | não criar jogo manualmente | Depois | depois |
 
 ---
 
@@ -68,15 +70,15 @@ Documento para validação. Marque na coluna **Validação**: `ok` | `mvp` | `de
 
 | ID | Como | Quero | Para | Fase sugerida | Validação |
 |----|------|-------|------|---------------|-----------|
-| 14 | organizador | configurar modelo de pagamento: por jogo, semanal, quinzenal ou mensal | refletir como cobramos o campo | MVP | |
-| 15 | organizador | marcar plano de pagamento por jogador (ex.: mensal vs por jogo) | saber quem está “coberto” | MVP | |
-| 16 | organizador | opcionalmente habilitar “jogador fixo na lista” (só se eu ativar) | prioridade no elenco sem tipo especial de usuário | MVP | |
-| 17 | organizador | ver quem pagou e quem está devendo (partida ou período) | fechar o caixa | MVP | |
-| 18 | organizador | gerar cobrança para WhatsApp com valor, devedores e chave Pix (cobrança assistida; ver nota acima) | não cobrar um por um na mão | Depois | |
-| 19 | organizador | ter a opção de goleiro isento de pagamento | quando combinamos no grupo | Depois | |
-| 20 | organizador | caixa da pelada (entradas/saídas: campo, bola, etc.) | substituir planilha | Depois | |
-| 21 | organizador | bloquear ou alertar inadimplente na presença (se eu ativar) | aplicar regra combinada | Depois | |
-| 22 | organizador | valor diferente para convidado (se configurado) | convidado paga mais ou menos | Depois | |
+| 14 | organizador | configurar modelo de pagamento: por jogo, semanal, quinzenal ou mensal | refletir como cobramos o campo | MVP | ok |
+| 15 | organizador | marcar plano de pagamento por jogador (ex.: mensal vs por jogo) | saber quem está “coberto” | MVP | ok |
+| 16 | organizador | opcionalmente habilitar “jogador fixo na lista” (só se eu ativar) | prioridade no elenco sem tipo especial de usuário | MVP | ok |
+| 17 | organizador | ver quem pagou e quem está devendo (partida ou período) | fechar o caixa | MVP | ok |
+| 18 | organizador | gerar cobrança para WhatsApp com valor, devedores e chave Pix (cobrança assistida; ver nota acima) | não cobrar um por um na mão | Depois | depois |
+| 19 | organizador | ter a opção de goleiro isento de pagamento | quando combinamos no grupo | Depois | depois |
+| 20 | organizador | caixa da pelada (entradas/saídas: campo, bola, etc.) | substituir planilha | Depois | depois |
+| 21 | organizador | bloquear ou alertar inadimplente na presença (se eu ativar) | aplicar regra combinada | Depois | depois |
+| 22 | organizador | valor diferente para convidado (se configurado) | convidado paga mais ou menos | Depois | depois |
 
 ---
 
@@ -84,15 +86,15 @@ Documento para validação. Marque na coluna **Validação**: `ok` | `mvp` | `de
 
 | ID | Como | Quero | Para | Fase sugerida | Validação |
 |----|------|-------|------|---------------|-----------|
-| 23 | organizador | cadastrar nota geral e atributos (técnica, força, chute, passe, defesa, velocidade…) | sorteios justos em pelada “pegada” | MVP | |
-| 24 | organizador | marcar tags de estilo (pesado, corredor, driblador, chuta bem, etc.) | pelada mais tranquila / resenha | MVP | |
-| 25 | organizador | escolher o que entra no sorteio (nota, atributos, tags, pesos) | pelada tranquila vs competitiva | MVP | |
-| 26 | organizador | definir posição preferida por jogador (GK, defesa, meio, ataque) | equilibrar funções no campo | MVP | |
-| 27 | organizador | decidir se jogadores editam o próprio perfil; se não, só adm altera | evitar nota inflada | MVP | |
-| 28 | jogador | ver meu perfil na pelada (foto, posição, stats) | acompanhar participação | Depois | |
-| 29 | organizador | importar nomes colando lista do WhatsApp | montar elenco rápido | Depois | |
-| 30 | organizador | salvar listas/elenco favorito e reutilizar | não redigitar todo jogo | Depois | |
-| 31 | organizador | marcar jogador afastado/machucado e liberar quando autorizar | não entrar no sorteio lesionado | Depois | |
+| 23 | organizador | cadastrar nota geral e atributos (técnica, força, chute, passe, defesa, velocidade…) | sorteios justos em pelada “pegada” | MVP | ok |
+| 24 | organizador | marcar tags de estilo (pesado, corredor, driblador, chuta bem, etc.) | pelada mais tranquila / resenha | MVP | ok |
+| 25 | organizador | escolher o que entra no sorteio (nota, atributos, tags, pesos) | pelada tranquila vs competitiva | MVP | ok |
+| 26 | organizador | definir posição preferida por jogador (GK, defesa, meio, ataque) | equilibrar funções no campo | MVP | ok |
+| 27 | organizador | decidir se jogadores editam o próprio perfil; se não, só adm altera | evitar nota inflada | MVP | ok |
+| 28 | jogador | ver meu perfil na pelada (foto, posição, stats) | acompanhar participação | Depois | depois |
+| 29 | organizador | importar nomes colando lista do WhatsApp | montar elenco rápido | Depois | depois |
+| 30 | organizador | salvar listas/elenco favorito e reutilizar | não redigitar todo jogo | Depois | depois |
+| 31 | organizador | marcar jogador afastado/machucado e liberar quando autorizar | não entrar no sorteio lesionado | Depois | depois |
 
 ---
 
@@ -100,21 +102,21 @@ Documento para validação. Marque na coluna **Validação**: `ok` | `mvp` | `de
 
 | ID | Como | Quero | Para | Fase sugerida | Validação |
 |----|------|-------|------|---------------|-----------|
-| 32 | organizador | criar a partida (data, hora, local, observações) | grupo saber onde e quando | MVP | |
-| 33 | organizador | escolher como a presença funciona (adm marca; jogador confirma nome; “vou” na lista; link público…) | encaixar no jeito de cada grupo | MVP | |
-| 34 | organizador | link pessoal por jogador (cada um só confirma em seu nome) | ninguém marcar pelo outro | Depois | |
-| 35 | jogador | confirmar ou recusar presença no modo configurado | aparecer na lista oficial | MVP | |
-| 36 | organizador | ver vagas, confirmados, sem resposta e fila em tempo real | fechar lista | MVP | |
-| 37 | organizador | definir prazo para confirmar (vaga guardada até X horas) | não segurar vaga sem resposta | Depois | |
-| 38 | organizador | fechar a lista manualmente quando quiser | sortear com lista travada | MVP | |
-| 39 | organizador | fila de espera automática quando lotar, com aviso de quem subiu | substituir desistente | Depois | |
-| 40 | organizador | notificar só quem ainda não respondeu | não spammar quem já confirmou | Depois | |
-| 41 | organizador | enviar resumo da lista para o WhatsApp | grupo ver sem abrir o app | Depois | |
-| 42 | convidado | pedir para entrar na partida ou na fila | jogar quando adm aceitar ou abrir vaga | MVP | |
-| 43 | organizador | aprovar ou recusar convidado | controlar quem entra de fora | MVP | |
-| 44 | organizador | marcar jogadores fixos no elenco (se 16 ativo) com prioridade conforme regra | quem sempre joga não ficar de fora | MVP | |
-| 45 | organizador | sugestões de formato quando vier mais ou menos gente que o ideal | decidir antes do sorteio | MVP | |
-| 46 | organizador | ordem de chegada na lista (se ativar) | priorizar quem chegou primeiro no campo | Depois | |
+| 32 | organizador | criar a partida (data, hora, local, observações) | grupo saber onde e quando | MVP | ok |
+| 33 | organizador | escolher como a presença funciona (adm marca; jogador confirma nome; “vou” na lista; link público…) | encaixar no jeito de cada grupo | MVP | ok |
+| 34 | organizador | link pessoal por jogador (cada um só confirma em seu nome) | ninguém marcar pelo outro | Depois | depois |
+| 35 | jogador | confirmar ou recusar presença no modo configurado | aparecer na lista oficial | MVP | ok |
+| 36 | organizador | ver vagas, confirmados, sem resposta e fila em tempo real | fechar lista | MVP | ok |
+| 37 | organizador | definir prazo para confirmar (vaga guardada até X horas) | não segurar vaga sem resposta | Depois | depois |
+| 38 | organizador | fechar a lista manualmente quando quiser | sortear com lista travada | MVP | ok |
+| 39 | organizador | fila de espera automática quando lotar, com aviso de quem subiu | substituir desistente | Depois | depois |
+| 40 | organizador | notificar só quem ainda não respondeu | não spammar quem já confirmou | Depois | depois |
+| 41 | organizador | enviar resumo da lista para o WhatsApp | grupo ver sem abrir o app | Depois | depois |
+| 42 | convidado | pedir para entrar na partida ou na fila | jogar quando adm aceitar ou abrir vaga | MVP | ok |
+| 43 | organizador | aprovar ou recusar convidado | controlar quem entra de fora | MVP | ok |
+| 44 | organizador | marcar jogadores fixos no elenco (se 16 ativo) com prioridade conforme regra | quem sempre joga não ficar de fora | MVP | ok |
+| 45 | organizador | sugestões de formato quando vier mais ou menos gente que o ideal | decidir antes do sorteio | MVP | ok |
+| 46 | organizador | ordem de chegada na lista (se ativar) | priorizar quem chegou primeiro no campo | Depois | depois |
 
 ---
 
@@ -122,22 +124,22 @@ Documento para validação. Marque na coluna **Validação**: `ok` | `mvp` | `de
 
 | ID | Como | Quero | Para | Fase sugerida | Validação |
 |----|------|-------|------|---------------|-----------|
-| 47 | jogador | times equilibrados em nível | partida disputada e justa | MVP | |
-| 48 | jogador | ver média ou força de cada time após o sorteio | confiar no resultado | MVP | |
-| 49 | jogador | ver resumo simples do equilíbrio | entender sem fórmula | MVP | |
-| 50 | organizador | sortear times equilibrados em um toque (lista confirmada) | acabar discussão | MVP | |
-| 51 | organizador | ter a opção de sorteio aleatório | resenha | MVP | |
-| 52 | organizador | montar times manualmente com indicador de equilíbrio | controle total | Depois | |
-| 53 | organizador | regerar sorteio ou fixar um time e regerar o resto | ajustar atrasado/combinado | MVP | |
-| 54 | organizador | arrastar jogador entre times e ver equilíbrio mudar | correções na hora | MVP | |
-| 55 | organizador | indicador de equilíbrio (score) ao sortear | mostrar que foi calculado | MVP | |
-| 56 | organizador | garantir um goleiro por time no modo “GK por time” | não sortear time sem GK | MVP | |
-| 57 | goleiro | no modo GK por time, ser distribuído de forma justa entre times | não concentrar GK forte num time só | MVP | |
-| 58 | goleiro | no modo fixo, não entrar no sorteio da linha | continuar no gol | MVP | |
-| 59 | organizador | separar dois jogadores no sorteio (não jogam juntos) | evitar combinação ruim | Depois | |
-| 60 | organizador | repetir último sorteio ou carregar histórico | remarcar rápido | Depois | |
-| 61 | organizador | compartilhar times (WhatsApp, imagem, texto) com opção de ocultar níveis | grupo ver sem expor nota | MVP | |
-| 62 | organizador | modos avançados (por posição, mercado de notas, sugestão por histórico) | evoluir sem refazer app | Depois | |
+| 47 | jogador | times equilibrados em nível | partida disputada e justa | MVP | ok |
+| 48 | jogador | ver média ou força de cada time após o sorteio | confiar no resultado | MVP | ok |
+| 49 | jogador | ver resumo simples do equilíbrio | entender sem fórmula | MVP | ok |
+| 50 | organizador | sortear times equilibrados em um toque (lista confirmada) | acabar discussão | MVP | ok |
+| 51 | organizador | ter a opção de sorteio aleatório | resenha | MVP | ok |
+| 52 | organizador | montar times manualmente com indicador de equilíbrio | controle total | Depois | depois |
+| 53 | organizador | regerar sorteio ou fixar um time e regerar o resto | ajustar atrasado/combinado | MVP | ok |
+| 54 | organizador | arrastar jogador entre times e ver equilíbrio mudar | correções na hora | MVP | ok |
+| 55 | organizador | indicador de equilíbrio (score) ao sortear | mostrar que foi calculado | MVP | ok |
+| 56 | organizador | garantir um goleiro por time no modo “GK por time” | não sortear time sem GK | MVP | ok |
+| 57 | goleiro | no modo GK por time, ser distribuído de forma justa entre times | não concentrar GK forte num time só | MVP | ok |
+| 58 | goleiro | no modo fixo, não entrar no sorteio da linha | continuar no gol | MVP | ok |
+| 59 | organizador | separar dois jogadores no sorteio (não jogam juntos) | evitar combinação ruim | Depois | depois |
+| 60 | organizador | repetir último sorteio ou carregar histórico | remarcar rápido | Depois | depois |
+| 61 | organizador | compartilhar times (WhatsApp, imagem, texto) com opção de ocultar níveis | grupo ver sem expor nota | MVP | ok |
+| 62 | organizador | modos avançados (por posição, mercado de notas, sugestão por histórico) | evoluir sem refazer app | Depois | depois |
 
 ---
 
@@ -145,14 +147,14 @@ Documento para validação. Marque na coluna **Validação**: `ok` | `mvp` | `de
 
 | ID | Como | Quero | Para | Fase sugerida | Validação |
 |----|------|-------|------|---------------|-----------|
-| 63 | jogador | saber quais 2 times estão em campo e quem descansa | não me perder | MVP | |
-| 64 | organizador | escolher política de rodízio (descanso, ganha fica, A×B, B×C…) | seguir nossa pelada | MVP | |
-| 65 | goleiro | com troca por resultado, ver em qual time/lado estou após cada jogo | clareza na quadra | MVP | |
-| 66 | organizador | cronômetro e placar | marcar o jogo | MVP | |
-| 67 | organizador | registrar gol e assistência (toque ou voz) | não parar o jogo | Depois | |
-| 68 | organizador | rotação automática da fila (quem entra/sai) | muitos no banco | Depois | |
-| 69 | organizador | definir cor/nome do time na partida | saber qual camisa levar | Depois | |
-| 70 | jogador | acompanhar placar ao vivo no celular | banco acompanhar o jogo | Depois | |
+| 63 | jogador | saber quais 2 times estão em campo e quem descansa | não me perder | MVP | ok |
+| 64 | organizador | escolher política de rodízio (descanso, ganha fica, A×B, B×C…) | seguir nossa pelada | MVP | ok |
+| 65 | goleiro | com troca por resultado, ver em qual time/lado estou após cada jogo | clareza na quadra | MVP | ok |
+| 66 | organizador | cronômetro e placar | marcar o jogo | MVP | ok |
+| 67 | organizador | registrar gol e assistência (toque ou voz) | não parar o jogo | Depois | depois |
+| 68 | organizador | rotação automática da fila (quem entra/sai) | muitos no banco | Depois | depois |
+| 69 | organizador | definir cor/nome do time na partida | saber qual camisa levar | Depois | depois |
+| 70 | jogador | acompanhar placar ao vivo no celular | banco acompanhar o jogo | Depois | depois |
 
 ---
 
@@ -160,14 +162,14 @@ Documento para validação. Marque na coluna **Validação**: `ok` | `mvp` | `de
 
 | ID | Como | Quero | Para | Fase sugerida | Validação |
 |----|------|-------|------|---------------|-----------|
-| 71 | jogador | artilharia, assistências, vitórias e jogos | ranking entre amigos | Depois | |
-| 72 | organizador | rankings automáticos (artilheiro, assistências, MVP, presença) | zerar planilha | Depois | |
-| 73 | jogador | prêmios divertidos do dia (craque, matador, maestro…) | resenha pós-jogo | Depois | |
-| 74 | organizador | nota de desempenho evoluindo (gols, vitórias, frequência) | melhorar nível do sorteio | Depois | |
-| 75 | jogador | votar MVP ou destaques | reconhecer quem jogou bem | Depois | |
-| 76 | jogador | histórico de partidas e confrontos | lembrar resultados | Depois | |
-| 77 | organizador | criar copa ou mata-mata no grupo | eventos especiais | Depois | |
-| 78 | organizador | registrar cartão ou advertência | jogo mais sério | Depois | |
+| 71 | jogador | artilharia, assistências, vitórias e jogos | ranking entre amigos | Depois | depois |
+| 72 | organizador | rankings automáticos (artilheiro, assistências, MVP, presença) | zerar planilha | Depois | depois |
+| 73 | jogador | prêmios divertidos do dia (craque, matador, maestro…) | resenha pós-jogo | Depois | depois |
+| 74 | organizador | nota de desempenho evoluindo (gols, vitórias, frequência) | melhorar nível do sorteio | Depois | depois |
+| 75 | jogador | votar MVP ou destaques | reconhecer quem jogou bem | Depois | depois |
+| 76 | jogador | histórico de partidas e confrontos | lembrar resultados | Depois | depois |
+| 77 | organizador | criar copa ou mata-mata no grupo | eventos especiais | Depois | depois |
+| 78 | organizador | registrar cartão ou advertência | jogo mais sério | Depois | depois |
 
 ---
 
@@ -175,16 +177,16 @@ Documento para validação. Marque na coluna **Validação**: `ok` | `mvp` | `de
 
 | ID | Como | Quero | Para | Fase sugerida | Validação |
 |----|------|-------|------|---------------|-----------|
-| 79 | organizador | comandos ou integração no grupo (/lista, /times, /próxima) | consultar sem abrir app | Depois | |
-| 80 | organizador | ver confiabilidade de presença (confirmou e foi) | planejar com quem aparece | Depois | |
-| 81 | organizador | marcar quem faltou sem avisar | histórico e regras do grupo | Depois | |
-| 82 | jogador | entrar pela web/link sem instalar app (se adm permitir) | menos fricção | Depois | |
-| 83 | organizador | usar offline no campo (lista/sorteio) e sincronizar depois | internet ruim na quadra | Depois | |
-| 84 | jogador | interface simples no celular, poucos toques | usar no campinho | MVP | |
-| 85 | organizador | enquete (muda dia? chove?) | decisão fora do Zap perdido | Depois | |
-| 86 | organizador | previsão do tempo no local | avisar se alaga | Depois | |
-| 87 | jogador | perfil público só com dados de jogo (sem telefone) | compartilhar com segurança | Depois | |
-| 88 | jogador | sincronizar partida no calendário | não esquecer | Depois | |
+| 79 | organizador | comandos ou integração no grupo (/lista, /times, /próxima) | consultar sem abrir app | Depois | depois |
+| 80 | organizador | ver confiabilidade de presença (confirmou e foi) | planejar com quem aparece | Depois | depois |
+| 81 | organizador | marcar quem faltou sem avisar | histórico e regras do grupo | Depois | depois |
+| 82 | jogador | entrar pela web/link sem instalar app (se adm permitir) | menos fricção | Depois | depois |
+| 83 | organizador | usar offline no campo (lista/sorteio) e sincronizar depois | internet ruim na quadra | Depois | depois |
+| 84 | jogador | interface simples no celular, poucos toques | usar no campinho | MVP | ok |
+| 85 | organizador | enquete (muda dia? chove?) | decisão fora do Zap perdido | Depois | depois |
+| 86 | organizador | previsão do tempo no local | avisar se alaga | Depois | depois |
+| 87 | jogador | perfil público só com dados de jogo (sem telefone) | compartilhar com segurança | Depois | depois |
+| 88 | jogador | sincronizar partida no calendário | não esquecer | Depois | depois |
 
 ---
 

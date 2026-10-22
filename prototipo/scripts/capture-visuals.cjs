@@ -43,9 +43,9 @@ async function capture(page, mode, name, dialog = false) {
 async function run() {
   // Reserve a dedicated port; never reuse or terminate another user's server.
   const server = spawn(
-    "python3",
-    ["-m", "http.server", "8002", "--bind", "127.0.0.1", "--directory", root],
-    { stdio: "ignore" },
+    process.execPath,
+    [path.join(__dirname, "static-server.cjs"), "8002"],
+    { cwd: root, stdio: "ignore" },
   );
   let serverError;
   server.on("error", (e) => {

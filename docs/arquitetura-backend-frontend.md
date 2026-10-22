@@ -201,7 +201,7 @@ apps/pelada-web/          # Angular — HttpClient + interceptors JWT
 
 | Módulo | Operação | Uso na UI |
 |--------|----------|-----------|
-| **Auth** | login, logout, session | entrada |
+| **Auth** | *(sem login na API)* — Angular faz OIDC no Keycloak; API valida JWT (`F0-4b`). Opcional: `GET /users/me` (perfil app: telefone, pelada ativa) | entrada / shell |
 | **Peladas** | `POST /peladas`, `GET /peladas`, `GET /peladas/:id` | criar, listar |
 | **Peladas** | `PATCH /peladas/:id/rules` | config 2–10 |
 | **Members** | `POST invite`, `POST join`, `PATCH role`, `DELETE` | 11, 12 |
@@ -212,7 +212,7 @@ apps/pelada-web/          # Angular — HttpClient + interceptors JWT
 | **Draw** | `POST /matches/:id/draw` body: mode, constraints | 50–55 |
 | **Draw** | `PATCH /matches/:id/draw` swap player | 54 |
 | **Session** | `POST start-round`, `PATCH score`, `POST rotate` | 63–68 |
-| **Payments** | `GET ledger`, `POST mark-paid`, `POST generate-charge-text` | 14–18 |
+| **Payments** | `GET ledger`, `POST mark-paid` (MVP). `POST generate-charge-text` (cobrança Zap/Pix assistida) = **Depois** — hist. 18, issue `3.9-ZAP` | 14–17 MVP |
 | **Public** | `GET /p/:token` presença | 33, 82 |
 
 **Realtime (opcional MVP+):** canal `match:{id}:attendance` para lista ao vivo (36).
@@ -329,7 +329,7 @@ flowchart TD
 |------|----------------|
 | `/c/[invite]` | Entrar na pelada |
 | `/c/[matchToken]/presenca` | Só presença da partida |
-| `/app/p/.../m/.../sorteio` | Abrir times direto |
+| `/partida/sorteio` (com `matchId` no contexto ou query) | Abrir sorteio da partida ativa — **não** usar rotas legado `/app/...` |
 
 ---
 
@@ -354,9 +354,9 @@ flowchart TD
 | Área | MVP | Depois |
 |------|-----|--------|
 | Auth | **Keycloak** — Google + e-mail/senha; PKCE no Angular | — |
-| Rotas | §4.2 (`/inicio`, `/partida/*`, `/jogadores`, `/caixa`) | deep links `/c/[token]` (11, 34, 82) |
+| Rotas | §4.2 (`/inicio`, `/partida/*`, `/jogadores`, `/caixa`) | deep links extras (34, 82) |
 | Backend | CRUD pelada, partida, presença, draw persistido | WebSocket realtime, bot Zap, voz |
-| Public link | convidado na presença (42–43) | link público amplo (33), link pessoal (34) |
+| Convidado / links | **MVP:** aprovar convidado na presença (42–43), token de partida se necessário | **Depois:** convite link/QR para **entrar no grupo** (11), link público amplo (33), link pessoal recorrente (34) |
 | Offline / PWA | mobile-first (T6); PWA opcional pós-MVP | 83 offline; service worker dedicado |
 | Testes | **local** (`test:core`, `test:api`) | CI GitHub (`CI-1`) |
 

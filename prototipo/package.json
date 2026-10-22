@@ -4,7 +4,7 @@
   "private": true,
   "description": "Protótipo interativo da pelada, sem dependências em produção",
   "scripts": {
-    "dev": "python3 -m http.server 8000 --bind 0.0.0.0",
+    "dev": "node scripts/static-server.cjs 8000",
     "test": "playwright test",
     "check": "node --check app.js",
     "screenshots": "node scripts/capture-visuals.cjs"

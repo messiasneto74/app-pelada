@@ -4,7 +4,7 @@
 
 **Onde rodam os testes (decisão atual):** **só na sua máquina** — ver [desenvolvimento-local.md](desenvolvimento-local.md). Issue **CI-1** (GitHub Actions) é **opcional / depois**; o DoD exige `npm run test:*` **local** até CI existir.
 
-**Quem executa:** ver [processo-testes-e-qualidade.md](processo-testes-e-qualidade.md) (você + agente Cursor por issue; sem CI automático nem robô em todas as 58 issues).
+**Quem executa:** ver [processo-testes-e-qualidade.md](processo-testes-e-qualidade.md) (você + agente Cursor por issue; sem CI automático nem robô em todas as issues abertas).
 
 ## Por que testar (para quê)
 
@@ -12,7 +12,7 @@
 |--------|----------------|
 | **Sorteio e regras** | Discussão na quadra: médias, GK, 21 em 3×6, fila — erro aqui mata confiança no app. |
 | **API + auth** | Vários celulares, mesmo dado: JWT, organizador vs jogador, presença e caixa não podem divergir. |
-| **Regressão issue a issue** | Cada PR da issue #N entrega código **e** testes novos; CI impede merge quebrado. |
+| **Regressão issue a issue** | Cada PR da issue #N entrega código **e** testes novos; **`npm run test:*` local** antes de fechar (CI `CI-1` depois). |
 | **E2E único no fim** | Prova que Keycloak → API → Angular → fluxo da spec §1 funciona junto (não substitui testes de cada camada). |
 
 **Não fazemos:** 88 histórias × E2E; teste manual como único critério; “testar tudo no final”.

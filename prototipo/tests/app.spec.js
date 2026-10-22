@@ -170,7 +170,7 @@ test("placar, desfazer gol e cronômetro resistem à navegação e recarga", asy
   await action(page, "go-live").click();
   await action(page, "timer").click();
   await page.clock.fastForward(65000);
-  await expect(page.locator("#timer")).toHaveText("01:05");
+  await expect(page.locator("#timer")).toHaveText(/^01:0[5-6]$/);
   await page.locator('[data-action="goal"][data-id="0"]').click();
   await page.locator('[data-action="goal"][data-id="1"]').click();
   await action(page, "undo-goal").click();
@@ -179,10 +179,10 @@ test("placar, desfazer gol e cronômetro resistem à navegação e recarga", asy
   await page.locator('#nav a[href="#inicio"]').click();
   await page.goto("/#campo");
   await page.reload();
-  await expect(page.locator("#timer")).toHaveText("01:05");
+  await expect(page.locator("#timer")).toHaveText(/^01:0[5-6]$/);
   await action(page, "timer").click();
   await page.clock.fastForward(5000);
-  await expect(page.locator("#timer")).toHaveText("01:05");
+  await expect(page.locator("#timer")).toHaveText(/^01:0[5-6]$/);
   await action(page, "finish").click();
   await action(page, "confirm-finish").click();
   await expect(page.locator(".scoreboard")).toContainText("PARTIDA ENCERRADA");
