@@ -117,6 +117,15 @@ Biblioteca sugerida: `angular-oauth2-oidc` (PKCE) ou `keycloak-angular`.
 
 ---
 
+## Testar login no Angular (F0-5)
+
+1. `npm.cmd run keycloak:up` e `npm.cmd run dev:api` (API com **`DEV_AUTH_BYPASS=false`** para JWT real).
+2. `npm.cmd run dev:web` → http://localhost:4200/entrar → **Entrar com Keycloak**.
+3. Login `dev@pelada.local` / `dev-pelada-local` (ou Google se IdP ativo).
+4. Sem telefone na API → `/entrar/completar`; com telefone → `/inicio` (mostra e-mail logado).
+
+Redirect OIDC: `http://localhost:4200/entrar` (já no client `pelada-web`).
+
 ## Modo dev sem Keycloak (temporário)
 
 Com **F0-4b**, a API aceita `DEV_AUTH_BYPASS=true` no `.env` (qualquer `Authorization: Bearer …` vira o `DEV_AUTH_SUB`). Teste rápido:

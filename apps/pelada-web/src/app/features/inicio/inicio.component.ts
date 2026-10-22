@@ -1,7 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import { AuthService, MeProfile } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-inicio',
@@ -19,6 +20,9 @@ import { environment } from '../../../environments/environment';
       }
       <nav>
         <a routerLink="/entrar">Entrar</a>
+        @if (profile) {
+          <span class="muted"> · logado ({{ profile.email ?? profile.keycloakSub }})</span>
+        }
       </nav>
     </main>
   `,
@@ -49,12 +53,14 @@ import { environment } from '../../../environments/environment';
   ],
   imports: [RouterLink],
 })
-export class InicioComponent {
+export class InicioComponent implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
   health: { status: string; service: string; database?: string } | null = null;
   healthError = false;
+  profile: MeProfile | null = null;
 
-  constructor() {
+  ngOnInit(): void {
     this.http
       .get<{ status: string; service: string; database?: string }>(
         `${environment.apiUrl}/health`,
@@ -63,5 +69,9 @@ export class InicioComponent {
         next: (body) => (this.health = body),
         error: () => (this.healthError = true),
       });
+
+    if (this.auth.isLoggedIn()) {
+      this.auth.getMe().then((me) => (this.profile = me)).catch(() => undefined);
+    }
   }
 }

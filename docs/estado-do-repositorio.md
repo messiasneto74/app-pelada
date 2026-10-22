@@ -1,6 +1,6 @@
 # O que existe hoje no repositório (vs produto)
 
-Monorepo **F0-1**; API/Prisma **F0-2**; erros/CORS **F0-3**; Keycloak **F0-4**; API JWT + `GET/PATCH /me` (**F0-4b**). Login Angular (**F0-5**) e interceptor (**F0-6**) a seguir.
+Monorepo **F0-1**…**F0-4b**; Angular OIDC em `/entrar` + `/entrar/completar` (**F0-5**). **F0-6**: guards globais e interceptor refinado.
 
 ## O que já temos (agora)
 
