@@ -2,7 +2,7 @@
 
 Contrato de portas e OIDC para **dev na sua máquina**. Produção troca hosts por `https://app.`, `https://api.`, `https://auth.` (mesmos nomes de realm e client).
 
-Copie [.env.example](../.env.example) para `.env` na raiz quando o Docker Compose existir (**F0-7**).
+Copie [.env.example](../.env.example) para `.env` na raiz (Compose: `npm run stack:up` ou serviços parciais — ver [desenvolvimento-local.md](desenvolvimento-local.md)).
 
 ---
 

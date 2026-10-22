@@ -62,7 +62,7 @@ npm.cmd run test:web     # após TEST-WEB-HARNESS
 
 ## Variáveis e Keycloak (antes de codar F0-4)
 
-1. Copie [.env.example](../.env.example) → `.env` na raiz (quando existir compose na **F0-7**).
+1. Copie [.env.example](../.env.example) → `.env` na raiz.
 2. Siga o guia **[ambiente-dev-auth.md](ambiente-dev-auth.md)** — portas, client `pelada-web`, redirect URIs, fluxo Angular ↔ Keycloak ↔ API.
 3. O que **não** entra no MVP de segurança/produto: **[escopo-seguranca-fora-mvp.md](escopo-seguranca-fora-mvp.md)** (convite grupo, WAF, CI-1, Pix 18).
 
@@ -145,19 +145,37 @@ npm.cmd run smoke:keycloak
 
 Detalhes, usuário `dev@pelada.local` e Google IdP: [ambiente-dev-auth.md](ambiente-dev-auth.md).
 
-## Subir ambiente integrado (após F0-7)
+## Subir ambiente integrado (F0-7)
+
+**Stack completo** (Postgres ×2, Keycloak, API em container):
 
 ```powershell
-docker compose up -d
-npm.cmd run dev:api
+cd D:\desenvolvimento\app-futebol
+copy .env.example .env
+npm.cmd run stack:up
+# 1ª subida: build da API + migrate; Keycloak ~30–90s
+npm.cmd run smoke:keycloak
+npm.cmd run smoke:stack
 npm.cmd run dev:web
 ```
 
 | Serviço | URL |
 |---------|-----|
-| Web | http://localhost:4200 |
-| API | http://localhost:3000 |
+| Web (`ng serve`) | http://localhost:4200 |
+| API (container) | http://localhost:3000 |
 | Keycloak | http://localhost:8080 — realm `pelada` |
+
+**Híbrido (comum no dia a dia):** só banco/IdP no Docker e API com hot-reload no host:
+
+```powershell
+npm.cmd run db:up
+npm.cmd run keycloak:up
+npm.cmd run db:migrate
+npm.cmd run dev:api
+npm.cmd run dev:web
+```
+
+Deploy VPS (Opção A): [deploy-opcao-a.md](deploy-opcao-a.md).
 
 ## Modo dev sem Keycloak
 

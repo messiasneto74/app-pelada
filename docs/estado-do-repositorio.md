@@ -1,6 +1,6 @@
 # O que existe hoje no repositório (vs produto)
 
-Monorepo **F0-1**…**F0-5**; **F0-6** interceptor Bearer + `authGuard`/`phoneRequiredGuard` em `/inicio` e stub `organizadorGuard` (papel na pelada nas issues 3.x).
+Monorepo **F0-1**…**F0-6**; **F0-7** Docker Compose com serviço `api` + [deploy Opção A](deploy-opcao-a.md).
 
 ## O que já temos (agora)
 
@@ -36,7 +36,7 @@ Antes da F0-1 isso **não existe no disco** — só está descrito na arquitetur
 | `npm run dev:web` | Angular local (shell vazio → depois telas) |
 | `npm run dev:api` | API com health check |
 | `npm run test:core` | Testes do sorteio em `packages/core` |
-| Docker (F0-7) | Postgres + Keycloak na sua máquina |
+| Docker (F0-7) | Postgres ×2 + Keycloak + API (`npm run stack:up`) |
 
 O protótipo em `prototipo/` **continua** como referência; o Angular **copia layout**, não substitui o protótipo por symlink.
 

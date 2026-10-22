@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.github
+.cursor
+.env
+.env.*
+!.env.example
+**/.angular
+**/coverage
+prototipo
+apps/pelada-web
+**/*.md
+!apps/api/README.md
