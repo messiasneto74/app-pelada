@@ -134,6 +134,17 @@ A API **sobe**; `/health` fica `database: "down"`. Você pode seguir **F0-3** (C
 
 Teste de integração Prisma (opcional): `$env:RUN_DB_TESTS="1"; npm.cmd run test:api -- --testPathPattern=prisma.integration`
 
+## Keycloak (F0-4)
+
+```powershell
+cd D:\desenvolvimento\app-futebol
+npm.cmd run keycloak:up
+# aguarde ~30–90s na primeira subida
+npm.cmd run smoke:keycloak
+```
+
+Detalhes, usuário `dev@pelada.local` e Google IdP: [ambiente-dev-auth.md](ambiente-dev-auth.md).
+
 ## Subir ambiente integrado (após F0-7)
 
 ```powershell

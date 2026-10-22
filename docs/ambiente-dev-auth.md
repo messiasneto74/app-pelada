@@ -51,7 +51,13 @@ Variáveis em `.env.example`: `KEYCLOAK_ISSUER`, `KEYCLOAK_JWKS_URI`.
 
 ### Google (IdP)
 
-No realm `pelada`: Identity provider **Google** (Client ID/Secret do Google Cloud Console). Redirect do Google aponta para o Keycloak, não para o Angular.
+O realm importado (**F0-4**) traz o provider **Google** **desligado** (`enabled: false`). Para testar:
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → OAuth client (Web).
+2. Redirect autorizado: `http://localhost:8080/realms/pelada/broker/google/endpoint`
+3. Admin Keycloak → Realm **pelada** → Identity providers → **Google** → colar Client ID/Secret → **Save** → **Enable**.
+
+Redirect do Google aponta para o Keycloak, não para o Angular.
 
 ---
 
@@ -129,12 +135,36 @@ Cadastrar **as três URLs de produção** no client Keycloak (redirect, logout, 
 
 ---
 
+## Subir Keycloak local (F0-4)
+
+Na raiz do monorepo (`.env` alinhado com `.env.example`):
+
+```powershell
+npm.cmd run keycloak:up
+npm.cmd run smoke:keycloak
+```
+
+- Admin: http://localhost:8080 — usuário `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` (padrão dev: `admin` / `keycloak_admin_dev`).
+- Realm **pelada** e client **pelada-web** vêm de `infra/keycloak/import/pelada-realm.json` na **primeira** subida do Postgres do Keycloak.
+- Se o realm não aparecer (volume antigo): `docker compose down -v` nos serviços Keycloak **ou** apague só o volume `pelada_pg_keycloak` e suba de novo.
+
+### Usuário de teste (dev, só local)
+
+| Campo | Valor |
+|-------|--------|
+| E-mail | `dev@pelada.local` |
+| Senha | `dev-pelada-local` |
+| Atributo `phone` | `11999990000` (exemplo no import) |
+
+**Não** usar em produção.
+
 ## Checklist F0-4 (smoke manual)
 
+- [ ] `npm.cmd run smoke:keycloak` → `OK Keycloak smoke`
 - [ ] Admin console abre em :8080
 - [ ] Realm `pelada` e client `pelada-web` com URIs acima
-- [ ] Usuário teste consegue login e-mail/senha
-- [ ] (Opcional) Google IdP testado
+- [ ] Login `dev@pelada.local` / `dev-pelada-local`
+- [ ] (Opcional) Google IdP habilitado e testado
 - [ ] Token em https://jwt.io mostra `iss` = `KEYCLOAK_ISSUER` e `sub` estável
 
 Issue GitHub: **F0-4**, **F0-4b**, **F0-5**, **F0-6**, **F0-7**.

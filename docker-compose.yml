@@ -1,4 +1,4 @@
-# Postgres da aplicação (F0-2). Keycloak + segundo Postgres vêm na F0-7.
+# Postgres app (F0-2) + Keycloak + Postgres Keycloak (F0-4). API no compose na F0-7.
 services:
   postgres-app:
     image: postgres:16-alpine
@@ -18,5 +18,53 @@ services:
       timeout: 5s
       retries: 5
 
+  postgres-keycloak:
+    image: postgres:16-alpine
+    container_name: pelada-postgres-keycloak
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_KEYCLOAK_PORT:-5434}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_KEYCLOAK_USER:-keycloak}
+      POSTGRES_PASSWORD: ${POSTGRES_KEYCLOAK_PASSWORD:-keycloak_dev}
+      POSTGRES_DB: keycloak
+    volumes:
+      - pelada_pg_keycloak:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_KEYCLOAK_USER:-keycloak} -d keycloak",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7
+    container_name: pelada-keycloak
+    restart: unless-stopped
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    command: start-dev --import-realm
+    ports:
+      - "${KEYCLOAK_HTTP_PORT:-8080}:8080"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_KEYCLOAK_USER:-keycloak}
+      KC_DB_PASSWORD: ${POSTGRES_KEYCLOAK_PASSWORD:-keycloak_dev}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "false"
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak_admin_dev}
+    volumes:
+      - ./infra/keycloak/import:/opt/keycloak/data/import
+
 volumes:
   pelada_pg_app:
+  pelada_pg_keycloak:

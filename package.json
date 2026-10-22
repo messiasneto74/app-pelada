@@ -18,7 +18,10 @@
     "test:web": "npm run test -w @pelada/web",
     "db:up": "docker compose up -d postgres-app",
     "db:down": "docker compose down",
-    "db:migrate": "npm run prisma:migrate:deploy -w @pelada/api"
+    "db:migrate": "npm run prisma:migrate:deploy -w @pelada/api",
+    "keycloak:up": "docker compose up -d postgres-keycloak keycloak",
+    "keycloak:down": "docker compose stop keycloak postgres-keycloak",
+    "smoke:keycloak": "node scripts/keycloak-smoke.mjs"
   },
   "engines": {
     "node": ">=20"
