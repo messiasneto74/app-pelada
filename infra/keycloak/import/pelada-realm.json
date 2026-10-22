@@ -10,19 +10,6 @@
   "bruteForceProtected": true,
   "sslRequired": "external",
   "internationalizationEnabled": false,
-  "userProfile": {
-    "attributes": [
-      {
-        "name": "phone",
-        "displayName": "Telefone",
-        "permissions": { "view": ["admin", "user"], "edit": ["admin", "user"] },
-        "multivalued": false,
-        "validations": {
-          "length": { "min": 8, "max": 20 }
-        }
-      }
-    ]
-  },
   "clients": [
     {
       "clientId": "pelada-web",

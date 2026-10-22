@@ -141,7 +141,7 @@ Cadastrar **as três URLs de produção** no client Keycloak (redirect, logout, 
 |-----------------------------------|-------------------|
 | Container Keycloak + Postgres do Keycloak | Sua conta Google no login |
 | Realm **pelada**, client **pelada-web** (PKCE) | IdP Google (Admin Console + OAuth Google Cloud) |
-| Atributo de perfil **phone** no realm | Produção / HTTPS / domínios reais |
+| Atributo **phone** no usuário dev (import) | Perfil **phone** no realm: Admin → Realm settings → User profile (1 min) |
 | Usuário dev `dev@pelada.local` (só local) | Login no Angular (**F0-5**) |
 
 **Não** é preciso “configurar Keycloak com sua conta” antes do smoke. O `smoke:keycloak` só pergunta se o servidor em `:8080` já está de pé e se o realm responde OIDC.
@@ -168,7 +168,11 @@ docker logs pelada-keycloak --tail 80
 
 - Admin: http://localhost:8080 — usuário `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` (padrão dev: `admin` / `keycloak_admin_dev`).
 - Realm **pelada** e client **pelada-web** vêm de `infra/keycloak/import/pelada-realm.json` na **primeira** subida do Postgres do Keycloak.
-- Se o realm não aparecer (volume antigo): `docker compose down -v` nos serviços Keycloak **ou** apague só o volume `pelada_pg_keycloak` e suba de novo.
+- Se o realm não aparecer ou logs mostram `Failed to run import`: atualize o repo (`git pull`), `docker compose stop keycloak`, `docker compose up -d keycloak`. Se import falhou várias vezes, apague o volume `pelada_pg_keycloak` e suba de novo.
+
+### Atributo `phone` (após 1º login no Admin)
+
+Realm **pelada** → **Realm settings** → **User profile** → **Create attribute** → Name: `phone`, Display name: Telefone → Save. (O JSON de import do KC 26 não aceita `userProfile` no realm export.)
 
 ### Usuário de teste (dev, só local)
 
