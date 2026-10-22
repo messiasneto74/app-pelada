@@ -1,0 +1,16 @@
+---
+description: Contexto do monorepo app-pelada, issues e testes locais
+alwaysApply: true
+---
+
+# app-pelada — contexto para o agente
+
+- Monorepo: `apps/pelada-web` (Angular), `apps/api` (Nest+Prisma), `packages/core` (Vitest).
+- Seguir issues na ordem do plano (`docs/plano-issues-fases-milestones.md`); IDs em `scripts/github-issues.json`.
+- Testes obrigatórios **locais** antes do merge: ver `docs/processo-testes-e-qualidade.md`.
+- Commits/PRs referenciam a issue (ex. `feat(F0-3): ...`).
+- Não commitar `.env`; usar `.env.example` na raiz.
+- API: bootstrap em `apps/api/src/bootstrap.ts`; erros JSON padrão F0-3.
+- Escopo mínimo nas mudanças; não refatorar fora da issue atual.
+
+Leia `AGENTS.md` na raiz para Cloud Agents e revisão de PR.

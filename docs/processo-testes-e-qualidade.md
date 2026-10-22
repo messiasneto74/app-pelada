@@ -2,6 +2,8 @@
 
 Este documento vale para **todas as issues** do GitHub, **todo PR** e **todo trabalho com agente no Cursor**.
 
+Instruções do repositório para agentes (local, Cloud e revisão de PR): **`AGENTS.md`** na raiz e regras em **`.cursor/rules/`**.
+
 ## Onde os testes rodam
 
 | Ambiente | Uso no MVP |
