@@ -68,16 +68,42 @@ npm.cmd run test:web     # após TEST-WEB-HARNESS
 
 ## Postgres (F0-2)
 
-Copie `.env.example` → `.env` na raiz (ou defina `DATABASE_URL`).
+Copie `.env.example` → `.env` na raiz e ajuste `DATABASE_URL` se necessário.
+
+### Opção A — Docker (recomendado para F0-7)
+
+Requer **Docker Desktop** instalado e no PATH (`docker version` no PowerShell).
 
 ```powershell
+winget install -e --id Docker.DockerDesktop
+# Reinicie o PC se pedir; abra o Docker Desktop uma vez
 cd D:\desenvolvimento\app-futebol
 docker compose up -d postgres-app
 npm.cmd run db:migrate
 npm.cmd run dev:api
 ```
 
-`GET /health` passa a incluir `database: "ok"` quando o Postgres está no ar. Sem Docker, `/health` responde `status: "degraded"` e `database: "down"` (API ainda sobe).
+### Opção B — Postgres instalado no Windows (sem Docker)
+
+1. Instale [PostgreSQL 16](https://www.postgresql.org/download/windows/) (porta **5432**).
+2. Crie banco `pelada_app` e usuário/senha (ex.: `pelada_app` / `pelada_app_dev`).
+3. No `.env` da raiz:
+
+```env
+DATABASE_URL=postgresql://pelada_app:pelada_app_dev@localhost:5432/pelada_app
+```
+
+4. `npm.cmd run db:migrate` e `npm.cmd run dev:api`.
+
+### Opção C — Postgres na nuvem (dev)
+
+[Neon](https://neon.tech) ou similar: copie a connection string para `DATABASE_URL` no `.env`, depois `npm.cmd run db:migrate`.
+
+### Sem Postgres por enquanto
+
+A API **sobe**; `/health` fica `database: "down"`. Você pode seguir **F0-3** (CORS/erros) e instalar Docker/Postgres antes de **F0-4** (Keycloak também usa Docker na Opção A).
+
+`GET /health` com Postgres no ar: `database: "ok"`.
 
 Teste de integração Prisma (opcional): `$env:RUN_DB_TESTS="1"; npm.cmd run test:api -- --testPathPattern=prisma.integration`
 
