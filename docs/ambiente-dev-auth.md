@@ -195,7 +195,7 @@ Realm **pelada** → **Realm settings** → **User profile** → **Create attrib
 
 | Campo | Valor |
 |-------|--------|
-| E-mail | `dev@pelada.local` |
+| Username | `dev` (ou e-mail `dev@pelada.local`) |
 | Senha | `dev-pelada-local` |
 | Atributo `phone` | `11999990000` (exemplo no import) |
 

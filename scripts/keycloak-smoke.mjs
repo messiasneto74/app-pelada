@@ -81,7 +81,9 @@ async function main() {
   console.log('OK Keycloak smoke');
   console.log(`  issuer: ${metadata.issuer}`);
   console.log(`  client esperado no realm: ${clientId}`);
-  console.log('  Próximo: admin console, login dev@pelada.local (ver ambiente-dev-auth.md)');
+  console.log('  Admin console (realm master): admin / KEYCLOAK_ADMIN_PASSWORD no .env');
+  console.log('  Login app (realm pelada): dev ou dev@pelada.local / dev-pelada-local');
+  console.log('  Detalhes: docs/ambiente-dev-auth.md');
 }
 
 main();

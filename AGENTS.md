@@ -42,6 +42,13 @@ No Windows PowerShell, use `npm.cmd` se scripts estiverem bloqueados.
 
 **Antes de considerar um PR pronto:** rodar os `test:*` relevantes ao escopo da issue; o humano valida antes do merge (CI `CI-1` ainda não é obrigatório).
 
+## Issues no GitHub
+
+- Cada issue tem **número** (`F0-5` = issue **#6** — ver título no GitHub).
+- No corpo do PR, inclua **`Closes #N`** (ex. `Closes #8` para F0-7) para o GitHub fechar a issue ao fazer merge.
+- Sem isso, a issue permanece **Open** mesmo com código na `main`.
+- O mantenedor pode fechar manualmente após validar localmente; o agente **não** fecha issues sem pedido explícito (exceto via merge do PR com `Closes #N`).
+
 ## Revisão de PR (agente revisor)
 
 Ao revisar um pull request:

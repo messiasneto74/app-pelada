@@ -10,6 +10,8 @@ node_modules
 **/.angular
 **/coverage
 prototipo
-apps/pelada-web
+# Não copiar fonte do Angular no build da API (só package.json entra via Dockerfile).
+apps/pelada-web/**
+!apps/pelada-web/package.json
 **/*.md
 !apps/api/README.md
