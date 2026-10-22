@@ -17,10 +17,14 @@ Na raiz do monorepo:
 ```bash
 npm run db:up        # Docker Postgres :5433
 npm run db:migrate   # prisma migrate deploy
-npm run dev:api
+npm run dev:api      # hot-reload no host
+
+# Stack integrado (API no container — F0-7)
+npm run stack:up
+npm run smoke:stack
 ```
 
-`DATABASE_URL` em `.env` na raiz (Prisma e `npm run dev:api` carregam esse arquivo).
+`DATABASE_URL` em `.env` na raiz (Prisma e `npm run dev:api` carregam esse arquivo). No compose, a API usa `postgres-app:5432` e `KEYCLOAK_JWKS_URI` interno (`http://keycloak:8080/...`); ver `apps/api/Dockerfile` e [deploy-opcao-a.md](../../docs/deploy-opcao-a.md).
 
 ## Erros HTTP (F0-3)
 

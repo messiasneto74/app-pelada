@@ -25,8 +25,11 @@ npm run test:web
 npm run dev:api    # :3000
 npm run dev:web    # :4200
 npm run db:up      # Docker Postgres :5433
+npm run stack:up   # Postgres + Keycloak + API (F0-7)
+npm run smoke:stack
 npm run db:migrate
 npm run keycloak:up
+npm run keycloak:reset  # volume IdP + credenciais do .env
 npm run smoke:keycloak
 ```
 
@@ -37,8 +40,16 @@ No Windows PowerShell, use `npm.cmd` se scripts estiverem bloqueados.
 - Processo oficial: `docs/processo-testes-e-qualidade.md`
 - Estratégia por módulo: `docs/estrategia-testes.md`
 - Dev local: `docs/desenvolvimento-local.md`
+- Credenciais Keycloak dev: `docs/credenciais-dev-local.md`
 
 **Antes de considerar um PR pronto:** rodar os `test:*` relevantes ao escopo da issue; o humano valida antes do merge (CI `CI-1` ainda não é obrigatório).
+
+## Issues no GitHub
+
+- Cada issue tem **número** (`F0-5` = issue **#6** — ver título no GitHub).
+- No corpo do PR, inclua **`Closes #N`** (ex. `Closes #8` para F0-7) para o GitHub fechar a issue ao fazer merge.
+- Sem isso, a issue permanece **Open** mesmo com código na `main`.
+- O mantenedor pode fechar manualmente após validar localmente; o agente **não** fecha issues sem pedido explícito (exceto via merge do PR com `Closes #N`).
 
 ## Revisão de PR (agente revisor)
 

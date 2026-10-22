@@ -1,4 +1,6 @@
-# Postgres app (F0-2) + Keycloak + Postgres Keycloak (F0-4). API no compose na F0-7.
+# Opção A local: postgres-app + postgres-keycloak + keycloak + api (F0-7).
+name: pelada
+
 services:
   postgres-app:
     image: postgres:16-alpine
@@ -65,6 +67,31 @@ services:
     volumes:
       - ./infra/keycloak/import:/opt/keycloak/data/import
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: pelada-api:local
+    container_name: pelada-api
+    restart: unless-stopped
+    depends_on:
+      postgres-app:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    ports:
+      - "127.0.0.1:${API_PORT:-3000}:3000"
+    environment:
+      PORT: 3000
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4200}
+      DATABASE_URL: postgresql://${POSTGRES_APP_USER:-pelada_app}:${POSTGRES_APP_PASSWORD:-pelada_app_dev}@postgres-app:5432/pelada_app
+      # Issuer no token (browser) continua localhost; JWKS é resolvido na rede do compose.
+      KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:-http://localhost:8080/realms/pelada}
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/pelada/protocol/openid-connect/certs
+      DEV_AUTH_BYPASS: ${DEV_AUTH_BYPASS:-false}
+
 volumes:
   pelada_pg_app:
+    name: pelada_pg_app
   pelada_pg_keycloak:
+    name: pelada_pg_keycloak

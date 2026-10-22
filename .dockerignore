@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.github
+.cursor
+.env
+.env.*
+!.env.example
+**/.angular
+**/coverage
+prototipo
+# Não copiar fonte do Angular no build da API (só package.json entra via Dockerfile).
+apps/pelada-web/**
+!apps/pelada-web/package.json
+**/*.md
+!apps/api/README.md
