@@ -119,7 +119,15 @@ Biblioteca sugerida: `angular-oauth2-oidc` (PKCE) ou `keycloak-angular`.
 
 ## Modo dev sem Keycloak (temporário)
 
-Até F0-4/5 prontos, a issue **F0-5** pode incluir botão “dev login” **somente** se `DEV_AUTH_BYPASS=true` no `.env` da API — a API aceita header fixo ou sub de teste. **Desligado** em staging/produção.
+Com **F0-4b**, a API aceita `DEV_AUTH_BYPASS=true` no `.env` (qualquer `Authorization: Bearer …` vira o `DEV_AUTH_SUB`). Teste rápido:
+
+```powershell
+# .env: DEV_AUTH_BYPASS=true
+npm.cmd run dev:api
+curl -H "Authorization: Bearer teste" http://localhost:3000/me
+```
+
+**Desligado** em staging/produção. Com Keycloak no ar e bypass `false`, use o `access_token` real no Bearer.
 
 ---
 
