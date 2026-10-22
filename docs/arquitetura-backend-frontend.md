@@ -37,11 +37,12 @@ flowchart LR
 | Peça | Escolha | Motivo |
 |------|---------|--------|
 | Frontend | **Angular** (standalone, Angular Router) + **PWA** (`@angular/service-worker`) | Stack escolhida; mobile-first 390px |
-| UI | Design tokens da spec (T1) + componentes próprios (T2); SCSS ou Tailwind via config | Alinhado ao layout do MVP |
+| UI | Tokens e layout do protótipo **Resenha** → [ui-referencia-resenha.md](ui-referencia-resenha.md) + [prototipo/visual/README.md](../prototipo/visual/README.md); T2 componentes no Angular | Mobile 390px; galeria prevalece sobre wireframes antigos |
 | Backend | **API própria** (recomendado **NestJS** + Prisma + PostgreSQL) | Auth, dados compartilhados, sorteio confiável |
 | Auth | **Keycloak** (OIDC): Google + e-mail/senha; Angular PKCE; API valida JWT | Ver §1.1 |
-| Monorepo | `apps/pelada-web` (Angular) + `apps/api` + `packages/core` | Core de sorteio compartilhado com API |
-| Hospedagem | Angular estático (Firebase Hosting, Cloudflare Pages, Nginx) + API + Postgres | Deploy separado |
+| Monorepo | `apps/pelada-web` (Angular) + `apps/api` + `packages/core` + `apps/pelada-mobile` (Capacitor, issue `STORE-1`) | Web é fonte única; lojas empacotam o mesmo build |
+| Hospedagem web | Angular estático (Firebase Hosting, Cloudflare Pages, Nginx) + API + Postgres | `DEPLOY-1` |
+| Lojas | Google Play (`.aab`) + App Store (`.ipa`) via Capacitor | Ver [publicacao-lojas-play-app-store.md](publicacao-lojas-play-app-store.md) |
 
 ### Backend é necessário?
 
@@ -55,12 +56,14 @@ flowchart LR
 
 **Alternativa mínima (não recomendada para MVP completo):** Firebase/Supabase como “backend gerenciado” em vez de API Nest — ainda é backend, só que BaaS. Você pediu API própria; mantemos Nest/Fastify.
 
-**Protótipo de telas (navegável)**
+**Protótipo Resenha (referência de UI)**
 
 | Onde | Como abrir |
 |------|------------|
-| Navegador | Abrir [prototipo/index.html](../prototipo/index.html) no Chrome/Edge |
-| Cursor | Canvas **pelada-wireframes** (painel ao lado do chat) |
+| App interativo | Servir [prototipo/](../prototipo/) (`python3 -m http.server 8000`) → [prototipo/README.md](../prototipo/README.md) |
+| Galeria (16 telas × mobile/desktop) | [prototipo/visual/README.md](../prototipo/visual/README.md) |
+| Mapa spec ↔ rotas Angular ↔ `#hash` | [ui-referencia-resenha.md](ui-referencia-resenha.md) |
+| Rotas de produção | §4.2 abaixo (`/inicio`, `/partida/*`, …) — não confundir com `#inicio` do protótipo |
 
 ---
 
@@ -308,10 +311,10 @@ flowchart TD
 
 ### 5.2 Jogador — dia da pelada
 
-1. `/entrar` → `/app` → escolhe pelada  
-2. `/m/[matchId]/presenca` → confirma “vou”  
-3. `/m/[matchId]/sorteio` → vê times (somente leitura)  
-4. `/m/[matchId]/jogo` → vê quem joga e placar  
+1. `/entrar` → shell com abas (pelada ativa no contexto)  
+2. `/partida/presenca` → confirma “vou” (modo configurado na pelada)  
+3. `/partida/sorteio` → vê times (leitura se não for organizador)  
+4. `/partida/campo` → placar e quem está em campo  
 
 ### 5.3 Convidado — link sem conta completa
 
@@ -350,32 +353,34 @@ flowchart TD
 
 | Área | MVP | Depois |
 |------|-----|--------|
-| Auth | e-mail magic link | telefone, social |
-| Rotas | `/app` hub + partida presença/sorteio/jogo + config | caixa, stats, copa |
-| Backend | CRUD pelada, partida, presença, draw persistido | Realtime, bot Zap, voz |
-| Public link | presença simples | link pessoal 34 |
-| Offline | — | 83 (sorteio local + sync) |
+| Auth | **Keycloak** — Google + e-mail/senha; PKCE no Angular | — |
+| Rotas | §4.2 (`/inicio`, `/partida/*`, `/jogadores`, `/caixa`) | deep links `/c/[token]` (11, 34, 82) |
+| Backend | CRUD pelada, partida, presença, draw persistido | WebSocket realtime, bot Zap, voz |
+| Public link | convidado na presença (42–43) | link público amplo (33), link pessoal (34) |
+| Offline / PWA | mobile-first (T6); PWA opcional pós-MVP | 83 offline; service worker dedicado |
+| Testes | **local** (`test:core`, `test:api`) | CI GitHub (`CI-1`) |
 
 ---
 
 ## 8. Ordem de implementação sugerida
 
-1. Monorepo + `packages/core` + testes sorteio  
-2. Auth + modelo `Pelada` / `Member` / `Rules`  
-3. Rotas: home, hub, config, elenco  
-4. Partida: presença → API draw → tela sorteio → em campo mínimo  
-5. Share WhatsApp + polish mobile (84)  
-6. Pagamento 14–17; Pix texto 18  
+Ver [plano-issues-fases-milestones.md](plano-issues-fases-milestones.md) (F0–F7). Resumo:
+
+1. F0 — monorepo, harness de testes local, Docker, Keycloak, API skeleton  
+2. T1–T6 + telas M1–M2  
+3. CORE + sorteio + presença  
+4. Campo + caixa (14–17; **sem** cobrança Zap — hist. 18 Depois)  
+5. E2E local + deploy staging (`DEPLOY-1`) quando quiser ambiente na internet  
 
 ---
 
 ## 9. Referência cruzada MVP (histórias)
 
-| MVP histórias | Rotas principais |
-|---------------|------------------|
-| 1–10 | `/nova-pelada`, `/config` |
-| 23–27 | `/elenco`, `/elenco/[id]` |
-| 32–38, 42–45 | `/m/[id]/presenca` |
-| 47–61 | `/m/[id]/sorteio` |
-| 63–66 | `/m/[id]/jogo` |
-| 14–17 | `/caixa` (pode ser tab simples no MVP) |
+| MVP histórias | Rotas (spec §4.2) |
+|---------------|-------------------|
+| 1–10 | `/onboarding/pelada`, `/inicio/regras` |
+| 23–27 | `/jogadores`, `/jogadores/:id` |
+| 32–38, 42–45 | `/inicio/criar-partida`, `/partida/presenca` |
+| 47–61 | `/partida/sorteio` |
+| 63–66 | `/partida/campo` |
+| 14–17 | `/caixa` |

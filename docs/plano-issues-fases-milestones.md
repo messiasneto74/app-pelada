@@ -74,11 +74,13 @@ Ver detalhes em [arquitetura-backend-frontend.md](arquitetura-backend-frontend.m
 | **F0-5** | Angular: OIDC (keycloak-angular ou oauth2-oidc) + `/entrar` + completar telefone | frontend | F0-4 | — |
 | **F0-6** | `HttpClient` + interceptor Bearer + `authGuard` / `organizadorGuard` | frontend | F0-4b, F0-5 | — |
 | **F0-7** | Docker Compose: keycloak + postgres (×2) + api — doc deploy Opção A | devops | F0-4, F0-1 | §1.2 |
-| **CI-1** | GitHub Actions: install, lint, `test:core`, `test:api` em todo PR | devops | F0-1 | [estrategia-testes.md](estrategia-testes.md) |
+| **CI-1** | *(Depois / opcional)* GitHub Actions em PR | devops | F0-1, LOCAL-DEV-1 | [estrategia-testes.md](estrategia-testes.md) |
+| **LOCAL-DEV-1** | Doc + scripts: testes locais, Docker, PowerShell, `.env.example` | docs | F0-1 | [desenvolvimento-local.md](desenvolvimento-local.md) |
 | **TEST-API-HARNESS** | Harness API: Postgres teste, factories, mock JWT, 1º teste integração | backend | F0-2, F0-3 | [estrategia-testes.md](estrategia-testes.md) §B |
 | **TEST-WEB-HARNESS** | Harness Angular: runner + testes exemplo (guard/interceptor) | frontend | F0-1 | [estrategia-testes.md](estrategia-testes.md) §C |
+| **STORAGE-1** | Upload foto pelada/jogador (MVP: disco local ou pasta `uploads/` + URL na API) | backend | F0-1, T5 | L1-API |
 
-**Aceite M0 parcial:** login Google ou e-mail → completar telefone se faltar → redireciona para shell. **CI verde** antes de fechar issues F0.
+**Aceite M0 parcial:** login Google ou e-mail → completar telefone se faltar → redireciona para shell. **Testes locais** (`test:core` / `test:api`) antes de fechar issues F0.
 
 ---
 
@@ -181,6 +183,7 @@ Ver detalhes em [arquitetura-backend-frontend.md](arquitetura-backend-frontend.m
 |----|--------|------|---------|
 | **E2E-1** | E2E Playwright: fluxo MVP + 2 smoke (ver [estrategia-testes.md](estrategia-testes.md) §D) | qa | M4 |
 | **DEPLOY-1** | Deploy staging API + web + env secrets | devops | F0 |
+| **STORE-1** | Capacitor (`apps/pelada-mobile`), AAB Play Console, IPA App Store Connect — ver [publicacao-lojas-play-app-store.md](publicacao-lojas-play-app-store.md) | devops | DEPLOY-1, F0-5 |
 | **DOC-1** | README desenvolvimento + `.env.example` | docs | F0-1 |
 | **A11Y-1** | Revisão contraste tokens T1 e foco em formulários | frontend | T1 |
 
@@ -219,7 +222,7 @@ flowchart TD
 
 | Sprint | Meta | Issues principais |
 |--------|------|-------------------|
-| **S1** | M0 | F0-1…F0-7, CI-1, TEST-API-HARNESS, TEST-WEB-HARNESS, T1, T2, T3, T4, T6 |
+| **S1** | M0 | F0-1…F0-7, LOCAL-DEV-1, TEST-API-HARNESS, TEST-WEB-HARNESS, T1, T2, T3, T4, T6 |
 | **S2** | M1 início | T5, L1, L1-API, 3.2, 3.2-API, L27 |
 | **S3** | M1 fim | 3.1, 3.1-API, 3.7, 3.7-API, 3.8, CORE-1 spike |
 | **S4** | M2 | 3.3, 3.3-API, 3.4, 3.4-API, L45, L45-CORE |
@@ -230,7 +233,7 @@ flowchart TD
 
 ## Template de issue (copiar no GitHub)
 
-Ver também [estrategia-testes.md](estrategia-testes.md) (anexo: blocos por tipo).
+Ver também [estrategia-testes.md](estrategia-testes.md) (anexo: blocos por tipo) e [processo-testes-e-qualidade.md](processo-testes-e-qualidade.md) (quem roda testes: você + agente por issue).
 
 ```markdown
 ## Contexto
@@ -256,7 +259,7 @@ Issue plano: [ID ex. 3.4-API]
 Tokens T1, componentes T2, header T4
 
 ## Testes obrigatórios (não fechar issue sem isso)
-_Marcar no PR quais itens foram feitos. CI verde (`CI-1`). Detalhes: [estrategia-testes.md](estrategia-testes.md)._
+_Marcar no PR quais itens foram feitos. Testes **locais** (`desenvolvimento-local.md`). CI (`CI-1`) opcional depois._
 
 ### Se issue `core` (CORE-*, L45-CORE)
 - [ ] Novos casos Vitest em `packages/core` (meta: ver §A do doc)
@@ -281,10 +284,16 @@ _Marcar no PR quais itens foram feitos. CI verde (`CI-1`). Detalhes: [estrategia
 - [ ] CI-1: workflow bloqueia merge se testes falharem
 - [ ] DEPLOY-1: env documentados; smoke pós-deploy
 
+## Processo de execução dos testes
+- [ ] **Você** roda `npm.cmd run test:*` relevantes **na sua máquina** antes de fechar a issue
+- [ ] **Agente Cursor** (se usado na implementação) roda os mesmos comandos no seu PC até verde — **só escopo desta issue**
+- [ ] Sem CI obrigatório até `CI-1` (depois)
+- [ ] Detalhes: [processo-testes-e-qualidade.md](processo-testes-e-qualidade.md)
+
 ## Definition of Done
 - [ ] Aceite spec/plano
-- [ ] Testes acima
-- [ ] PR linkado à issue
+- [ ] Testes acima (local)
+- [ ] PR/commit referencia a issue
 ```
 
 ---

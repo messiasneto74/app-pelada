@@ -91,11 +91,11 @@ ${i.stories}
 Conforme tabela no plano + spec de telas MVP e histórias no repositório.
 
 ## Testes obrigatórios
-Ver [estrategia-testes.md](${PLAN_URL.replace('plano-issues-fases-milestones.md', 'estrategia-testes.md')}) — blocos por label \`core\` / \`backend\` / \`frontend\`. CI verde (\`CI-1\`). Não fechar issue sem testes na PR.
+Rodar na **sua máquina**: [desenvolvimento-local.md](https://github.com/${REPO}/blob/main/docs/desenvolvimento-local.md). Ver [estrategia-testes.md](https://github.com/${REPO}/blob/main/docs/estrategia-testes.md). CI (\`CI-1\`) opcional depois.
 
 ## Definition of Done
 - [ ] Aceite spec/plano
-- [ ] Testes + CI
+- [ ] Testes locais + comandos no PR
 - [ ] PR referencia a issue
 `;
   const bodyPath = join(tmp, `${i.id.replace(/[^a-zA-Z0-9-]/g, '_')}.md`);

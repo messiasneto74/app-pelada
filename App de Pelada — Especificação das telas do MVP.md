@@ -17,9 +17,11 @@ Fluxo principal de uma partida: **Criar partida → Presença → Fechar lista �
 
 ## 2. Issues transversais (fazer antes das telas)
 
+**Referência visual obrigatória:** protótipo [Resenha](prototipo/index.html) e [galeria de 16 telas](prototipo/visual/README.md). Tokens, componentes e estados devem seguir [docs/ui-referencia-resenha.md](docs/ui-referencia-resenha.md) (prevalece sobre wireframes antigos).
+
 | # | Issue | Descrição |
 | --- | --- | --- |
-| T1 | Tema e design tokens | Fundo verde-escuro, destaque verde-limão, fonte condensada nos títulos e Inter no texto, escala de espaçamentos e raios. |
+| T1 | Tema e design tokens | Como em `prototipo/styles.css` e na galeria: verde `#173d32`, lime `#dcf58a`, Barlow Condensed + DM Sans, escala de espaçamentos e raios. |
 | T2 | Componentes base | Card, Chip de status (verde, amarelo, vermelho, neutro), Avatar com iniciais, Barra de progresso, Interruptor, Controle segmentado, Campo de formulário, Botão primário e secundário (altura mínima de 44 px). |
 | T3 | Navegação | Barra inferior com 4 abas e ícones, rotas das telas e estado da aba ativa. |
 | T4 | Cabeçalho de tela | Rótulo pequeno, título grande e ação opcional à direita. |

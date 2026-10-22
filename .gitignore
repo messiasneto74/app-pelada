@@ -14,6 +14,6 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Resultados locais de testes de navegador
+# Resultados locais de testes do protótipo
 prototipo/test-results/
 prototipo/playwright-report/

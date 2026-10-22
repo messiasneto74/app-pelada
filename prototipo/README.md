@@ -2,6 +2,8 @@
 
 Interface responsiva para organizar a pelada, com HTML, CSS e JavaScript sem dependências em produção.
 
+**Referência visual para o Angular (T1–T4, telas §3.x):** [docs/ui-referencia-resenha.md](../docs/ui-referencia-resenha.md) · [galeria de 16 telas](visual/README.md).
+
 ## Rodar
 
 A partir de `prototipo/`, execute:
@@ -10,7 +12,9 @@ A partir de `prototipo/`, execute:
 python3 -m http.server 8000 --bind 0.0.0.0
 ```
 
-Também é possível usar `npm run dev`. O servidor deve servir esta pasta; não é necessário instalar pacotes para usar o app. Requer Python 3. Os arquivos podem ser hospedados em um servidor estático.
+No Windows, também: `py -m http.server 8000`. Ou `npm run dev` (mesmo comando via npm).
+
+O servidor deve servir **esta pasta**; não é necessário instalar pacotes para usar o app. Abra `http://localhost:8000/` (navegação por `#inicio`, `#partida`, etc.). Os arquivos podem ser hospedados em um servidor estático.
 
 ## O que funciona
 
@@ -48,8 +52,8 @@ npm test
 
 Quando `/usr/bin/chromium` existe, a configuração de testes o usa automaticamente; a instalação pelo Playwright é dispensável. Outra localização pode ser informada com `CHROMIUM_PATH`.
 
-A suíte executa os fluxos no Chromium em desktop e com viewport/dispositivo móvel emulado. Não equivale a teste em Safari/iPhone físico. Inicia seu próprio servidor na porta 8001; deixe essa porta livre. Os testes usam contextos isolados e não alteram os dados do seu navegador.
+A suíte executa os fluxos no Chromium em desktop e com viewport/dispositivo móvel emulado. Não equivale a teste em Safari/iPhone físico. Inicia seu próprio servidor na porta **8001**; deixe essa porta livre. Os testes usam contextos isolados e não alteram os dados do seu navegador.
 
 ## Galeria visual
 
-Veja as [16 telas e estados em mobile e desktop](visual/README.md). Para atualizar as 32 capturas com dados de exemplo isolados, rode `npm run screenshots`. O comando inicia e encerra seu próprio servidor na porta 8002, que deve estar livre.
+Veja as [16 telas e estados em mobile e desktop](visual/README.md). Para atualizar as 32 capturas com dados de exemplo isolados, rode `npm run screenshots`. O comando inicia e encerra seu próprio servidor na porta **8002**, que deve estar livre.

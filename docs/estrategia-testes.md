@@ -2,6 +2,10 @@
 
 **Regra:** nada de qualidade “só no documento”. Cada item abaixo tem **issue no GitHub** para implementação. Issues de produto (`3.x`, `CORE-*`, etc.) **não fecham** sem os testes do tipo exigido nesta matriz.
 
+**Onde rodam os testes (decisão atual):** **só na sua máquina** — ver [desenvolvimento-local.md](desenvolvimento-local.md). Issue **CI-1** (GitHub Actions) é **opcional / depois**; o DoD exige `npm run test:*` **local** até CI existir.
+
+**Quem executa:** ver [processo-testes-e-qualidade.md](processo-testes-e-qualidade.md) (você + agente Cursor por issue; sem CI automático nem robô em todas as 58 issues).
+
 ## Por que testar (para quê)
 
 | Motivo | O que protege |
@@ -102,7 +106,7 @@ Telas só layout: **aceite manual** na issue + screenshot no PR até `E2E-1` cob
 
 1. Critérios de aceite da spec copiados na issue — todos atendidos.
 2. Testes novos listados no PR (número + arquivo).
-3. `npm run test:core` e `npm run test:api` verdes no CI.
+3. `npm run test:core` e `npm run test:api` verdes **localmente** (e no CI quando `CI-1` existir).
 4. Migrations Prisma se tocar schema.
 
 ---

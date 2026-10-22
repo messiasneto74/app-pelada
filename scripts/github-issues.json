@@ -71,6 +71,7 @@
     { "id": "3.1-SYNC", "title": "Resumo caixa no Início atualiza ao marcar pago", "labels": ["mvp", "frontend"], "milestone": "M4: MVP completo", "depends": "3.1, 3.9", "stories": "§3.9 aceite", "fase": "F6" },
     { "id": "E2E-1", "title": "E2E: criar pelada → jogador → partida → presença → sorteio → campo", "labels": ["mvp", "qa"], "milestone": "M4: MVP completo", "depends": "M4", "stories": "—", "fase": "F7" },
     { "id": "DEPLOY-1", "title": "Deploy staging API + web + env secrets", "labels": ["mvp", "devops"], "milestone": "M4: MVP completo", "depends": "F0", "stories": "—", "fase": "F7" },
+    { "id": "STORE-1", "title": "Capacitor: apps/pelada-mobile + Play Store (AAB) + App Store (TestFlight)", "labels": ["mvp", "devops"], "milestone": "M4: MVP completo", "depends": "DEPLOY-1, F0-5", "stories": "—", "fase": "F7" },
     { "id": "DOC-1", "title": "README desenvolvimento + .env.example", "labels": ["mvp", "docs"], "milestone": "M4: MVP completo", "depends": "F0-1", "stories": "—", "fase": "F7" },
     { "id": "A11Y-1", "title": "Revisão contraste tokens T1 e foco em formulários", "labels": ["mvp", "frontend"], "milestone": "M4: MVP completo", "depends": "T1", "stories": "—", "fase": "F7" }
   ]
