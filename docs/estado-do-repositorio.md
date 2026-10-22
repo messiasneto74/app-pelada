@@ -1,6 +1,6 @@
 # O que existe hoje no repositório (vs produto)
 
-Monorepo **F0-1**…**F0-4b**; Angular OIDC em `/entrar` + `/entrar/completar` (**F0-5**). **F0-6**: guards globais e interceptor refinado.
+Monorepo **F0-1**…**F0-5**; **F0-6** interceptor Bearer + `authGuard`/`phoneRequiredGuard` em `/inicio` e stub `organizadorGuard` (papel na pelada nas issues 3.x).
 
 ## O que já temos (agora)
 

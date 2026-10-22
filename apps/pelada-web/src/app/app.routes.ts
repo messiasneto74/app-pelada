@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './auth/auth.guard';
+import { phoneRequiredGuard } from './auth/phone-required.guard';
 
 export const routes: Routes = [
   {
@@ -17,6 +18,7 @@ export const routes: Routes = [
   },
   {
     path: 'inicio',
+    canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>
       import('./features/inicio/inicio.component').then((m) => m.InicioComponent),
   },
