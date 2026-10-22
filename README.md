@@ -8,6 +8,8 @@ Projeto com **protótipo interativo Resenha** e documentação de planejamento (
 - [Telas MVP](App%20de%20Pelada%20—%20Especificação%20das%20telas%20do%20MVP.md)
 - [Referência visual (Resenha → Angular T1–§3.x)](docs/ui-referencia-resenha.md)
 - [Arquitetura](docs/arquitetura-backend-frontend.md)
+- [Ambiente dev + Keycloak (URLs, PKCE)](docs/ambiente-dev-auth.md)
+- [Fora do MVP: segurança e produto (4 eixos)](docs/escopo-seguranca-fora-mvp.md)
 - [Publicação web + Play Store + App Store](docs/publicacao-lojas-play-app-store.md)
 - [Plano de issues / fases / milestones](docs/plano-issues-fases-milestones.md)
 - [Estratégia de testes e DoD](docs/estrategia-testes.md)

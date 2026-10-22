@@ -42,4 +42,6 @@ O protótipo em `prototipo/` **continua** como referência; o Angular **copia la
 
 ## Próximo passo oficial
 
+Antes/durante F0-4: [.env.example](../.env.example) e [ambiente-dev-auth.md](ambiente-dev-auth.md).
+
 Issue **[F0-1](https://github.com/messiasneto74/app-pelada/issues/1)** — criar a árvore acima e o primeiro `npm install` na raiz.

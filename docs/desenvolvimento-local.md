@@ -49,6 +49,12 @@ npm.cmd run test:web     # após TEST-WEB-HARNESS
 
 **Definition of Done (local):** antes de fechar a issue, os comandos acima relevantes à issue passam **no seu PC**.
 
+## Variáveis e Keycloak (antes de codar F0-4)
+
+1. Copie [.env.example](../.env.example) → `.env` na raiz (quando existir compose na **F0-7**).
+2. Siga o guia **[ambiente-dev-auth.md](ambiente-dev-auth.md)** — portas, client `pelada-web`, redirect URIs, fluxo Angular ↔ Keycloak ↔ API.
+3. O que **não** entra no MVP de segurança/produto: **[escopo-seguranca-fora-mvp.md](escopo-seguranca-fora-mvp.md)** (convite grupo, WAF, CI-1, Pix 18).
+
 ## Subir ambiente integrado (após F0-7)
 
 ```powershell
@@ -57,13 +63,15 @@ npm.cmd run dev:api
 npm.cmd run dev:web
 ```
 
-- Web: http://localhost:4200  
-- API: http://localhost:3000  
-- Keycloak: http://localhost:8080 (realm `pelada` — ver issue F0-4)
+| Serviço | URL |
+|---------|-----|
+| Web | http://localhost:4200 |
+| API | http://localhost:3000 |
+| Keycloak | http://localhost:8080 — realm `pelada` |
 
 ## Modo dev sem Keycloak
 
-Até F0-4/5 prontos: usar **modo dev** na tela Entrar (issue F0-5) com API em `DEV_AUTH_SUB` — documentado em `apps/api/.env.example` (issue DOC-1).
+Até F0-4/5 prontos: `DEV_AUTH_BYPASS=true` só na API local (ver `.env.example`) — **F0-5**; nunca em produção.
 
 ## E2E (issue E2E-1)
 

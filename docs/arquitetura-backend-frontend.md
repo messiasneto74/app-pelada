@@ -351,12 +351,16 @@ flowchart TD
 
 ## 7. O que entra no MVP vs depois
 
+Detalhamento dos **quatro eixos** fora do MVP imediato (convite grupo, WAF/rate limit, CI-1, Pix 18) e alternativas no MVP: [escopo-seguranca-fora-mvp.md](escopo-seguranca-fora-mvp.md). Ambiente local Keycloak: [ambiente-dev-auth.md](ambiente-dev-auth.md) · [.env.example](../.env.example).
+
 | Área | MVP | Depois |
 |------|-----|--------|
 | Auth | **Keycloak** — Google + e-mail/senha; PKCE no Angular | — |
 | Rotas | §4.2 (`/inicio`, `/partida/*`, `/jogadores`, `/caixa`) | deep links extras (34, 82) |
 | Backend | CRUD pelada, partida, presença, draw persistido | WebSocket realtime, bot Zap, voz |
 | Convidado / links | **MVP:** aprovar convidado na presença (42–43), token de partida se necessário | **Depois:** convite link/QR para **entrar no grupo** (11), link público amplo (33), link pessoal recorrente (34) |
+| Caixa / Pix | marcar pago, ledger 14–17 | cobrança Zap/Pix assistida ou automática (18) |
+| Infra segurança | HTTPS, CORS, JWT, validação entrada | rate limit/WAF fino, CI obrigatório (CI-1) |
 | Offline / PWA | mobile-first (T6); PWA opcional pós-MVP | 83 offline; service worker dedicado |
 | Testes | **local** (`test:core`, `test:api`) | CI GitHub (`CI-1`) |
 
