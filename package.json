@@ -1,0 +1,23 @@
+{
+  "name": "app-pelada",
+  "version": "0.0.1",
+  "private": true,
+  "description": "App de pelada — monorepo Angular, API Nest e core de sorteio",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run start -w @pelada/web",
+    "dev:api": "npm run start:dev -w @pelada/api",
+    "build:web": "npm run build -w @pelada/web",
+    "build:api": "npm run build -w @pelada/api",
+    "build:core": "npm run build -w @pelada/core",
+    "test:core": "npm run test -w @pelada/core",
+    "test:api": "npm run test -w @pelada/api",
+    "test:web": "npm run test -w @pelada/web"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

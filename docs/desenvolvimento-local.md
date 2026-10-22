@@ -23,15 +23,26 @@ npm.cmd run dev
 
 Testes do protótipo: `npm.cmd ci`, `npx.cmd playwright install chromium`, `npm.cmd test` (servidor Node na porta 8001). Galeria: [prototipo/visual/README.md](../prototipo/visual/README.md).
 
-## Estrutura (após F0-1)
+## Estrutura do monorepo (F0-1+)
 
 ```
 app-futebol/
+  package.json         # workspaces + npm run dev:* / test:*
   prototipo/           # referência UI (Resenha) — não vai para produção
-  apps/pelada-web/     # Angular — fonte das telas MVP
-  apps/api/            # Nest + Prisma
-  packages/core/       # sorteio (Vitest)
-  apps/pelada-mobile/  # Capacitor — após STORE-1 (Play / App Store)
+  apps/pelada-web/     # @pelada/web — Angular
+  apps/api/            # @pelada/api — Nest (Prisma na F0-2)
+  packages/core/       # @pelada/core — sorteio (Vitest)
+  apps/pelada-mobile/  # Capacitor — após STORE-1
+```
+
+Primeira vez:
+
+```powershell
+cd D:\desenvolvimento\app-futebol
+npm.cmd install
+npm.cmd run test:core
+npm.cmd run test:api
+npm.cmd run test:web
 ```
 
 **Onde publicar:** web em `DEPLOY-1`; lojas em `STORE-1` — [publicacao-lojas-play-app-store.md](publicacao-lojas-play-app-store.md).

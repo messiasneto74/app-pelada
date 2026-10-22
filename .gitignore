@@ -1,6 +1,7 @@
 # Dependencies / build (quando o monorepo existir)
 node_modules/
 dist/
+coverage/
 .angular/
 
 # Ambiente

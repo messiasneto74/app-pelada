@@ -16,7 +16,7 @@ Projeto com **protótipo interativo Resenha** e documentação de planejamento (
 - [Desenvolvimento e testes na sua máquina](docs/desenvolvimento-local.md)
 - [Processo de testes (você + agente Cursor)](docs/processo-testes-e-qualidade.md)
 
-O monorepo (`apps/pelada-web`, `apps/api`, `packages/core`) **ainda não foi criado** — começa na issue **F0-1**. Leia [o que existe hoje vs produto](docs/estado-do-repositorio.md).
+Monorepo: `npm install` na raiz → `npm run dev:api` + `npm run dev:web`. Ver [apps/README.md](apps/README.md) e [desenvolvimento-local.md](docs/desenvolvimento-local.md).
 
 ## Protótipo Resenha
 
