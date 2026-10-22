@@ -15,7 +15,10 @@
     "build:core": "npm run build -w @pelada/core",
     "test:core": "npm run test -w @pelada/core",
     "test:api": "npm run test -w @pelada/api",
-    "test:web": "npm run test -w @pelada/web"
+    "test:web": "npm run test -w @pelada/web",
+    "db:up": "docker compose up -d postgres-app",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run prisma:migrate:deploy -w @pelada/api"
   },
   "engines": {
     "node": ">=20"

@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { PrismaService } from './../src/prisma/prisma.service';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -10,7 +11,16 @@ describe('AppController (e2e)', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(PrismaService)
+      .useValue({
+        onModuleInit: jest.fn(),
+        onModuleDestroy: jest.fn(),
+        $connect: jest.fn(),
+        $disconnect: jest.fn(),
+        ping: jest.fn().mockResolvedValue(true),
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
@@ -24,6 +34,10 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer())
       .get('/health')
       .expect(200)
-      .expect({ status: 'ok', service: 'pelada-api' });
+      .expect({
+        status: 'ok',
+        service: 'pelada-api',
+        database: 'ok',
+      });
   });
 });

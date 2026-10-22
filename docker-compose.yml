@@ -1,0 +1,22 @@
+# Postgres da aplicação (F0-2). Keycloak + segundo Postgres vêm na F0-7.
+services:
+  postgres-app:
+    image: postgres:16-alpine
+    container_name: pelada-postgres-app
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_APP_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_APP_USER:-pelada_app}
+      POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:-pelada_app_dev}
+      POSTGRES_DB: pelada_app
+    volumes:
+      - pelada_pg_app:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_APP_USER:-pelada_app} -d pelada_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pelada_pg_app:

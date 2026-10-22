@@ -66,6 +66,21 @@ npm.cmd run test:web     # após TEST-WEB-HARNESS
 2. Siga o guia **[ambiente-dev-auth.md](ambiente-dev-auth.md)** — portas, client `pelada-web`, redirect URIs, fluxo Angular ↔ Keycloak ↔ API.
 3. O que **não** entra no MVP de segurança/produto: **[escopo-seguranca-fora-mvp.md](escopo-seguranca-fora-mvp.md)** (convite grupo, WAF, CI-1, Pix 18).
 
+## Postgres (F0-2)
+
+Copie `.env.example` → `.env` na raiz (ou defina `DATABASE_URL`).
+
+```powershell
+cd D:\desenvolvimento\app-futebol
+docker compose up -d postgres-app
+npm.cmd run db:migrate
+npm.cmd run dev:api
+```
+
+`GET /health` passa a incluir `database: "ok"` quando o Postgres está no ar. Sem Docker, `/health` responde `status: "degraded"` e `database: "down"` (API ainda sobe).
+
+Teste de integração Prisma (opcional): `$env:RUN_DB_TESTS="1"; npm.cmd run test:api -- --testPathPattern=prisma.integration`
+
 ## Subir ambiente integrado (após F0-7)
 
 ```powershell

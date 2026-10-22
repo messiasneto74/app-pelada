@@ -11,7 +11,9 @@ import { environment } from '../../../environments/environment';
       <h1>Bora jogar</h1>
       <p class="muted">Shell M0 — abas e telas Resenha nas issues T3 / 3.x.</p>
       @if (health) {
-        <p class="ok">API: {{ health.status }} ({{ health.service }})</p>
+        <p class="ok">
+          API: {{ health.status }} · DB: {{ health.database }} ({{ health.service }})
+        </p>
       } @else if (healthError) {
         <p class="warn">API offline — rode <code>npm run dev:api</code></p>
       }
@@ -49,12 +51,12 @@ import { environment } from '../../../environments/environment';
 })
 export class InicioComponent {
   private readonly http = inject(HttpClient);
-  health: { status: string; service: string } | null = null;
+  health: { status: string; service: string; database?: string } | null = null;
   healthError = false;
 
   constructor() {
     this.http
-      .get<{ status: string; service: string }>(
+      .get<{ status: string; service: string; database?: string }>(
         `${environment.apiUrl}/health`,
       )
       .subscribe({

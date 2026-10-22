@@ -1,0 +1,55 @@
+// Bootstrap F0-2 — modelo completo na issue T5
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  keycloakSub String   @unique @map("keycloak_sub")
+  email       String?
+  phone       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  peladasOwned Pelada[]       @relation("PeladaOwner")
+  memberships  PeladaMember[]
+
+  @@map("users")
+}
+
+model Pelada {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String   @map("owner_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner   User           @relation("PeladaOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members PeladaMember[]
+
+  @@map("peladas")
+}
+
+enum PeladaRole {
+  ORGANIZADOR
+  JOGADOR
+}
+
+model PeladaMember {
+  id       String     @id @default(cuid())
+  peladaId String     @map("pelada_id")
+  userId   String     @map("user_id")
+  role     PeladaRole @default(JOGADOR)
+  joinedAt DateTime   @default(now()) @map("joined_at")
+
+  pelada Pelada @relation(fields: [peladaId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([peladaId, userId])
+  @@map("pelada_members")
+}
