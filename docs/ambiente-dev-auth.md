@@ -180,7 +180,17 @@ docker ps -a --filter name=pelada-keycloak
 docker logs pelada-keycloak --tail 80
 ```
 
-- **Restarting / erro de DB:** `POSTGRES_KEYCLOAK_PASSWORD` no `.env` deve ser a mesma da **primeira** criação do volume (ou apague o volume `pelada_pg_keycloak` e suba de novo).
+- **Restarting / erro de DB / smoke `fetch failed`:** senha do Postgres do Keycloak fica **gravada no volume** na 1ª subida. Se mudou `POSTGRES_KEYCLOAK_PASSWORD` no `.env`, o container entra em loop. **Reset:**
+
+```powershell
+npm.cmd run keycloak:reset
+# aguarde 1–3 min
+npm.cmd run smoke:keycloak
+```
+
+Volumes têm nome fixo `pelada_pg_keycloak` (antes do fix F0-7 podia ser `app-futebol_pelada_pg_keycloak` — remova com `docker volume ls`).
+
+- **Senha admin / `dev` não funcionam** com Keycloak no ar: quase sempre é volume antigo **sem** reimport do realm — use `keycloak:reset` acima (não adianta repetir senha do doc).
 - **Porta 8080:** outro programa usando 8080? Mude `KEYCLOAK_HTTP_PORT` no `.env` e `KEYCLOAK_ISSUER` / URLs no Angular depois.
 
 - Admin: http://localhost:8080 — usuário `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` (padrão dev: `admin` / `keycloak_admin_dev`).

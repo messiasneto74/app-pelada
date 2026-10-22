@@ -25,6 +25,7 @@
     "db:migrate": "npm run prisma:migrate:deploy -w @pelada/api",
     "keycloak:up": "docker compose up -d postgres-keycloak keycloak",
     "keycloak:down": "docker compose stop keycloak postgres-keycloak",
+    "keycloak:reset": "node scripts/keycloak-reset.mjs",
     "smoke:keycloak": "node scripts/keycloak-smoke.mjs"
   },
   "engines": {

@@ -29,6 +29,7 @@ npm run stack:up   # Postgres + Keycloak + API (F0-7)
 npm run smoke:stack
 npm run db:migrate
 npm run keycloak:up
+npm run keycloak:reset  # volume IdP + credenciais do .env
 npm run smoke:keycloak
 ```
 

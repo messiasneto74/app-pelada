@@ -1,4 +1,6 @@
 # Opção A local: postgres-app + postgres-keycloak + keycloak + api (F0-7).
+name: pelada
+
 services:
   postgres-app:
     image: postgres:16-alpine
@@ -90,4 +92,6 @@ services:
 
 volumes:
   pelada_pg_app:
+    name: pelada_pg_app
   pelada_pg_keycloak:
+    name: pelada_pg_keycloak

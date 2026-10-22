@@ -139,9 +139,11 @@ Teste de integração Prisma (opcional): `$env:RUN_DB_TESTS="1"; npm.cmd run tes
 ```powershell
 cd D:\desenvolvimento\app-futebol
 npm.cmd run keycloak:up
-# aguarde ~30–90s na primeira subida
+# aguarde ~1–3 min na primeira subida (ou após keycloak:reset)
 npm.cmd run smoke:keycloak
 ```
+
+Keycloak em loop ou login/senha errados após mudar `.env`: `npm.cmd run keycloak:reset` (ver [ambiente-dev-auth.md](ambiente-dev-auth.md)).
 
 Detalhes, usuário `dev@pelada.local` e Google IdP: [ambiente-dev-auth.md](ambiente-dev-auth.md).
 

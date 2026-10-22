@@ -43,6 +43,12 @@ async function main() {
           'Causas comuns: 1ª subida lenta (>3 min); container reiniciando (senha POSTGRES_KEYCLOAK_PASSWORD ≠ volume); porta 8080 ocupada.',
         );
         console.error(
+          'Reset limpo (apaga DB do Keycloak e recria senhas do .env): npm.cmd run keycloak:reset',
+        );
+        console.error(
+          'Se volume rm falhou antes: o nome real pode ser app-futebol_pelada_pg_keycloak — use docker volume ls | findstr keycloak',
+        );
+        console.error(
           'Você NÃO precisa configurar Google/conta pessoal só para subir o Keycloak — isso é opcional (ver ambiente-dev-auth.md).',
         );
         process.exit(1);
