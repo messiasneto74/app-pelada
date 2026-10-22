@@ -188,6 +188,15 @@ npm.cmd run keycloak:reset
 npm.cmd run smoke:keycloak
 ```
 
+Manual (se `volume is in use`): pare e remova os containers **antes** do volume:
+
+```powershell
+docker compose stop keycloak postgres-keycloak
+docker rm -f pelada-keycloak pelada-postgres-keycloak
+docker volume rm app-futebol_pelada_pg_keycloak
+docker compose up -d postgres-keycloak keycloak
+```
+
 Volumes têm nome fixo `pelada_pg_keycloak` (antes do fix F0-7 podia ser `app-futebol_pelada_pg_keycloak` — remova com `docker volume ls`).
 
 - **Senha admin / `dev` não funcionam** com Keycloak no ar: quase sempre é volume antigo **sem** reimport do realm — use `keycloak:reset` acima (não adianta repetir senha do doc).

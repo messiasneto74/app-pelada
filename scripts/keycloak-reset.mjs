@@ -36,6 +36,8 @@ function listKeycloakVolumes() {
 console.log('Parando Keycloak e Postgres do IdP…');
 run('docker compose stop keycloak postgres-keycloak', { ignoreError: true });
 run('docker compose rm -f keycloak postgres-keycloak', { ignoreError: true });
+// Garante que nada segura o volume (erro comum: volume rm com container ainda existente).
+run('docker rm -f pelada-keycloak pelada-postgres-keycloak', { ignoreError: true });
 
 const volumes = listKeycloakVolumes();
 if (volumes.length === 0) {
@@ -44,7 +46,14 @@ if (volumes.length === 0) {
   );
 } else {
   for (const vol of volumes) {
-    run(`docker volume rm ${vol}`, { ignoreError: true });
+    try {
+      run(`docker volume rm ${vol}`);
+    } catch {
+      console.error(
+        `Não foi possível remover ${vol}. Rode: docker rm -f pelada-keycloak pelada-postgres-keycloak`,
+      );
+      process.exit(1);
+    }
   }
 }
 
