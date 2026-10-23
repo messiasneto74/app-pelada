@@ -16,6 +16,10 @@
     "test:core": "npm run test -w @pelada/core",
     "test:api": "npm run test -w @pelada/api",
     "test:web": "npm run test -w @pelada/web",
+    "test:scripts": "vitest run --config vitest.config.mjs",
+    "test:scripts:cov": "vitest run --config vitest.config.mjs --coverage",
+    "test:all": "npm run test:core && npm run test:api && npm run test:web && npm run test:scripts:cov",
+    "issue:mark-dod": "node scripts/mark-issue-dod.mjs",
     "db:up": "docker compose up -d postgres-app",
     "db:down": "docker compose down",
     "stack:up": "docker compose up -d --build",
@@ -30,5 +34,9 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.0",
+    "vitest": "^3.2.0"
   }
 }

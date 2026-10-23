@@ -1,0 +1,32 @@
+---
+description: Alinhamento com a automação "app-pelada — revisar PR" (R-01…R-07)
+alwaysApply: true
+---
+
+# Agente de testes (PR) + agente implementador
+
+A automação **Cursor: app-pelada — revisar PR** valida cada PR. O agente que **implementa** deve entregar o mesmo nível **antes** de pedir merge.
+
+## Obrigatório em todo PR
+
+1. **`npm.cmd run test:all`** na máquina do dev (ou no PC do usuário via agente): `test:core`, `test:api`, `test:web`, `test:scripts:cov` (cobertura ≥80% em `scripts/lib/**`).
+2. **R-07:** lógica nova em `scripts/*.mjs` → extrair para `scripts/lib/*.mjs` + `*.spec.mjs` (Vitest).
+3. **PR body:** `Closes #N` + test plan com comandos executados e saída resumida.
+4. **DevOps (F0-4, F0-7):** documentar smoke manual; rodar `smoke:keycloak` / `smoke:stack` quando Docker disponível.
+
+## Após merge (agente implementador)
+
+Quando o mantenedor confirmar merge + `test:all` verde:
+
+```bash
+npm.cmd run issue:mark-dod -- <número-da-issue>
+```
+
+Isso marca os checkboxes **Testes obrigatórios** e **Definition of Done** no corpo da issue no GitHub.
+
+## Interpretação do veredito "TESTES FALHANDO"
+
+- **0 falhas** em Jest/Vitest/Karma + reprova por **R-07** ou **§5** = corrigir cobertura/scripts ou escopo da issue; **não** confundir com suite vermelha.
+- **§5** (sorteio, presença, caixa…) só exige testes quando a issue for dessa área (CORE/T*/3.x).
+
+Referência: `docs/processo-testes-e-qualidade.md`, `docs/estrategia-testes.md`.
