@@ -22,6 +22,8 @@
     "test:all": "npm run test:core && npm run test:api && npm run test:web && npm run test:scripts:r07",
     "issue:mark-dod": "node scripts/mark-issue-dod.mjs",
     "db:up": "docker compose up -d postgres-app",
+    "db:test:up": "docker compose up -d postgres-app-test",
+    "db:test:migrate": "node scripts/db-test-migrate.mjs",
     "db:down": "docker compose down",
     "stack:up": "docker compose up -d --build",
     "stack:down": "docker compose down",

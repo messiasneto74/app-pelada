@@ -20,6 +20,28 @@ services:
       timeout: 5s
       retries: 5
 
+  postgres-app-test:
+    image: postgres:16-alpine
+    container_name: pelada-postgres-app-test
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_APP_TEST_PORT:-5435}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_APP_TEST_USER:-pelada_test}
+      POSTGRES_PASSWORD: ${POSTGRES_APP_TEST_PASSWORD:-pelada_test_dev}
+      POSTGRES_DB: pelada_app_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_APP_TEST_USER:-pelada_test} -d pelada_app_test",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   postgres-keycloak:
     image: postgres:16-alpine
     container_name: pelada-postgres-keycloak
