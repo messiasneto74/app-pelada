@@ -38,6 +38,25 @@ describe('runKeycloakSmoke', () => {
     expect(onFatal).toHaveBeenCalled();
   });
 
+  it('invokes sleepFn between retries (line 37)', async () => {
+    const sleepFn = vi.fn().mockResolvedValue(undefined);
+    const fetchJson = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('retry'))
+      .mockResolvedValueOnce(metadata);
+    await runKeycloakSmoke({
+      issuer: 'http://localhost:8080/realms/pelada',
+      maxAttempts: 2,
+      delayMs: 42,
+      sleepFn,
+      fetchJson,
+      fetchFn: vi.fn().mockResolvedValue({ ok: true }),
+      log: () => {},
+      warn: () => {},
+    });
+    expect(sleepFn).toHaveBeenCalledWith(42);
+  });
+
   it('built-in fetchJson rejects non-OK HTTP', async () => {
     const onFatal = vi.fn();
     await runKeycloakSmoke({
