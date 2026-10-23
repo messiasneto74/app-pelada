@@ -133,7 +133,21 @@ A API **sobe**; `/health` fica `database: "down"`. Você pode seguir **F0-3** (C
 
 `GET /health` com Postgres no ar: `database: "ok"`.
 
-Teste de integração Prisma (opcional): `$env:RUN_DB_TESTS="1"; npm.cmd run test:api -- --testPathPattern=prisma.integration`
+### Harness API (`TEST-API-HARNESS`)
+
+Postgres **isolado** na porta **5435** (não mistura com o banco de dev em 5433):
+
+```powershell
+# No .env: copie DATABASE_URL_TEST de .env.example
+npm.cmd run db:test:up
+npm.cmd run db:test:migrate
+$env:RUN_DB_TESTS="1"
+npm.cmd run test:api
+```
+
+Casos em `apps/api/test/api-harness.integration-spec.ts` (health, 401, JWT mock + JIT user). Factories em `apps/api/test/factories/`.
+
+Teste Prisma legado (opcional): `$env:RUN_DB_TESTS="1"; npm.cmd run test:api -- --testPathPattern=prisma.integration`
 
 ## Keycloak (F0-4)
 

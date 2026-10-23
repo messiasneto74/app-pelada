@@ -31,6 +31,25 @@ describe('scripts CLI entrypoints', () => {
     expect(resetKeycloakDev).toHaveBeenCalled();
   });
 
+  it('db-test-migrate.mjs wires runDbTestMigrate', async () => {
+    const runDbTestMigrate = vi.fn().mockReturnValue(0);
+    vi.doMock('./lib/run-db-test-migrate.mjs', () => ({
+      resolveDatabaseUrlTest: () => ({
+        ok: true,
+        databaseUrl: 'postgresql://x',
+      }),
+      runDbTestMigrate,
+    }));
+    vi.stubGlobal('process', {
+      ...process,
+      exit: vi.fn(),
+    });
+    await import('./db-test-migrate.mjs');
+    expect(runDbTestMigrate).toHaveBeenCalledWith(
+      expect.objectContaining({ databaseUrl: 'postgresql://x' }),
+    );
+  });
+
   it('mark-issue-dod.mjs with args calls markIssuesDod', async () => {
     const markIssuesDod = vi.fn();
     vi.stubGlobal('process', {

@@ -17,6 +17,8 @@ Na raiz do monorepo:
 ```bash
 npm run db:up        # Docker Postgres :5433
 npm run db:migrate   # prisma migrate deploy
+npm run db:test:up   # Postgres de teste :5435 (TEST-API-HARNESS)
+npm run db:test:migrate
 npm run dev:api      # hot-reload no host
 
 # Stack integrado (API no container — F0-7)
@@ -51,3 +53,10 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 - JWT validado via JWKS (`KEYCLOAK_ISSUER`, `KEYCLOAK_JWKS_URI`).
 - Primeiro acesso cria `User` no Postgres (JIT por `sub`).
 - Dev local: `DEV_AUTH_BYPASS=true` + qualquer `Bearer` (ver `.env.example`); **nunca** em produção.
+
+## Testes de integração (TEST-API-HARNESS)
+
+- Runner: `test/jest-integration.json` (incluído em `npm run test:api`).
+- Postgres dedicado: `npm run db:test:up` + `db:test:migrate` na raiz; `DATABASE_URL_TEST` no `.env`.
+- Com DB de teste: `$env:RUN_DB_TESTS="1"; npm.cmd run test:api` — health, 401, JIT com JWT RS256 de fixture (`test/helpers/sign-test-jwt.ts`).
+- Factories: `test/factories/user.factory.ts`, `pelada.factory.ts`.
