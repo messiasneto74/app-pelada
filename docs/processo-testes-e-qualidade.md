@@ -8,7 +8,7 @@ Instruções do repositório para agentes (local, Cloud e revisão de PR): **`AG
 
 | Ambiente | Uso no MVP |
 |----------|------------|
-| **Sua máquina (Windows)** | **Único obrigatório** — `npm.cmd run test:core`, `test:api`, `test:web` |
+| **Sua máquina (Windows)** | **Único obrigatório** — `npm.cmd run test:all` (`test:core`, `test:api`, `test:web`, `test:scripts:cov` ≥80% em `scripts/lib`) |
 | **GitHub Actions (CI-1)** | **Opcional / depois** — não bloqueia fechar issues agora |
 | **VPS / staging** | Só para deploy manual (`DEPLOY-1`); E2E pode rodar local sem VPS |
 
@@ -19,29 +19,26 @@ Suites e metas: [estrategia-testes.md](estrategia-testes.md).
 
 | Quem | Quando | O quê |
 |------|--------|--------|
-| **Você (desenvolvedor)** | Antes de **fechar** uma issue no GitHub | Rodar na sua máquina os comandos listados no bloco **Testes obrigatórios** da issue; marcar checklist no PR/commit. |
-| **Agente Cursor (IA)** | Enquanto **implementa ou corrige** uma issue que você pediu | Escreve código + testes novos, **executa os comandos no seu PC**, corrige até passar — **só no escopo da issue atual**, não a suíte inteira do projeto de uma vez. |
+| **Você (desenvolvedor)** | Antes de **aprovar merge** | `npm.cmd run test:all` + smokes manuais da issue (Docker quando aplicável). |
+| **Agente Cursor (IA)** | Implementação + **após merge confirmado** | `test:all` verde; então `npm.cmd run issue:mark-dod -- <#issue>` para marcar checkboxes no GitHub. Alinhado à automação **app-pelada — revisar PR** (R-01…R-07). |
 | **Ninguém em background** | — | Não há robô rodando 130+ testes 24h sem uma tarefa de implementação. |
 
 ## O que o agente **não** faz
 
-- Não fecha issues no GitHub por conta própria.
-- Não roda automaticamente **todas** as issues (1–58) sem você pedir implementação.
+- Não faz merge nem push em `main` sem pedido explícito.
+- Não roda **todas** as issues (1–58) de uma vez sem tarefa de implementação.
 - Não substitui sua validação de produto (coluna **Validação** nas histórias).
 
 ## O que o agente **faz** (quando você pede ex.: “implementa F0-1”)
 
 1. Implementa o escopo da issue.
 2. Adiciona/atualiza testes exigidos pelo DoD da issue.
-3. Roda localmente, por exemplo:
-   - `npm.cmd run test:core`
-   - `npm.cmd run test:api` (com Docker/Postgres quando existir)
-4. Mostra passou/falhou e itera até verde **no que a issue exige**.
+3. Roda `npm.cmd run test:all` (e smokes da issue).
+4. Mostra passou/falhou e itera até verde; scripts em `scripts/lib` com cobertura ≥80% (R-07).
 
-## Estado atual do repositório
+## Automação de PR (Cursor)
 
-- **Ainda não há** monorepo nem testes no disco — só planejamento e issues.
-- Testes **nascem com o código**, issue a issue (`TEST-API-HARNESS`, `CORE-TEST`, cada `*-API`, etc.).
+Veredito **TESTES FALHANDO** com **0 testes falhando** = reprovação por **R-07** (cobertura) ou **§5** (domínio fora do escopo da issue). Ver `.cursor/rules/pelada-agente-testes.mdc`.
 
 ## Definition of Done (toda issue de implementação)
 
