@@ -48,6 +48,20 @@ describe('keycloak-metadata', () => {
     expect(h.appLine).toContain('dev-pelada-local');
   });
 
+  it('waitForKeycloakMetadata throws when attempts exhausted', async () => {
+    const fetchJson = vi.fn().mockRejectedValue(new Error('down'));
+    await expect(
+      waitForKeycloakMetadata({
+        fetchJson,
+        issuer: 'http://localhost:8080/realms/pelada',
+        maxAttempts: 2,
+        delayMs: 0,
+        sleepFn: async () => {},
+      }),
+    ).rejects.toThrow('down');
+    expect(fetchJson).toHaveBeenCalledTimes(2);
+  });
+
   it('waitForKeycloakMetadata retries', async () => {
     const fetchJson = vi
       .fn()

@@ -51,6 +51,28 @@ describe('stack-health', () => {
     expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 
+  it('waitForApiHealth retries on HTTP error', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({}),
+      })
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({ database: 'ok' }),
+      });
+    await waitForApiHealth({
+      fetchFn,
+      apiBase: 'http://x',
+      maxAttempts: 2,
+      delayMs: 0,
+      sleepFn: async () => {},
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
   it('waitForApiHealth throws after max attempts', async () => {
     const fetchFn = vi.fn().mockRejectedValue(new Error('fail'));
     await expect(

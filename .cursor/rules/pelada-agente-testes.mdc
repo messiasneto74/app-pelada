@@ -14,6 +14,10 @@ A automação **Cursor: app-pelada — revisar PR** valida cada PR. O agente que
 3. **PR body:** `Closes #N` + test plan com comandos executados e saída resumida.
 4. **DevOps (F0-4, F0-7):** documentar smoke manual; rodar `smoke:keycloak` / `smoke:stack` quando Docker disponível.
 
+## Se a automação reprovar (TESTES FALHANDO / R-07)
+
+Corrigir **na hora** no mesmo PR/branch: testes faltantes, ramos em `scripts/lib`, runners testados — **sem** pedir ao usuário para decidir. Re-rodar `npm run test:all` antes de pedir merge.
+
 ## Após merge (agente implementador)
 
 Quando o mantenedor confirmar merge + `test:all` verde:
