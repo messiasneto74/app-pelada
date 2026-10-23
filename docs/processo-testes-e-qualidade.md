@@ -9,7 +9,7 @@ Instruções do repositório para agentes (local, Cloud e revisão de PR): **`AG
 | Ambiente | Uso no MVP |
 |----------|------------|
 | **Sua máquina (Windows)** | **Único obrigatório** — `npm.cmd run test:all` (`test:core`, `test:api`, `test:web`, `test:scripts:cov` ≥80% em `scripts/lib`) |
-| **GitHub Actions (CI-1)** | **Opcional / depois** — não bloqueia fechar issues agora |
+| **GitHub Actions (CI-1)** | Todo PR → `test:all` + R-07 (check **`test:all + R-07`**). Bloqueia merge só com [branch protection](ci-github.md). |
 | **VPS / staging** | Só para deploy manual (`DEPLOY-1`); E2E pode rodar local sem VPS |
 
 Detalhes de comandos: [desenvolvimento-local.md](desenvolvimento-local.md).  
@@ -36,9 +36,11 @@ Suites e metas: [estrategia-testes.md](estrategia-testes.md).
 3. Roda `npm.cmd run test:all` (e smokes da issue).
 4. Mostra passou/falhou e itera até verde; scripts em `scripts/lib` com cobertura ≥80% (R-07).
 
-## Automação de PR (Cursor)
+## Automação de PR (Cursor) + CI
 
 Veredito **TESTES FALHANDO** com **0 testes falhando** = reprovação por **R-07** (cobertura) ou **§5** (domínio fora do escopo da issue). Ver `.cursor/rules/pelada-agente-testes.mdc`.
+
+O workflow [pr-tests.yml](../.github/workflows/pr-tests.yml) repete o mesmo gate no GitHub (check vermelho). Detalhes: [ci-github.md](ci-github.md).
 
 ## Definition of Done (toda issue de implementação)
 
