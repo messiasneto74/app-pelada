@@ -1,8 +1,8 @@
-// Karma — flags extras no CI (GitHub Actions / Linux sem sandbox).
+// Mesclado pelo Angular CLI — launcher só para CI (Linux / GitHub Actions).
 module.exports = function (config) {
   config.set({
     customLaunchers: {
-      ChromeHeadlessCI: {
+      ChromeHeadlessNoSandbox: {
         base: 'ChromeHeadless',
         flags: [
           '--no-sandbox',

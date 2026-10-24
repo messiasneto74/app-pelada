@@ -43,9 +43,8 @@ jobs:
         if: github.event_name == 'pull_request'
         run: git fetch origin "${{ github.event.pull_request.base.ref }}"
 
-      - name: npm run test:all
+      - name: npm run test:all:ci
         env:
           COVERAGE_BASE_REF: origin/${{ github.event.pull_request.base.ref || 'main' }}
           CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
-          CHROME_HEADLESS_FLAGS: --no-sandbox --disable-dev-shm-usage --disable-gpu
-        run: npm run test:all:ci
+        run: xvfb-run --auto-servernum npm run test:all:ci
