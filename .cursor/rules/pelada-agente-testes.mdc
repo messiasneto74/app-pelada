@@ -10,9 +10,10 @@ A automação **Cursor: app-pelada — revisar PR** valida cada PR. O agente que
 ## Obrigatório em todo PR
 
 1. **`npm.cmd run test:all`** — inclui `test:scripts:r07` (Vitest + **≥80% nas linhas do diff vs `main`**, igual à automação).
-2. **R-07:** lógica nova em `scripts/*.mjs` → extrair para `scripts/lib/*.mjs` + `*.spec.mjs` (Vitest).
-3. **PR body:** `Closes #N` + test plan com comandos executados e saída resumida.
-4. **DevOps (F0-4, F0-7):** documentar smoke manual; rodar `smoke:keycloak` / `smoke:stack` quando Docker disponível.
+2. **GitHub Actions (CI-1):** após push, o check **`test:all + R-07`** no PR deve ficar **verde**. Comentário **TESTES FALHANDO** = mesmo critério; **não** pedir merge nem marcar pronto até corrigir e o check passar. Com branch protection em `main`, merge **bloqueado** enquanto o check estiver vermelho.
+3. **R-07:** lógica nova em `scripts/*.mjs` → extrair para `scripts/lib/*.mjs` + `*.spec.mjs` (Vitest).
+4. **PR body:** `Closes #N` + test plan com comandos executados e saída resumida.
+5. **DevOps (F0-4, F0-7):** documentar smoke manual; rodar `smoke:keycloak` / `smoke:stack` quando Docker disponível.
 
 ## Se a automação reprovar (TESTES FALHANDO / R-07)
 

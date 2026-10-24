@@ -1,0 +1,51 @@
+# CI-1 — mesmo gate que a automação Cursor "app-pelada — revisar PR":
+# npm run test:all (core + api + web + test:scripts:r07 / R-07 ≥80% no diff vs base).
+# Falha aqui = PR vermelho no GitHub (requer branch protection para bloquear merge).
+name: PR tests
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pr-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-all:
+    name: test:all + R-07
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout (histórico completo para R-07)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: .env mínimo (Jest/Prisma na API)
+        run: cp .env.example .env
+
+      - name: Chrome (Karma / test:web)
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Fetch branch base (diff R-07)
+        if: github.event_name == 'pull_request'
+        run: git fetch origin "${{ github.event.pull_request.base.ref }}"
+
+      - name: npm run test:all:ci
+        env:
+          COVERAGE_BASE_REF: origin/${{ github.event.pull_request.base.ref || 'main' }}
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+          CHROME_HEADLESS_FLAGS: --no-sandbox --disable-dev-shm-usage --disable-gpu
+        run: xvfb-run --auto-servernum npm run test:all:ci
