@@ -47,4 +47,5 @@ jobs:
         env:
           COVERAGE_BASE_REF: origin/${{ github.event.pull_request.base.ref || 'main' }}
           CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+          CHROME_HEADLESS_FLAGS: --no-sandbox --disable-dev-shm-usage --disable-gpu
         run: xvfb-run --auto-servernum npm run test:all:ci
