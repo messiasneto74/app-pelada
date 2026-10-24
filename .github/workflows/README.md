@@ -4,7 +4,7 @@
 
 | Quando | O quê |
 |--------|--------|
-| Todo **pull_request** para `main` | `npm run test:all` |
+| Todo **pull_request** para `main` | `npm run test:all:ci` (Karma com `ChromeHeadlessCI` no Linux) |
 | Inclui | `test:core`, `test:api`, `test:web`, `test:scripts:r07` (Vitest + **R-07** ≥80% linhas no diff vs branch base) |
 
 ### Relação com a automação Cursor

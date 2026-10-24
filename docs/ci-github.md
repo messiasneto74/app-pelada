@@ -20,7 +20,7 @@ Requer **admin** no repositório `messiasneto74/app-pelada`:
 5. Opcional: **Require branches to be up to date before merging**
 6. Salve
 
-Sem essa regra, o PR pode continuar *mergeable* mesmo com check vermelho — só o comentário do agente avisava.
+**Sem essa regra**, o GitHub ainda mostra o botão **Merge** mesmo com check vermelho — só o comentário do agente avisava. **Com a regra**, merge fica **bloqueado** até **test:all + R-07** passar.
 
 ## Re-run
 
