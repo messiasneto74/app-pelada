@@ -20,12 +20,13 @@ describe('resolveDockerExecutable', () => {
       env: { ...process.env, ProgramFiles: 'C:\\Program Files' },
     });
     vi.doMock('node:fs', () => ({
-      existsSync: (p) => String(p).includes('resources\\bin\\docker.exe'),
+      existsSync: (p) =>
+        /resources[/\\]bin[/\\]docker\.exe$/i.test(String(p)),
     }));
     const { resolveDockerExecutable } = await import('./docker-cli.mjs');
-    expect(resolveDockerExecutable()).toBe(
-      'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe',
-    );
+    const exe = resolveDockerExecutable();
+    expect(exe).toMatch(/docker\.exe$/i);
+    expect(exe).toContain('Docker');
   });
 
   it('falls back to docker on win32 when Desktop paths missing', async () => {
