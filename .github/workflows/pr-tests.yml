@@ -36,6 +36,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y chromium
+          chromium --version
 
       - name: npm ci
         run: npm ci
@@ -47,5 +48,5 @@ jobs:
       - name: npm run test:all:ci
         env:
           COVERAGE_BASE_REF: origin/${{ github.event.pull_request.base.ref || 'main' }}
-          CHROME_BIN: /usr/bin/chromium
-        run: npm run test:all:ci
+          CHROME_BIN: ${{ github.workspace }}/scripts/chromium-ci.sh
+        run: chmod +x scripts/chromium-ci.sh && xvfb-run --auto-servernum npm run test:all:ci
