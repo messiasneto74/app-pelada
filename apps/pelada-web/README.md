@@ -1,59 +1,46 @@
-# PeladaWeb
+# @pelada/web
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.27.
+Angular 19 — app Pelada (`apps/pelada-web`).
 
-## Development server
+## Dev (monorepo)
 
-To start a local development server, run:
+Na **raiz** do repositório:
 
-```bash
-ng serve
+```powershell
+npm.cmd run dev:web
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+`http://localhost:4200` — Keycloak e API: [desenvolvimento-local.md](../../docs/desenvolvimento-local.md).
 
-## Code scaffolding
+## Testes unitários (TEST-WEB-HARNESS)
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+**Runner:** Karma + Jasmine (padrão `@angular-devkit/build-angular:karma` em `angular.json`).
 
-```bash
-ng generate component component-name
-```
+| Comando (raiz) | Uso |
+|----------------|-----|
+| `npm.cmd run test:web` | Local (Windows), `ChromeHeadless` |
+| `npm.cmd run test:web:ci` | Igual ao CI (flags via `CHROME_BIN` / wrapper no Linux) |
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+Dentro de `apps/pelada-web`:
 
 ```bash
-ng build
+npm test          # ng test --watch=false --browsers=ChromeHeadless
+npm run test:ci   # alinhado ao GitHub Actions
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+### Suites de exemplo (auth F0-6)
 
-## Running unit tests
+| Arquivo | Casos |
+|---------|-------|
+| `src/app/auth/auth.guard.spec.ts` | token válido; redirect `/entrar` |
+| `src/app/auth/auth-bearer.interceptor.spec.ts` | Bearer na API; sem token; URL fora da API; trailing slash |
+| `src/app/auth/phone-required.guard.spec.ts` | telefone ok; redirect completar |
+| `src/app/auth/organizador.guard.spec.ts` | stub até API de papel |
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+Novos testes de lógica: `*.spec.ts` ao lado do código; rodar `npm.cmd run test:web` ou `npm.cmd run test:all` na raiz.
 
-```bash
-ng test
+## Build
+
+```powershell
+npm.cmd run build:web
 ```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

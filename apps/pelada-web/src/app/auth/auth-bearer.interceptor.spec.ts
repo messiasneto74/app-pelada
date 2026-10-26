@@ -49,4 +49,21 @@ describe('authBearerInterceptor', () => {
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
   });
+
+  it('does not add Bearer for non-API URLs', () => {
+    oauth.getAccessToken.and.returnValue('jwt-abc');
+    http.get('/assets/config.json').subscribe();
+    const req = httpMock.expectOne('/assets/config.json');
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    req.flush({});
+  });
+
+  it('adds Bearer when API path has trailing slash on base URL', () => {
+    oauth.getAccessToken.and.returnValue('jwt-xyz');
+    const withSlash = `${environment.apiUrl}/me`;
+    http.get(withSlash).subscribe();
+    const req = httpMock.expectOne(withSlash);
+    expect(req.request.headers.get('Authorization')).toBe('Bearer jwt-xyz');
+    req.flush({});
+  });
 });

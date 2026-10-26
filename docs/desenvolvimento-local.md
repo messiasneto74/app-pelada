@@ -55,7 +55,7 @@ npm.cmd install
 
 npm.cmd run test:core    # packages/core — Vitest
 npm.cmd run test:api     # apps/api — precisa Postgres teste (Docker)
-npm.cmd run test:web     # após TEST-WEB-HARNESS
+npm.cmd run test:web     # Karma — ver apps/pelada-web/README.md
 ```
 
 **Definition of Done (local):** antes de fechar a issue, os comandos acima relevantes à issue passam **no seu PC**.
