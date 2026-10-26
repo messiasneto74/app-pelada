@@ -15,6 +15,33 @@ Instruções do repositório para agentes (local, Cloud e revisão de PR): **`AG
 Detalhes de comandos: [desenvolvimento-local.md](desenvolvimento-local.md).  
 Suites e metas: [estrategia-testes.md](estrategia-testes.md).
 
+### Testes locais (PowerShell) — copiar em todo PR / reprovação
+
+Raiz do repo (`D:\desenvolvimento\app-futebol`). **Mesmo gate do CI** (`test:all + R-07`):
+
+```powershell
+Set-Location D:\desenvolvimento\app-futebol
+git pull
+npm.cmd install
+npm.cmd run test:all
+```
+
+Igual ao GitHub Actions (só web com flags de CI):
+
+```powershell
+Set-Location D:\desenvolvimento\app-futebol
+npm.cmd run test:all:ci
+```
+
+Harness API (Postgres :5435, opcional):
+
+```powershell
+Set-Location D:\desenvolvimento\app-futebol
+npm.cmd run test:api:harness
+```
+
+Ver check do PR: `gh pr checks` (número do PR).
+
 ## Quem executa os testes
 
 | Quem | Quando | O quê |

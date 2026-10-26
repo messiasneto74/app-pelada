@@ -15,3 +15,5 @@ Quando o usuário pedir revisão, ou em automação de PR:
 6. **DX Windows:** comandos documentados com `npm.cmd` quando relevante.
 
 Formato de feedback: resumo em 2–4 frases + lista de achados (bloqueante / sugestão) + checklist DoD da issue.
+
+**Sempre** incluir no final (PR novo ou reprovação / check vermelho) o bloco **Testes locais (PowerShell)** de `docs/processo-testes-e-qualidade.md` — o usuário roda na máquina antes de reabrir o PR.

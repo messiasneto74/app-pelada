@@ -47,6 +47,8 @@ No Windows PowerShell, use `npm.cmd` se scripts estiverem bloqueados.
 
 **Antes de considerar um PR pronto:** `npm run test:all` verde + check GitHub **`test:all + R-07`** verde + test plan no PR. Automação **app-pelada — revisar PR** usa as mesmas regras (`.cursor/rules/pelada-agente-testes.mdc`). CI: `docs/ci-github.md`.
 
+**Em todo PR ou quando a revisão/check falhar:** colar no corpo da resposta o bloco **Testes locais (PowerShell)** em `docs/processo-testes-e-qualidade.md` (não só “rode os testes”).
+
 ## Issues no GitHub
 
 - Cada issue tem **número** (`F0-5` = issue **#6** — ver título no GitHub).
