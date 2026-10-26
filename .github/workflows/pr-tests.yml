@@ -32,11 +32,9 @@ jobs:
       - name: .env mínimo (Jest/Prisma na API)
         run: cp .env.example .env
 
-      - name: Chromium (Karma / test:web)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium
-          chromium --version
+      - name: Chrome (Karma / test:web)
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
 
       - name: npm ci
         run: npm ci
@@ -48,5 +46,6 @@ jobs:
       - name: npm run test:all:ci
         env:
           COVERAGE_BASE_REF: origin/${{ github.event.pull_request.base.ref || 'main' }}
+          CHROME_EXECUTABLE: ${{ steps.chrome.outputs.chrome-path }}
           CHROME_BIN: ${{ github.workspace }}/scripts/chromium-ci.sh
         run: chmod +x scripts/chromium-ci.sh && xvfb-run --auto-servernum npm run test:all:ci
