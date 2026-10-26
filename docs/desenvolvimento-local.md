@@ -1,6 +1,6 @@
 # Desenvolvimento e testes — só na sua máquina (MVP)
 
-**Decisão:** testes rodam **localmente** (`npm run test:*`). **CI no GitHub (issue CI-1)** fica **para depois** — não bloqueia fechar issues no início.
+**Decisão:** testes rodam **localmente** (`npm run test:*`) e no **PR** (check `test:all + R-07` — ver [ci-github.md](ci-github.md)).
 
 **Quem roda:** você antes de fechar a issue; o **agente Cursor** roda os mesmos comandos **no seu PC** enquanto implementa a issue que você pediu (não a suíte inteira sozinho). Processo completo: [processo-testes-e-qualidade.md](processo-testes-e-qualidade.md).
 
@@ -40,9 +40,7 @@ Primeira vez:
 ```powershell
 cd D:\desenvolvimento\app-futebol
 npm.cmd install
-npm.cmd run test:core
-npm.cmd run test:api
-npm.cmd run test:web
+npm.cmd run test:all       # gate completo (igual ao CI)
 ```
 
 **Onde publicar:** web em `DEPLOY-1`; lojas em `STORE-1` — [publicacao-lojas-play-app-store.md](publicacao-lojas-play-app-store.md).
@@ -50,22 +48,27 @@ npm.cmd run test:web
 ## Comandos de teste (local)
 
 ```powershell
-cd D:\desenvolvimento\app-futebol
+Set-Location D:\desenvolvimento\app-futebol
 npm.cmd install
-
-npm.cmd run test:core    # packages/core — Vitest
-npm.cmd run test:api     # apps/api — precisa Postgres teste (Docker)
-npm.cmd run test:web     # Karma — ver apps/pelada-web/README.md
+npm.cmd run test:all
 ```
 
-**Definition of Done (local):** antes de fechar a issue, os comandos acima relevantes à issue passam **no seu PC**.
+| Comando | O quê |
+|---------|--------|
+| `npm.cmd run test:core` | Vitest — `packages/core` |
+| `npm.cmd run test:api` | Jest — `apps/api` (integração DB só com `RUN_DB_TESTS=1`) |
+| `npm.cmd run test:web` | Karma — `apps/pelada-web` ([README](../apps/pelada-web/README.md)) |
+| `npm.cmd run test:all:ci` | Igual ao runner Linux do GitHub Actions |
+| `npm.cmd run test:api:harness` | Postgres :5435 + migrations + `test:api` com DB |
+
+**Definition of Done (local):** antes de fechar a issue, `npm.cmd run test:all` (e o que a issue pedir) passa **no seu PC**; no PR o check **`test:all + R-07`** verde.
 
 ## Variáveis e Keycloak (antes de codar F0-4)
 
 1. Copie [.env.example](../.env.example) → `.env` na raiz.
 2. Siga o guia **[ambiente-dev-auth.md](ambiente-dev-auth.md)** — portas, client `pelada-web`, redirect URIs, fluxo Angular ↔ Keycloak ↔ API.
 3. **Login/senhas dev:** [credenciais-dev-local.md](credenciais-dev-local.md) (admin `admin` / `keycloak_admin_dev`, app `dev` / `dev-pelada-local`).
-3. O que **não** entra no MVP de segurança/produto: **[escopo-seguranca-fora-mvp.md](escopo-seguranca-fora-mvp.md)** (convite grupo, WAF, CI-1, Pix 18).
+4. O que **não** entra no MVP de segurança/produto: **[escopo-seguranca-fora-mvp.md](escopo-seguranca-fora-mvp.md)** (convite grupo, WAF, CI-1, Pix 18).
 
 ## Postgres (F0-2)
 
@@ -138,11 +141,8 @@ A API **sobe**; `/health` fica `database: "down"`. Você pode seguir **F0-3** (C
 Postgres **isolado** na porta **5435** (não mistura com o banco de dev em 5433):
 
 ```powershell
-# No .env: copie DATABASE_URL_TEST de .env.example
-npm.cmd run db:test:up
-npm.cmd run db:test:migrate
-$env:RUN_DB_TESTS="1"
-npm.cmd run test:api
+Set-Location D:\desenvolvimento\app-futebol
+npm.cmd run test:api:harness
 ```
 
 Casos em `apps/api/test/api-harness.integration-spec.ts` (health, 401, JWT mock + JIT user). Factories em `apps/api/test/factories/`.
