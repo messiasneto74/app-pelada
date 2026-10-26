@@ -31,6 +31,17 @@ describe('scripts CLI entrypoints', () => {
     expect(resetKeycloakDev).toHaveBeenCalled();
   });
 
+  it('db-test-up.mjs wires runDbTestUp', async () => {
+    const runDbTestUp = vi.fn().mockReturnValue(0);
+    vi.doMock('./lib/run-db-test-up.mjs', () => ({ runDbTestUp }));
+    vi.stubGlobal('process', {
+      ...process,
+      exit: vi.fn(),
+    });
+    await import('./db-test-up.mjs');
+    expect(runDbTestUp).toHaveBeenCalled();
+  });
+
   it('db-test-migrate.mjs wires runDbTestMigrate', async () => {
     const runDbTestMigrate = vi.fn().mockReturnValue(0);
     vi.doMock('./lib/run-db-test-migrate.mjs', () => ({
