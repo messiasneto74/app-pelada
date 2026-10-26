@@ -3,7 +3,7 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": "(\\.integration-spec\\.ts$|sign-test-jwt\\.spec\\.ts$)",
-  "setupFiles": ["<rootDir>/setup-integration-env.ts"],
+  "setupFiles": ["<rootDir>/setup-run-db-tests.ts"],
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   }
