@@ -45,7 +45,9 @@ No Windows PowerShell, use `npm.cmd` se scripts estiverem bloqueados.
 - Dev local: `docs/desenvolvimento-local.md`
 - Credenciais Keycloak dev: `docs/credenciais-dev-local.md`
 
-**Antes de considerar um PR pronto:** `npm run test:all` verde + test plan no PR. Automação **app-pelada — revisar PR** usa as mesmas regras (`.cursor/rules/pelada-agente-testes.mdc`).
+**Antes de considerar um PR pronto:** `npm run test:all` verde + check GitHub **`test:all + R-07`** verde + test plan no PR. Automação **app-pelada — revisar PR** usa as mesmas regras (`.cursor/rules/pelada-agente-testes.mdc`). CI: `docs/ci-github.md`.
+
+**Em todo PR ou quando a revisão/check falhar:** colar no corpo da resposta o bloco **Testes locais (PowerShell)** em `docs/processo-testes-e-qualidade.md` (não só “rode os testes”).
 
 ## Issues no GitHub
 
