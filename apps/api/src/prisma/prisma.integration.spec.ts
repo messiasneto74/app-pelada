@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
-const runDb = process.env.RUN_DB_TESTS === '1' && process.env.DATABASE_URL;
+const runDb =
+  process.env.RUN_DB_TESTS === '1' && process.env.DATABASE_URL_TEST;
 
 (runDb ? describe : describe.skip)('Prisma bootstrap (Postgres)', () => {
   const prisma = new PrismaClient();
