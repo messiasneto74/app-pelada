@@ -11,8 +11,8 @@ import { RouterOutlet } from '@angular/router';
       :host {
         display: block;
         min-height: 100vh;
-        background: #f5f6f3;
-        color: #202c27;
+        background: var(--pelada-bg);
+        color: var(--pelada-ink);
       }
     `,
   ],
