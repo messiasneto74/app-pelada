@@ -2,13 +2,16 @@
 
 NestJS + Prisma (PostgreSQL).
 
-## Schema (F0-2 bootstrap)
+## Schema (F0-2 + T5)
 
-- `User` — `keycloakSub`, `email`, `phone`
-- `Pelada` — `name`, `ownerId`
-- `PeladaMember` — papel `ORGANIZADOR` | `JOGADOR`
+- `User`, `Pelada`, `PeladaMember` — bootstrap F0-2
+- `PeladaRules` — regras do grupo (GK, presença, sorteio)
+- `Player` — elenco da pelada
+- `Match`, `MatchAttendance` — partida e presença
+- `Draw`, `DrawTeam`, `DrawTeamPlayer` — sorteio / times
+- `PaymentLedger` — caixa
 
-Modelo completo na issue **T5**.
+DTOs de validação (issues `*-API`): `src/domain/dto/`. Migration: `prisma/migrations/20251027131500_t5_domain`.
 
 ## Comandos
 

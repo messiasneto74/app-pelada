@@ -1,4 +1,4 @@
-// Bootstrap F0-2 — modelo completo na issue T5
+// F0-2 bootstrap + T5 domínio (pelada, jogador, partida, presença, time, pagamento, regras)
 generator client {
   provider = "prisma-client-js"
 }
@@ -18,19 +18,27 @@ model User {
 
   peladasOwned Pelada[]       @relation("PeladaOwner")
   memberships  PeladaMember[]
+  players      Player[]
 
   @@map("users")
 }
 
 model Pelada {
-  id        String   @id @default(cuid())
-  name      String
-  ownerId   String   @map("owner_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(cuid())
+  name            String
+  ownerId         String   @map("owner_id")
+  photoUrl        String?  @map("photo_url")
+  defaultWeekday  Int?     @map("default_weekday")
+  defaultLocation String?  @map("default_location")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  owner   User           @relation("PeladaOwner", fields: [ownerId], references: [id], onDelete: Restrict)
-  members PeladaMember[]
+  owner    User            @relation("PeladaOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members  PeladaMember[]
+  rules    PeladaRules?
+  players  Player[]
+  matches  Match[]
+  payments PaymentLedger[]
 
   @@map("peladas")
 }
@@ -52,4 +60,188 @@ model PeladaMember {
 
   @@unique([peladaId, userId])
   @@map("pelada_members")
+}
+
+enum GoalkeeperMode {
+  ROTATING
+  FIXED_PER_TEAM
+  FIXED_GLOBAL
+}
+
+enum PresenceMode {
+  SELF_CONFIRM
+  ORGANIZER_CLOSES
+}
+
+model PeladaRules {
+  id                  String         @id @default(cuid())
+  peladaId            String         @unique @map("pelada_id")
+  playersPerTeam      Int            @default(6) @map("players_per_team")
+  teamCount           Int            @default(2) @map("team_count")
+  modality            String         @default("campo")
+  goalkeeperMode      GoalkeeperMode @default(ROTATING) @map("goalkeeper_mode")
+  presenceMode        PresenceMode   @default(ORGANIZER_CLOSES) @map("presence_mode")
+  capacity            Int?
+  allowPlayerSelfEdit Boolean        @default(false) @map("allow_player_self_edit")
+  fixedListOnly       Boolean        @default(false) @map("fixed_list_only")
+  drawWeights         Json           @default("{}") @map("draw_weights")
+  extra               Json           @default("{}")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  pelada Pelada @relation(fields: [peladaId], references: [id], onDelete: Cascade)
+
+  @@map("pelada_rules")
+}
+
+enum PaymentPlan {
+  PER_MATCH
+  MONTHLY
+}
+
+model Player {
+  id           String      @id @default(cuid())
+  peladaId     String      @map("pelada_id")
+  userId       String?     @map("user_id")
+  displayName  String      @map("display_name")
+  isGoalkeeper Boolean     @default(false) @map("is_goalkeeper")
+  position     String?
+  rating       Int?
+  attributes   Json        @default("{}")
+  tags         String[]    @default([])
+  paymentPlan  PaymentPlan @default(PER_MATCH) @map("payment_plan")
+  isFixedList  Boolean     @default(false) @map("is_fixed_list")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  pelada      Pelada            @relation(fields: [peladaId], references: [id], onDelete: Cascade)
+  user        User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  attendances MatchAttendance[]
+  teamSlots   DrawTeamPlayer[]
+  payments    PaymentLedger[]
+
+  @@index([peladaId])
+  @@map("players")
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LIST_CLOSED
+  DRAWN
+  IN_PROGRESS
+  FINISHED
+}
+
+model Match {
+  id            String        @id @default(cuid())
+  peladaId      String        @map("pelada_id")
+  scheduledAt   DateTime      @map("scheduled_at")
+  location      String?
+  notes         String?
+  presenceMode  PresenceMode? @map("presence_mode")
+  rulesOverride Json?         @map("rules_override")
+  listClosedAt  DateTime?     @map("list_closed_at")
+  status        MatchStatus   @default(SCHEDULED)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  pelada      Pelada            @relation(fields: [peladaId], references: [id], onDelete: Cascade)
+  attendances MatchAttendance[]
+  draw        Draw?
+  payments    PaymentLedger[]
+
+  @@index([peladaId, scheduledAt])
+  @@map("matches")
+}
+
+enum AttendanceStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+  QUEUE
+}
+
+model MatchAttendance {
+  id            String           @id @default(cuid())
+  matchId       String           @map("match_id")
+  playerId      String           @map("player_id")
+  status        AttendanceStatus @default(PENDING)
+  queuePosition Int?             @map("queue_position")
+  isGuest       Boolean          @default(false) @map("is_guest")
+  guestName     String?          @map("guest_name")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, playerId])
+  @@map("match_attendances")
+}
+
+model Draw {
+  id           String   @id @default(cuid())
+  matchId      String   @unique @map("match_id")
+  balanceScore Int?     @map("balance_score")
+  seed         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  match Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  teams DrawTeam[]
+
+  @@map("draws")
+}
+
+model DrawTeam {
+  id        String  @id @default(cuid())
+  drawId    String  @map("draw_id")
+  name      String
+  color     String?
+  sortOrder Int     @default(0) @map("sort_order")
+
+  draw    Draw             @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  players DrawTeamPlayer[]
+
+  @@map("draw_teams")
+}
+
+model DrawTeamPlayer {
+  id        String @id @default(cuid())
+  teamId    String @map("team_id")
+  playerId  String @map("player_id")
+  sortOrder Int    @default(0) @map("sort_order")
+
+  team   DrawTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  player Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, playerId])
+  @@map("draw_team_players")
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  WAIVED
+}
+
+model PaymentLedger {
+  id          String        @id @default(cuid())
+  peladaId    String        @map("pelada_id")
+  playerId    String        @map("player_id")
+  matchId     String?       @map("match_id")
+  amountCents Int           @map("amount_cents")
+  periodStart DateTime?     @map("period_start")
+  periodEnd   DateTime?     @map("period_end")
+  status      PaymentStatus @default(PENDING)
+  paidAt      DateTime?     @map("paid_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  pelada Pelada @relation(fields: [peladaId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  match  Match? @relation(fields: [matchId], references: [id], onDelete: SetNull)
+
+  @@index([peladaId, playerId])
+  @@map("payment_ledger")
 }
