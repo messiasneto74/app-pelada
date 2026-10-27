@@ -12,6 +12,10 @@ npm.cmd run dev:web
 
 `http://localhost:4200` — Keycloak e API: [desenvolvimento-local.md](../../docs/desenvolvimento-local.md).
 
+### Tema Resenha (T1)
+
+Tokens em `src/theme/` (`resenha-tokens.scss` + utilitários em `resenha-base.scss`). Prévia visual (390px): `http://localhost:4200/dev/tema`. Referência: [ui-referencia-resenha.md](../../docs/ui-referencia-resenha.md).
+
 ## Testes unitários (TEST-WEB-HARNESS)
 
 **Runner:** Karma + Jasmine (padrão `@angular-devkit/build-angular:karma` em `angular.json`).

@@ -17,6 +17,11 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/tema',
+    loadComponent: () =>
+      import('./features/dev/tema-preview.component').then((m) => m.TemaPreviewComponent),
+  },
+  {
     path: 'inicio',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>

@@ -1,0 +1,151 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--pelada-bg);
+  color: var(--pelada-ink);
+  font-family: var(--pelada-font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: var(--pelada-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+a:hover {
+  color: var(--pelada-green);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--pelada-focus);
+  outline-offset: 4px;
+}
+
+h1,
+h2,
+h3,
+.pelada-title {
+  font-family: var(--pelada-font-title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--pelada-ink);
+}
+
+h1 {
+  font-size: 2rem;
+  line-height: 1.05;
+}
+
+h2 {
+  font-size: 1.5rem;
+  line-height: 1.1;
+}
+
+h3 {
+  font-size: 1.125rem;
+  line-height: 1.2;
+}
+
+.pelada-muted {
+  color: var(--pelada-muted);
+}
+
+.pelada-text-ok {
+  color: var(--pelada-green);
+  font-weight: 600;
+}
+
+.pelada-text-warn {
+  color: var(--pelada-red);
+}
+
+.pelada-shell {
+  width: 100%;
+  max-width: var(--pelada-shell-max);
+  margin: 0 auto;
+  padding: var(--pelada-space-6) var(--pelada-space-4);
+}
+
+.pelada-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pelada-space-2);
+  min-height: var(--pelada-touch-min);
+  padding: 0 var(--pelada-space-4);
+  border: 0;
+  border-radius: var(--pelada-radius-md);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background: var(--pelada-green);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.pelada-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.pelada-btn--lime {
+  background: var(--pelada-lime);
+  color: var(--pelada-green);
+}
+
+.pelada-btn--ghost {
+  background: transparent;
+  color: var(--pelada-accent);
+  min-height: 35px;
+  padding: 0;
+}
+
+.pelada-btn--block {
+  display: flex;
+  width: 100%;
+}
+
+.pelada-card {
+  background: var(--pelada-paper);
+  border: 1px solid var(--pelada-line);
+  border-radius: var(--pelada-radius-lg);
+  padding: var(--pelada-space-4);
+}
