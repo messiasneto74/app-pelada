@@ -16,7 +16,7 @@ Projeto com **protótipo interativo Resenha** e documentação de planejamento (
 - [Desenvolvimento e testes na sua máquina](docs/desenvolvimento-local.md)
 - [Processo de testes (você + agente Cursor)](docs/processo-testes-e-qualidade.md)
 
-Monorepo: `npm install` na raiz → `npm run dev:api` + `npm run dev:web`. Ver [apps/README.md](apps/README.md) e [desenvolvimento-local.md](docs/desenvolvimento-local.md).
+Monorepo: `npm install` na raiz → `npm run dev:api` + `npm run dev:web`. Testes: `npm.cmd run test:all` (ver [desenvolvimento-local.md](docs/desenvolvimento-local.md)). Apps: [apps/README.md](apps/README.md).
 
 ## Protótipo Resenha
 
