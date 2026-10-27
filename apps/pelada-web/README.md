@@ -16,6 +16,10 @@ npm.cmd run dev:web
 
 Tokens em `src/theme/` (`resenha-tokens.scss` + utilitários em `resenha-base.scss`). Prévia visual (390px): `http://localhost:4200/dev/tema`. Referência: [ui-referencia-resenha.md](../../docs/ui-referencia-resenha.md).
 
+### Shell e navegação (T3)
+
+Rotas autenticadas dentro de `MainShellComponent` com **bottom nav** (Início, Partida, Jogadores, Caixa). Placeholders em `/inicio/regras`, `/partida/*`, `/jogadores`, `/caixa`. Ver [arquitetura §4.2–4.3](../../docs/arquitetura-backend-frontend.md).
+
 ### Componentes base (T2)
 
 Standalone em `src/app/ui/` (`pelada-card`, `pelada-chip`, `pelada-avatar`, `pelada-progress`, `pelada-switch`, `pelada-segment`, `pelada-field`, `peladaInput`, `peladaButton`). Prévia: `http://localhost:4200/dev/componentes`.

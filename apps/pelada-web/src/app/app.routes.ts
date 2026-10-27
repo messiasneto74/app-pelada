@@ -1,6 +1,10 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './auth/auth.guard';
 import { phoneRequiredGuard } from './auth/phone-required.guard';
+import { MainShellComponent } from './shell/main-shell.component';
+
+const placeholder = () =>
+  import('./features/shared/tab-placeholder.component').then((m) => m.TabPlaceholderComponent);
 
 export const routes: Routes = [
   {
@@ -29,11 +33,53 @@ export const routes: Routes = [
       import('./features/dev/tema-preview.component').then((m) => m.TemaPreviewComponent),
   },
   {
-    path: 'inicio',
+    path: '',
+    component: MainShellComponent,
     canActivate: [authGuard, phoneRequiredGuard],
-    loadComponent: () =>
-      import('./features/inicio/inicio.component').then((m) => m.InicioComponent),
+    children: [
+      {
+        path: 'inicio',
+        loadComponent: () =>
+          import('./features/inicio/inicio.component').then((m) => m.InicioComponent),
+      },
+      {
+        path: 'inicio/regras',
+        loadComponent: placeholder,
+        data: { title: 'Regras da pelada' },
+      },
+      {
+        path: 'inicio/criar-partida',
+        loadComponent: placeholder,
+        data: { title: 'Criar partida' },
+      },
+      { path: 'partida', redirectTo: 'partida/presenca', pathMatch: 'full' },
+      {
+        path: 'partida/presenca',
+        loadComponent: placeholder,
+        data: { title: 'Presença' },
+      },
+      {
+        path: 'partida/sorteio',
+        loadComponent: placeholder,
+        data: { title: 'Sorteio' },
+      },
+      {
+        path: 'partida/campo',
+        loadComponent: placeholder,
+        data: { title: 'Em campo' },
+      },
+      {
+        path: 'jogadores',
+        loadComponent: placeholder,
+        data: { title: 'Jogadores' },
+      },
+      {
+        path: 'caixa',
+        loadComponent: placeholder,
+        data: { title: 'Caixa' },
+      },
+      { path: '', pathMatch: 'full', redirectTo: 'inicio' },
+    ],
   },
-  { path: '', pathMatch: 'full', redirectTo: 'inicio' },
   { path: '**', redirectTo: 'inicio' },
 ];
