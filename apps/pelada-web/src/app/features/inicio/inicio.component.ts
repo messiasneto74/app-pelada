@@ -8,7 +8,7 @@ import { AuthService, MeProfile } from '../../auth/auth.service';
   selector: 'app-inicio',
   standalone: true,
   template: `
-    <main class="pelada-shell">
+    <section class="pelada-shell">
       <h1>Bora jogar</h1>
       <p class="pelada-muted">Shell M0 — abas e telas Resenha nas issues T3 / 3.x.</p>
       @if (health) {
@@ -24,7 +24,7 @@ import { AuthService, MeProfile } from '../../auth/auth.service';
           <span class="pelada-muted"> · logado ({{ profile.email ?? profile.keycloakSub }})</span>
         }
       </nav>
-    </main>
+    </section>
   `,
   styles: [
     `
