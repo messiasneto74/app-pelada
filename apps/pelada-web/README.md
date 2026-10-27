@@ -16,6 +16,10 @@ npm.cmd run dev:web
 
 Tokens em `src/theme/` (`resenha-tokens.scss` + utilitários em `resenha-base.scss`). Prévia visual (390px): `http://localhost:4200/dev/tema`. Referência: [ui-referencia-resenha.md](../../docs/ui-referencia-resenha.md).
 
+### Componentes base (T2)
+
+Standalone em `src/app/ui/` (`pelada-card`, `pelada-chip`, `pelada-avatar`, `pelada-progress`, `pelada-switch`, `pelada-segment`, `pelada-field`, `peladaInput`, `peladaButton`). Prévia: `http://localhost:4200/dev/componentes`.
+
 ## Testes unitários (TEST-WEB-HARNESS)
 
 **Runner:** Karma + Jasmine (padrão `@angular-devkit/build-angular:karma` em `angular.json`).

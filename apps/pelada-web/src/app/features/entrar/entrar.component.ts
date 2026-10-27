@@ -1,11 +1,12 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
+import { PeladaButtonComponent } from '../../ui/button.component';
 
 @Component({
   selector: 'app-entrar',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, PeladaButtonComponent],
   template: `
     <main class="pelada-shell">
       <h1>Entrar</h1>
@@ -13,21 +14,19 @@ import { AuthService } from '../../auth/auth.service';
         <p class="pelada-muted">Conectando ao Keycloak…</p>
       } @else if (auth.isLoggedIn()) {
         <p class="pelada-text-ok">Você já está autenticado.</p>
-        <button type="button" class="pelada-btn pelada-btn--block" (click)="continue()">
+        <button type="button" peladaButton peladaButtonBlock (click)="continue()">
           Continuar
         </button>
-        <button type="button" class="pelada-btn pelada-btn--ghost" (click)="logout()">
-          Sair
-        </button>
+        <button type="button" peladaButton variant="ghost" (click)="logout()">Sair</button>
       } @else {
         <p class="pelada-muted">Use sua conta Google ou e-mail (Keycloak).</p>
-        <button type="button" class="pelada-btn pelada-btn--lime pelada-btn--block" (click)="login()">
+        <button type="button" peladaButton variant="lime" peladaButtonBlock (click)="login()">
           Entrar com Keycloak
         </button>
       }
       <p class="hint pelada-muted">
         <a routerLink="/inicio">Voltar ao início</a> (sem login) ·
-        <a routerLink="/dev/tema">Tokens T1</a>
+        <a routerLink="/dev/tema">T1</a> · <a routerLink="/dev/componentes">T2</a>
       </p>
     </main>
   `,
@@ -37,7 +36,7 @@ import { AuthService } from '../../auth/auth.service';
         margin-top: var(--pelada-space-6);
         font-size: 0.85rem;
       }
-      .pelada-btn {
+      [peladaButton] {
         margin-top: var(--pelada-space-4);
       }
     `,
