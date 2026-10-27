@@ -1,0 +1,225 @@
+/* T2 — componentes base (prototipo/styles.css) */
+
+.pelada-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: var(--pelada-radius-sm);
+  font-size: 0.5625rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #f0f3eb;
+  color: #73835c;
+}
+
+.pelada-chip--green {
+  background: #edf4e5;
+  color: #6e873c;
+}
+
+.pelada-chip--orange {
+  background: #fff3df;
+  color: #a47e3c;
+}
+
+.pelada-chip--red {
+  background: #fbeeee;
+  color: #b45d57;
+}
+
+.pelada-chip--dark {
+  background: #edf0e9;
+  color: #65705f;
+}
+
+.pelada-avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eaece6;
+  color: #536247;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 2px solid var(--pelada-paper);
+}
+
+.pelada-avatar--small {
+  width: 30px;
+  height: 30px;
+  font-size: 0.625rem;
+}
+
+.pelada-avatar--lime {
+  background: var(--pelada-lime);
+  color: var(--pelada-green);
+}
+
+.pelada-progress {
+  margin: var(--pelada-space-3) 0 var(--pelada-space-2);
+}
+
+.pelada-progress__track {
+  height: 6px;
+  border-radius: var(--pelada-radius-sm);
+  background: #edf0e7;
+  overflow: hidden;
+}
+
+.pelada-progress__fill {
+  height: 100%;
+  display: block;
+  background: #93ac66;
+  border-radius: var(--pelada-radius-sm);
+  transition: width 0.3s ease;
+}
+
+.pelada-progress__labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.5625rem;
+  color: #929b85;
+  margin-top: var(--pelada-space-2);
+}
+
+.pelada-progress__labels strong {
+  color: #76974c;
+  font-weight: 600;
+}
+
+.pelada-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pelada-space-3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.pelada-switch__track {
+  width: 44px;
+  height: 26px;
+  border-radius: var(--pelada-radius-pill);
+  background: #dfe5d7;
+  padding: 3px;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.pelada-switch__thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--pelada-paper);
+  box-shadow: 0 1px 3px rgb(32 44 39 / 20%);
+  transition: transform 0.2s ease;
+}
+
+.pelada-switch--on .pelada-switch__track {
+  background: var(--pelada-green);
+}
+
+.pelada-switch--on .pelada-switch__thumb {
+  transform: translateX(18px);
+}
+
+.pelada-switch--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pelada-segment {
+  display: flex;
+  gap: 5px;
+  background: #eaeedfe0;
+  border-radius: var(--pelada-radius-md);
+  padding: 4px;
+  width: fit-content;
+  max-width: 100%;
+  overflow: auto;
+}
+
+.pelada-segment button {
+  border: 0;
+  background: none;
+  min-height: 37px;
+  padding: 0 var(--pelada-space-4);
+  border-radius: var(--pelada-radius-sm);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #77836b;
+  white-space: nowrap;
+}
+
+.pelada-segment button[aria-selected='true'] {
+  background: var(--pelada-paper);
+  color: var(--pelada-green);
+  box-shadow: 0 1px 5px rgb(32 59 33 / 6%);
+}
+
+.pelada-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: var(--pelada-space-4);
+}
+
+.pelada-field__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.pelada-field__hint {
+  font-size: 0.625rem;
+  color: var(--pelada-muted);
+  margin: 0;
+}
+
+.pelada-field__error {
+  font-size: 0.625rem;
+  color: var(--pelada-red);
+  margin: 0;
+}
+
+.pelada-input {
+  width: 100%;
+  min-height: var(--pelada-touch-min);
+  border: 1px solid #dfe5d7;
+  border-radius: var(--pelada-radius-md);
+  background: var(--pelada-paper);
+  padding: 11px 12px;
+  color: var(--pelada-ink);
+  font-size: 0.75rem;
+}
+
+.pelada-input--error {
+  border-color: var(--pelada-red);
+}
+
+textarea.pelada-input {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.pelada-btn--secondary {
+  background: var(--pelada-paper);
+  border: 1px solid var(--pelada-line);
+  color: #4f5d4b;
+}
+
+.pelada-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--pelada-space-5);
+}
+
+.pelada-card__title {
+  font-size: 0.8125rem;
+  margin: 0;
+  font-family: var(--pelada-font-title);
+  font-weight: 700;
+}

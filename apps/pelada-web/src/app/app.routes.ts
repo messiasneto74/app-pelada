@@ -17,6 +17,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/componentes',
+    loadComponent: () =>
+      import('./features/dev/componentes-preview.component').then(
+        (m) => m.ComponentesPreviewComponent,
+      ),
+  },
+  {
     path: 'dev/tema',
     loadComponent: () =>
       import('./features/dev/tema-preview.component').then((m) => m.TemaPreviewComponent),
