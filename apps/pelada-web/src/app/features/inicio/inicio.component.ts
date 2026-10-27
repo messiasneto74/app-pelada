@@ -8,46 +8,31 @@ import { AuthService, MeProfile } from '../../auth/auth.service';
   selector: 'app-inicio',
   standalone: true,
   template: `
-    <main class="shell">
+    <main class="pelada-shell">
       <h1>Bora jogar</h1>
-      <p class="muted">Shell M0 — abas e telas Resenha nas issues T3 / 3.x.</p>
+      <p class="pelada-muted">Shell M0 — abas e telas Resenha nas issues T3 / 3.x.</p>
       @if (health) {
-        <p class="ok">
+        <p class="pelada-text-ok">
           API: {{ health.status }} · DB: {{ health.database }} ({{ health.service }})
         </p>
       } @else if (healthError) {
-        <p class="warn">API offline — rode <code>npm run dev:api</code></p>
+        <p class="pelada-text-warn">API offline — rode <code>npm run dev:api</code></p>
       }
       <nav>
         <a routerLink="/entrar">Entrar</a>
         @if (profile) {
-          <span class="muted"> · logado ({{ profile.email ?? profile.keycloakSub }})</span>
+          <span class="pelada-muted"> · logado ({{ profile.email ?? profile.keycloakSub }})</span>
         }
       </nav>
     </main>
   `,
   styles: [
     `
-      .shell {
-        max-width: 28rem;
-        margin: 2rem auto;
-        padding: 1rem;
-        font-family: system-ui, sans-serif;
+      nav {
+        margin-top: var(--pelada-space-4);
       }
-      .muted {
-        color: #5c665f;
-      }
-      .ok {
-        color: #173d32;
-        font-weight: 600;
-      }
-      .warn {
-        color: #b94848;
-        font-size: 0.9rem;
-      }
-      nav a {
-        color: #173d32;
-        font-weight: 600;
+      code {
+        font-size: 0.85em;
       }
     `,
   ],
