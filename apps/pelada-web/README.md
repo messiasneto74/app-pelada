@@ -16,6 +16,10 @@ npm.cmd run dev:web
 
 Tokens em `src/theme/` (`resenha-tokens.scss` + utilitários em `resenha-base.scss`). Prévia visual (390px): `http://localhost:4200/dev/tema`. Referência: [ui-referencia-resenha.md](../../docs/ui-referencia-resenha.md).
 
+### ScreenHeader (T4)
+
+`pelada-screen-header` — rótulo (`eyebrow`), título, subtítulo opcional e slot `[headerActions]` à direita. Estilos em `ui.scss`.
+
 ### Shell e navegação (T3)
 
 Rotas autenticadas dentro de `MainShellComponent` com **bottom nav** (Início, Partida, Jogadores, Caixa). Placeholders em `/inicio/regras`, `/partida/*`, `/jogadores`, `/caixa`. Ver [arquitetura §4.2–4.3](../../docs/arquitetura-backend-frontend.md).

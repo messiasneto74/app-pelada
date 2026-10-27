@@ -223,3 +223,58 @@ textarea.pelada-input {
   font-family: var(--pelada-font-title);
   font-weight: 700;
 }
+
+/* T4 — ScreenHeader */
+.pelada-screen-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--pelada-space-4);
+  margin-bottom: var(--pelada-space-6);
+}
+
+.pelada-screen-header__eyebrow {
+  font-size: 0.5625rem;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  color: #87927e;
+  margin: 0 0 var(--pelada-space-2);
+  text-transform: uppercase;
+}
+
+.pelada-screen-header__title {
+  font-family: var(--pelada-font-title);
+  font-size: 2.25rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  margin: 0 0 var(--pelada-space-2);
+}
+
+.pelada-screen-header__subtitle {
+  font-size: 0.6875rem;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.pelada-screen-header__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--pelada-space-2);
+  align-items: flex-start;
+}
+
+.pelada-screen-header__actions:empty {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .pelada-screen-header {
+    flex-wrap: wrap;
+  }
+
+  .pelada-screen-header__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

@@ -3,14 +3,23 @@ import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { AuthService, MeProfile } from '../../auth/auth.service';
+import { PeladaButtonComponent } from '../../ui/button.component';
+import { ScreenHeaderComponent } from '../../ui/screen-header.component';
 
 @Component({
   selector: 'app-inicio',
   standalone: true,
   template: `
     <section class="pelada-shell">
-      <h1>Bora jogar</h1>
-      <p class="pelada-muted">Shell M0 — abas e telas Resenha nas issues T3 / 3.x.</p>
+      <pelada-screen-header
+        eyebrow="Início"
+        title="Bora jogar"
+        subtitle="Próxima partida e atalhos — tela 3.1 nas issues M1."
+      >
+        <a headerActions routerLink="/inicio/criar-partida" peladaButton variant="lime">
+          Criar partida
+        </a>
+      </pelada-screen-header>
       @if (health) {
         <p class="pelada-text-ok">
           API: {{ health.status }} · DB: {{ health.database }} ({{ health.service }})
@@ -36,7 +45,7 @@ import { AuthService, MeProfile } from '../../auth/auth.service';
       }
     `,
   ],
-  imports: [RouterLink],
+  imports: [RouterLink, ScreenHeaderComponent, PeladaButtonComponent],
 })
 export class InicioComponent implements OnInit {
   private readonly http = inject(HttpClient);
