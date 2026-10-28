@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import { OAuthService } from 'angular-oauth2-oidc';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { CriarPeladaComponent } from './criar-pelada.component';
 
@@ -13,7 +14,13 @@ describe('CriarPeladaComponent', () => {
     sessionStorage.clear();
     await TestBed.configureTestingModule({
       imports: [CriarPeladaComponent],
-      providers: [provideRouter([{ path: 'inicio/regras', component: CriarPeladaComponent }])],
+      providers: [
+        provideRouter([{ path: 'inicio/regras', component: CriarPeladaComponent }]),
+        {
+          provide: OAuthService,
+          useValue: { getIdentityClaims: () => ({ sub: 'user-test' }) },
+        },
+      ],
     }).compileComponents();
 
     peladaContext = TestBed.inject(PeladaContextService);
@@ -51,6 +58,18 @@ describe('CriarPeladaComponent', () => {
     expect(peladaContext.getActivePelada()?.name).toBe('Pelada da Praça');
     expect(peladaContext.getActivePelada()?.defaultWeekday).toBe(3);
     expect(router.navigate).toHaveBeenCalledWith(['/inicio/regras']);
+  });
+
+  it('mantém preview no contexto após destroy do componente', () => {
+    const file = new File([new Uint8Array(8)], 'f.jpg', { type: 'image/jpeg' });
+    const input = document.createElement('input');
+    Object.defineProperty(input, 'files', { value: [file] });
+    component.onPhotoSelected({ target: input } as unknown as Event);
+    component.name.set('Pelada OK');
+    component.onSubmit(new Event('submit'));
+    const preview = peladaContext.getActivePelada()?.photoPreviewUrl;
+    fixture.destroy();
+    expect(peladaContext.getActivePelada()?.photoPreviewUrl).toBe(preview);
   });
 
   it('rejeita foto com tipo inválido', () => {

@@ -20,6 +20,6 @@ import { Component, input } from '@angular/core';
 export class PeladaFieldComponent {
   readonly label = input<string>();
   readonly hint = input<string>();
-  readonly error = input<string>();
+  readonly error = input<string | null | undefined>();
   readonly forId = input<string>();
 }

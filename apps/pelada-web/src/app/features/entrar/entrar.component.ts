@@ -14,13 +14,13 @@ import { PeladaButtonComponent } from '../../ui/button.component';
         <p class="pelada-muted">Conectando ao Keycloak…</p>
       } @else if (auth.isLoggedIn()) {
         <p class="pelada-text-ok">Você já está autenticado.</p>
-        <button type="button" peladaButton peladaButtonBlock (click)="continue()">
+        <button type="button" peladaButton [peladaButtonBlock]="true" (click)="continue()">
           Continuar
         </button>
         <button type="button" peladaButton variant="ghost" (click)="logout()">Sair</button>
       } @else {
         <p class="pelada-muted">Use sua conta Google ou e-mail (Keycloak).</p>
-        <button type="button" peladaButton variant="lime" peladaButtonBlock (click)="login()">
+        <button type="button" peladaButton variant="lime" [peladaButtonBlock]="true" (click)="login()">
           Entrar com Keycloak
         </button>
       }

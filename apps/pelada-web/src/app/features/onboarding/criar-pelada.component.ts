@@ -206,12 +206,14 @@ export class CriarPeladaComponent implements OnDestroy {
 
     this.submitting.set(true);
     const id = crypto.randomUUID();
+    const preview = this.photoPreview();
+    this.objectUrl = null;
     this.peladaContext.setActivePelada({
       id,
       name: values.name.trim(),
       defaultWeekday: values.defaultWeekday,
       defaultLocation: values.defaultLocation,
-      photoPreviewUrl: this.photoPreview(),
+      photoPreviewUrl: preview,
     });
 
     void this.router.navigate(['/inicio/regras']).finally(() => this.submitting.set(false));
