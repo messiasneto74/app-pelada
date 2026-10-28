@@ -53,8 +53,8 @@ import { PeladaSwitchComponent } from '../../ui/switch.component';
         <pelada-field label="Nome do jogador" forId="nome">
           <input id="nome" peladaInput placeholder="Ex.: João Silva" />
         </pelada-field>
-        <button type="button" peladaButton variant="lime" peladaButtonBlock>Salvar</button>
-        <button type="button" peladaButton variant="secondary" peladaButtonBlock>
+        <button type="button" peladaButton variant="lime" [peladaButtonBlock]="true">Salvar</button>
+        <button type="button" peladaButton variant="secondary" [peladaButtonBlock]="true">
           Secundário
         </button>
       </pelada-card>

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './auth/auth.guard';
 import { phoneRequiredGuard } from './auth/phone-required.guard';
+import { peladaOnboardingGuard } from './core/pelada/pelada-onboarding.guard';
 import { MainShellComponent } from './shell/main-shell.component';
 
 const placeholder = () =>
@@ -40,9 +41,24 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/criar-pelada',
+    loadComponent: () =>
+      import('./features/onboarding/criar-pelada.component').then(
+        (m) => m.CriarPeladaComponent,
+      ),
+  },
+  {
+    path: 'onboarding/pelada',
+    canActivate: [authGuard, phoneRequiredGuard],
+    loadComponent: () =>
+      import('./features/onboarding/criar-pelada.component').then(
+        (m) => m.CriarPeladaComponent,
+      ),
+  },
+  {
     path: '',
     component: MainShellComponent,
-    canActivate: [authGuard, phoneRequiredGuard],
+    canActivate: [authGuard, phoneRequiredGuard, peladaOnboardingGuard],
     children: [
       {
         path: 'inicio',

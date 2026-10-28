@@ -32,6 +32,10 @@ Standalone em `src/app/ui/` (`pelada-card`, `pelada-chip`, `pelada-avatar`, `pel
 
 Coluna **390px** (`--pelada-shell-max`) em `.pelada-mobile-root` (app root); barra inferior alinhada ao mesmo max-width; alvos **44px** (`--pelada-touch-min`). Checklist exportada em `src/theme/mobile-ux-checklist.ts`. Prévia: `http://localhost:4200/dev/mobile-ux`.
 
+### Onboarding criar pelada (L1)
+
+Rota **`/onboarding/pelada`** (sem bottom nav). Guard `peladaOnboardingGuard` envia usuários sem pelada ativa para onboarding antes do shell. Contexto em `PeladaContextService` (sessionStorage até **L1-API**). Checklist: `features/onboarding/l1-screen-checklist.ts`.
+
 ## Testes unitários (TEST-WEB-HARNESS)
 
 **Runner:** Karma + Jasmine (padrão `@angular-devkit/build-angular:karma` em `angular.json`).

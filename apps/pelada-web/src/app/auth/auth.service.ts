@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { environment } from '../../environments/environment';
+import { PeladaContextService } from '../core/pelada/pelada-context.service';
 import { buildAuthConfig } from './auth.config';
 
 export type MeProfile = {
@@ -17,6 +18,7 @@ export class AuthService {
   private readonly oauth = inject(OAuthService);
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly peladaContext = inject(PeladaContextService);
 
   private configured = false;
 
@@ -26,6 +28,7 @@ export class AuthService {
       this.configured = true;
     }
     await this.oauth.loadDiscoveryDocumentAndTryLogin();
+    this.peladaContext.refreshFromStorage();
   }
 
   login(): void {
@@ -33,6 +36,7 @@ export class AuthService {
   }
 
   logout(): void {
+    this.peladaContext.clearActivePelada();
     this.oauth.logOut();
     void this.router.navigateByUrl('/entrar');
   }
