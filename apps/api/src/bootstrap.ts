@@ -3,6 +3,8 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { resolve } from 'node:path';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 function parseCorsOrigins(raw: string | undefined): string | string[] {
@@ -31,4 +33,12 @@ export function configureNestApp(app: INestApplication): void {
   );
 
   app.useGlobalFilters(new AllExceptionsFilter());
+
+  const uploadDir = config.get<string>('UPLOAD_DIR');
+  if (uploadDir?.trim()) {
+    const expressApp = app as NestExpressApplication;
+    expressApp.useStaticAssets(resolve(process.cwd(), uploadDir), {
+      prefix: '/uploads/',
+    });
+  }
 }

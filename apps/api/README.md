@@ -53,6 +53,13 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 
 - **Sem** rotas `/auth/*` — login só no Keycloak (Angular F0-5).
 - `GET /me` e `PATCH /me` exigem `Authorization: Bearer <access_token>`.
+
+## Peladas (L1-API)
+
+- `POST /peladas` — `multipart/form-data`: campos `name`, `city`, `state`, `format` (JSON string), opcional `photo` (JPEG/PNG/WebP, até 5 MB).
+- Resposta `201`: `{ id, name, city, state, photoUrl?, role: "ORGANIZADOR" }`.
+- Cria `Pelada`, `PeladaMember` (ORGANIZADOR) e `PeladaRules` padrão; foto em `UPLOAD_DIR` (padrão `./uploads`) servida em `/uploads/...` (`PUBLIC_UPLOAD_BASE_URL` no `.env`).
+- Arquivo grande demais: `413` (Multer `LIMIT_FILE_SIZE`).
 - JWT validado via JWKS (`KEYCLOAK_ISSUER`, `KEYCLOAK_JWKS_URI`).
 - Primeiro acesso cria `User` no Postgres (JIT por `sub`).
 - Dev local: `DEV_AUTH_BYPASS=true` + qualquer `Bearer` (ver `.env.example`); **nunca** em produção.

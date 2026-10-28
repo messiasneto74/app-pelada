@@ -7,5 +7,6 @@ import { MeService } from './me.service';
   imports: [AuthModule],
   controllers: [MeController],
   providers: [MeService],
+  exports: [MeService],
 })
 export class MeModule {}
