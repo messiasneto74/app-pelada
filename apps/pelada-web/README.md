@@ -28,6 +28,10 @@ Rotas autenticadas dentro de `MainShellComponent` com **bottom nav** (Início, P
 
 Standalone em `src/app/ui/` (`pelada-card`, `pelada-chip`, `pelada-avatar`, `pelada-progress`, `pelada-switch`, `pelada-segment`, `pelada-field`, `peladaInput`, `peladaButton`). Prévia: `http://localhost:4200/dev/componentes`.
 
+### Mobile UX (T6 / história 84)
+
+Coluna **390px** (`--pelada-shell-max`) em `.pelada-mobile-root` (app root); barra inferior alinhada ao mesmo max-width; alvos **44px** (`--pelada-touch-min`). Checklist exportada em `src/theme/mobile-ux-checklist.ts`. Prévia: `http://localhost:4200/dev/mobile-ux`.
+
 ## Testes unitários (TEST-WEB-HARNESS)
 
 **Runner:** Karma + Jasmine (padrão `@angular-devkit/build-angular:karma` em `angular.json`).

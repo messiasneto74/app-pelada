@@ -1,0 +1,27 @@
+/* T6 — layout mobile 390px (história 84) */
+
+@media (min-width: 420px) {
+  body {
+    background: #e8ebe3;
+  }
+}
+
+.pelada-mobile-root {
+  width: 100%;
+  max-width: var(--pelada-shell-max);
+  min-height: 100dvh;
+  margin: 0 auto;
+  position: relative;
+  background: var(--pelada-bg);
+}
+
+@media (min-width: 420px) {
+  .pelada-mobile-root {
+    box-shadow: 0 12px 48px rgb(32 44 39 / 10%);
+  }
+}
+
+.pelada-touch-target {
+  min-height: var(--pelada-touch-min);
+  min-width: var(--pelada-touch-min);
+}

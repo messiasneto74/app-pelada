@@ -33,6 +33,13 @@ export const routes: Routes = [
       import('./features/dev/tema-preview.component').then((m) => m.TemaPreviewComponent),
   },
   {
+    path: 'dev/mobile-ux',
+    loadComponent: () =>
+      import('./features/dev/mobile-ux-preview.component').then(
+        (m) => m.MobileUxPreviewComponent,
+      ),
+  },
+  {
     path: '',
     component: MainShellComponent,
     canActivate: [authGuard, phoneRequiredGuard],

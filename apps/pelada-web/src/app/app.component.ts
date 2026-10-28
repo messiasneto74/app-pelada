@@ -5,13 +5,16 @@ import { RouterOutlet } from '@angular/router';
   selector: 'app-root',
   standalone: true,
   imports: [RouterOutlet],
-  template: `<router-outlet />`,
+  template: `
+    <div class="pelada-mobile-root">
+      <router-outlet />
+    </div>
+  `,
   styles: [
     `
       :host {
         display: block;
         min-height: 100vh;
-        background: var(--pelada-bg);
         color: var(--pelada-ink);
       }
     `,
