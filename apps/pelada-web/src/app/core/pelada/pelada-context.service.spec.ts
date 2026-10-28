@@ -15,10 +15,6 @@ describe('PeladaContextService', () => {
     service.clearActivePelada();
   });
 
-  it('starts without active pelada', () => {
-    expect(service.hasActivePelada()).toBe(false);
-  });
-
   it('persists metadata in sessionStorage', () => {
     service.setActivePelada({
       id: 'p1',
@@ -35,5 +31,17 @@ describe('PeladaContextService', () => {
     TestBed.configureTestingModule({});
     const reloaded = TestBed.inject(PeladaContextService);
     expect(reloaded.getActivePelada()?.name).toBe('Pelada Teste');
+  });
+
+  it('ignora JSON inválido ou incompleto no sessionStorage', () => {
+    sessionStorage.setItem('pelada:active-v1', '{bad');
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    expect(TestBed.inject(PeladaContextService).hasActivePelada()).toBe(false);
+
+    sessionStorage.setItem('pelada:active-v1', JSON.stringify({ id: '', name: '' }));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    expect(TestBed.inject(PeladaContextService).hasActivePelada()).toBe(false);
   });
 });
