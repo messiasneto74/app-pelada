@@ -17,12 +17,9 @@ import { BottomNavComponent } from './bottom-nav.component';
   styles: [
     `
       .main-shell {
-        min-height: 100vh;
         background: var(--pelada-bg);
       }
       .main-shell__content {
-        max-width: var(--pelada-shell-max);
-        margin: 0 auto;
         padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px) + var(--pelada-space-4));
       }
     `,

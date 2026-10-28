@@ -32,6 +32,10 @@ interface NavItem {
         position: fixed;
         inset: auto 0 0;
         z-index: 20;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: var(--pelada-shell-max);
         display: flex;
         justify-content: space-around;
         gap: 0;

@@ -26,7 +26,8 @@ import { PeladaButtonComponent } from '../../ui/button.component';
       }
       <p class="hint pelada-muted">
         <a routerLink="/inicio">Voltar ao início</a> (sem login) ·
-        <a routerLink="/dev/tema">T1</a> · <a routerLink="/dev/componentes">T2</a>
+        <a routerLink="/dev/tema">T1</a> · <a routerLink="/dev/componentes">T2</a> ·
+        <a routerLink="/dev/mobile-ux">T6</a>
       </p>
     </main>
   `,
