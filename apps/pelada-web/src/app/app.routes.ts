@@ -41,6 +41,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/criar-pelada',
+    loadComponent: () =>
+      import('./features/onboarding/criar-pelada.component').then(
+        (m) => m.CriarPeladaComponent,
+      ),
+  },
+  {
     path: 'onboarding/pelada',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>
