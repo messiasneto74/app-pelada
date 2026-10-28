@@ -230,6 +230,7 @@ export class CriarPeladaComponent implements OnDestroy {
         },
         error: () => {
           this.nameError.set('Não foi possível criar a pelada. Tente de novo.');
+          this.submitting.set(false);
         },
         complete: () => this.submitting.set(false),
       });

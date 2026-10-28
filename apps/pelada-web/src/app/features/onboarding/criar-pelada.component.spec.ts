@@ -4,7 +4,7 @@ import { OAuthService } from 'angular-oauth2-oidc';
 import { PeladaApiService } from '../../core/pelada/pelada-api.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { CriarPeladaComponent } from './criar-pelada.component';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 describe('CriarPeladaComponent', () => {
   let fixture: ComponentFixture<CriarPeladaComponent>;
@@ -60,6 +60,15 @@ describe('CriarPeladaComponent', () => {
     component.name.set('A');
     component.onSubmit(new Event('submit'));
     expect(component.nameError()).toContain('2 caracteres');
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('reabilita submit após erro da API', () => {
+    peladaApi.createPelada.and.returnValue(throwError(() => new Error('network')));
+    component.name.set('Pelada da Praça');
+    component.onSubmit(new Event('submit'));
+    expect(component.nameError()).toContain('Não foi possível');
+    expect(component.submitting()).toBe(false);
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
