@@ -10,6 +10,9 @@ coverage/
 !.env.example
 !.env.example
 
+# Uploads locais (L1-API / STORAGE)
+uploads/
+
 # SO / IDE
 .DS_Store
 Thumbs.db

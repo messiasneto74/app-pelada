@@ -30,12 +30,12 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@prisma/client": "^6.16.0",
-    "jwks-rsa": "^3.2.0",
-    "passport": "^0.7.0",
-    "passport-jwt": "^4.0.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "jest-util": "^30.5.1",
+    "jwks-rsa": "^3.2.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
@@ -45,9 +45,10 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
-    "@types/jsonwebtoken": "^9.0.10",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^1.4.13",
     "@types/node": "^24.0.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.0.0",
@@ -55,8 +56,8 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^17.0.0",
-    "jsonwebtoken": "^9.0.2",
     "jest": "^30.0.0",
+    "jsonwebtoken": "^9.0.2",
     "prettier": "^3.4.2",
     "prisma": "^6.16.0",
     "source-map-support": "^0.5.21",
@@ -87,6 +88,8 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
-    "setupFiles": ["<rootDir>/../test/setup-run-db-tests.ts"]
+    "setupFiles": [
+      "<rootDir>/../test/setup-run-db-tests.ts"
+    ]
   }
 }

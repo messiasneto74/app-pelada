@@ -6,7 +6,7 @@ Check no PR: **`test:all + R-07`**
 ## O que você vê no PR
 
 1. Aba **Checks** — job **test:all + R-07** verde ou vermelho.
-2. Automação Cursor **app-pelada — revisar PR** — comentário alinhado (ex. TESTES FALHANDO).
+2. Automação Cursor **app-pelada — revisar PR** — comentário/review alinhado (ex. TESTES FALHANDO). Deve rodar **no SHA do PR após** o check **`test:all + R-07`**: configure trigger **CI completed** (check `test:all + R-07`) ou webhook via job homônimo no workflow — ver [.github/CURSOR-REVISAR-PR-SETUP.md](../.github/CURSOR-REVISAR-PR-SETUP.md).
 3. Os dois devem concordar: se o agente reprovar, o workflow também falha após o push (ou re-run).
 
 ## Bloquear merge quando o check falhar (mantenedor)

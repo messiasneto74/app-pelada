@@ -14,7 +14,7 @@ const STATUS_LABEL: Partial<Record<number, string>> = {
   [HttpStatus.FORBIDDEN]: 'Forbidden',
   [HttpStatus.NOT_FOUND]: 'Not Found',
   [HttpStatus.CONFLICT]: 'Conflict',
-  [HttpStatus.UNPROCESSABLE_ENTITY]: 'Unprocessable Entity',
+  [HttpStatus.PAYLOAD_TOO_LARGE]: 'Payload Too Large',
   [HttpStatus.INTERNAL_SERVER_ERROR]: 'Internal Server Error',
 };
 
@@ -43,6 +43,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
     error: string;
     message: string | string[];
   } {
+    if (
+      exception &&
+      typeof exception === 'object' &&
+      'code' in exception &&
+      (exception as { code: string }).code === 'LIMIT_FILE_SIZE'
+    ) {
+      return {
+        statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+        error: 'Payload Too Large',
+        message: 'Foto deve ter no máximo 5 MB.',
+      };
+    }
+
     if (exception instanceof HttpException) {
       const statusCode = exception.getStatus();
       const payload = exception.getResponse();

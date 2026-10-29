@@ -1,6 +1,7 @@
 import { Component, inject, OnDestroy, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
+import { PeladaApiService } from '../../core/pelada/pelada-api.service';
 import {
   isCriarPeladaFormValid,
   PHOTO_ACCEPT,
@@ -127,6 +128,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
 })
 export class CriarPeladaComponent implements OnDestroy {
   private readonly peladaContext = inject(PeladaContextService);
+  private readonly peladaApi = inject(PeladaApiService);
   private readonly router = inject(Router);
 
   readonly photoAccept = PHOTO_ACCEPT;
@@ -205,18 +207,33 @@ export class CriarPeladaComponent implements OnDestroy {
     }
 
     this.submitting.set(true);
-    const id = crypto.randomUUID();
     const preview = this.photoPreview();
     this.objectUrl = null;
-    this.peladaContext.setActivePelada({
-      id,
-      name: values.name.trim(),
-      defaultWeekday: values.defaultWeekday,
-      defaultLocation: values.defaultLocation,
-      photoPreviewUrl: preview,
-    });
 
-    void this.router.navigate(['/inicio/regras']).finally(() => this.submitting.set(false));
+    this.peladaApi
+      .createPelada({
+        name: values.name.trim(),
+        defaultWeekday: values.defaultWeekday,
+        defaultLocation: values.defaultLocation,
+        photoFile: this.photoFile,
+      })
+      .subscribe({
+        next: (created) => {
+          this.peladaContext.setActivePelada({
+            id: created.id,
+            name: created.name,
+            defaultWeekday: created.defaultWeekday,
+            defaultLocation: created.defaultLocation ?? '',
+            photoPreviewUrl: created.photoUrl ?? preview,
+          });
+          void this.router.navigate(['/inicio/regras']);
+        },
+        error: () => {
+          this.nameError.set('Não foi possível criar a pelada. Tente de novo.');
+          this.submitting.set(false);
+        },
+        complete: () => this.submitting.set(false),
+      });
   }
 
   private revokePreview(): void {

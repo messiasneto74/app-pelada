@@ -9,7 +9,9 @@
 
 ### Relação com a automação Cursor
 
-A automação **app-pelada — revisar PR** usa as mesmas regras (R-01…R-07). Ela comenta no PR (ex.: **TESTES FALHANDO**); o workflow **materializa o veredito** como check vermelho no GitHub.
+A automação **app-pelada — revisar PR** usa as mesmas regras (R-01…R-07). Ela comenta no PR (ex.: **TESTES FALHANDO**); o workflow **materializa o veredito de testes** como check vermelho no GitHub.
+
+**Disparo junto com este workflow:** após o job `test:all + R-07`, o job **`Cursor Automation — revisar PR`** envia webhook (se configurado) ou use trigger **CI completed** na automação — setup em [CURSOR-REVISAR-PR-SETUP.md](./CURSOR-REVISAR-PR-SETUP.md).
 
 | Situação | Comentário do agente | Check **test:all + R-07** |
 |----------|----------------------|---------------------------|

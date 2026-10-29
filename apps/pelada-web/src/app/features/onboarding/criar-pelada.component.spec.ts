@@ -1,17 +1,31 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { PeladaApiService } from '../../core/pelada/pelada-api.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { CriarPeladaComponent } from './criar-pelada.component';
+import { of, throwError } from 'rxjs';
 
 describe('CriarPeladaComponent', () => {
   let fixture: ComponentFixture<CriarPeladaComponent>;
   let component: CriarPeladaComponent;
   let peladaContext: PeladaContextService;
   let router: Router;
+  let peladaApi: { createPelada: jasmine.Spy };
 
   beforeEach(async () => {
     sessionStorage.clear();
+    peladaApi = {
+      createPelada: jasmine.createSpy('createPelada').and.returnValue(
+        of({
+          id: 'p-api-1',
+          name: 'Pelada da Praça',
+          photoUrl: null,
+          defaultWeekday: 3,
+          defaultLocation: 'Campo Central',
+        }),
+      ),
+    };
     await TestBed.configureTestingModule({
       imports: [CriarPeladaComponent],
       providers: [
@@ -20,6 +34,7 @@ describe('CriarPeladaComponent', () => {
           provide: OAuthService,
           useValue: { getIdentityClaims: () => ({ sub: 'user-test' }) },
         },
+        { provide: PeladaApiService, useValue: peladaApi },
       ],
     }).compileComponents();
 
@@ -48,6 +63,15 @@ describe('CriarPeladaComponent', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
+  it('reabilita submit após erro da API', () => {
+    peladaApi.createPelada.and.returnValue(throwError(() => new Error('network')));
+    component.name.set('Pelada da Praça');
+    component.onSubmit(new Event('submit'));
+    expect(component.nameError()).toContain('Não foi possível');
+    expect(component.submitting()).toBe(false);
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
   it('salva pelada e navega para regras quando válido', () => {
     component.name.set('Pelada da Praça');
     component.location.set('Campo Central');
@@ -56,6 +80,7 @@ describe('CriarPeladaComponent', () => {
 
     expect(peladaContext.hasActivePelada()).toBe(true);
     expect(peladaContext.getActivePelada()?.name).toBe('Pelada da Praça');
+    expect(peladaContext.getActivePelada()?.id).toBe('p-api-1');
     expect(peladaContext.getActivePelada()?.defaultWeekday).toBe(3);
     expect(router.navigate).toHaveBeenCalledWith(['/inicio/regras']);
   });
