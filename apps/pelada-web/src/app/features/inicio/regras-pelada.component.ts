@@ -129,6 +129,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           <pelada-segment [options]="drawOptions" [(value)]="drawSegment" />
         </pelada-field>
         <pelada-switch [(checked)]="drawUseRating">Usar nota</pelada-switch>
+        <pelada-switch [(checked)]="drawUseAttributes">Usar atributos</pelada-switch>
         <pelada-switch [(checked)]="drawUseStyleTags">Usar tags de estilo</pelada-switch>
       </pelada-card>
 
@@ -193,6 +194,7 @@ export class RegrasPeladaComponent implements OnInit {
   readonly drawSegment = model('BALANCED');
   readonly fixedListOnly = model(false);
   readonly drawUseRating = model(true);
+  readonly drawUseAttributes = model(true);
   readonly drawUseStyleTags = model(true);
 
   ngOnInit(): void {
@@ -260,6 +262,7 @@ export class RegrasPeladaComponent implements OnInit {
       paymentModel: this.paymentSegment() as PaymentModel,
       drawMode: this.drawSegment() as PeladaRulesFormValues['drawMode'],
       drawUseRating: this.drawUseRating(),
+      drawUseAttributes: this.drawUseAttributes(),
       drawUseStyleTags: this.drawUseStyleTags(),
     };
   }
@@ -269,6 +272,7 @@ export class RegrasPeladaComponent implements OnInit {
     this.paymentSegment.set(v.paymentModel);
     this.drawSegment.set(v.drawMode);
     this.drawUseRating.set(v.drawUseRating);
+    this.drawUseAttributes.set(v.drawUseAttributes ?? true);
     this.drawUseStyleTags.set(v.drawUseStyleTags);
   }
 }

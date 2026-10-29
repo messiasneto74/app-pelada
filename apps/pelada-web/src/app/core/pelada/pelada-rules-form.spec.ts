@@ -1,6 +1,7 @@
 import {
   DEFAULT_PELADA_RULES,
   toGoalkeeperMode,
+  toDrawWeights,
   validateGoalkeeperToggles,
   validatePeladaRulesForm,
 } from './pelada-rules.model';
@@ -28,6 +29,26 @@ describe('pelada rules form (3.2)', () => {
     expect(toGoalkeeperMode({ goalkeeperPerTeam: false, fixedGoalkeeper: true })).toBe(
       'FIXED_GLOBAL',
     );
+  });
+
+  it('inclui usar atributos nos defaults (spec §3.2)', () => {
+    expect(DEFAULT_PELADA_RULES.drawUseAttributes).toBe(true);
+  });
+
+  it('mapeia drawWeights para API', () => {
+    expect(
+      toDrawWeights({
+        drawMode: 'BALANCED',
+        drawUseRating: true,
+        drawUseAttributes: false,
+        drawUseStyleTags: true,
+      }),
+    ).toEqual({
+      mode: 'BALANCED',
+      useRating: true,
+      useAttributes: false,
+      useStyleTags: true,
+    });
   });
 
   it('valida limites de formato', () => {

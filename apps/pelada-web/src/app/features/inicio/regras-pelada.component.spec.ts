@@ -47,6 +47,7 @@ describe('RegrasPeladaComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Regras da pelada');
     expect(fixture.nativeElement.textContent).toContain('Formato');
     expect(fixture.nativeElement.textContent).toContain('Salvar como padrão');
+    expect(fixture.nativeElement.textContent).toContain('Usar atributos');
   });
 
   it('bloqueia combinação inválida de goleiro ao salvar', () => {

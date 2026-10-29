@@ -19,6 +19,7 @@ export type PeladaRulesFormValues = {
   paymentModel: PaymentModel;
   drawMode: DrawMode;
   drawUseRating: boolean;
+  drawUseAttributes: boolean;
   drawUseStyleTags: boolean;
 };
 
@@ -33,6 +34,7 @@ export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
   paymentModel: 'PER_MATCH',
   drawMode: 'BALANCED',
   drawUseRating: true,
+  drawUseAttributes: true,
   drawUseStyleTags: true,
 };
 
@@ -74,4 +76,19 @@ export function toGoalkeeperMode(values: Pick<
     return 'FIXED_PER_TEAM';
   }
   return 'ROTATING';
+}
+
+/** Payload alinhado a `PeladaRules.drawWeights` (3.2-API). */
+export function toDrawWeights(
+  values: Pick<
+    PeladaRulesFormValues,
+    'drawMode' | 'drawUseRating' | 'drawUseAttributes' | 'drawUseStyleTags'
+  >,
+): Record<string, unknown> {
+  return {
+    mode: values.drawMode,
+    useRating: values.drawUseRating,
+    useAttributes: values.drawUseAttributes,
+    useStyleTags: values.drawUseStyleTags,
+  };
 }
