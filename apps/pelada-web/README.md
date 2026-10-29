@@ -22,7 +22,7 @@ Tokens em `src/theme/` (`resenha-tokens.scss` + utilitários em `resenha-base.sc
 
 ### Shell e navegação (T3)
 
-Rotas autenticadas dentro de `MainShellComponent` com **bottom nav** (Início, Partida, Jogadores, Caixa). Placeholders em `/inicio/regras`, `/partida/*`, `/jogadores`, `/caixa`. Ver [arquitetura §4.2–4.3](../../docs/arquitetura-backend-frontend.md).
+Rotas autenticadas dentro de `MainShellComponent` com **bottom nav** (Início, Partida, Jogadores, Caixa). **`/inicio/regras`** — tela 3.2 (issue #17). Placeholders em `/partida/*`, `/jogadores`, `/caixa`. Ver [arquitetura §4.2–4.3](../../docs/arquitetura-backend-frontend.md).
 
 ### Componentes base (T2)
 

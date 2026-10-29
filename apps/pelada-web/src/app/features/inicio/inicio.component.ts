@@ -28,6 +28,8 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <p class="pelada-text-warn">API offline — rode <code>npm run dev:api</code></p>
       }
       <nav>
+        <a routerLink="/inicio/regras">Regras da pelada</a>
+        ·
         <a routerLink="/entrar">Entrar</a>
         @if (profile) {
           <span class="pelada-muted"> · logado ({{ profile.email ?? profile.keycloakSub }})</span>
