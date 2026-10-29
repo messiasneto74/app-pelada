@@ -7,15 +7,15 @@
 | Todo **pull_request** para `main` | `npm run test:all:ci` (Karma `ChromeHeadless` + `CHROME_HEADLESS_FLAGS` no Linux) |
 | Inclui | `test:core`, `test:api`, `test:web`, `test:scripts:r07` (Vitest + **R-07** ≥80% linhas no diff vs branch base) |
 
-### Relação com a automação Cursor
+### Relação com o agente Cursor
 
-A automação **app-pelada — revisar PR** usa as regras de revisão e publica um
-parecer. O check nativo **Cursor Automation: …** informa apenas que a automação
-terminou; ele pode ficar verde mesmo quando o parecer reprova o PR.
+O agente Cursor é acionado manualmente para revisar o SHA atual e publica um
+parecer seguindo `AGENTS.md`. A antiga automação externa permanece desativada
+para não criar um check verde apenas por ter terminado a execução.
 
 O workflow [`review-policy.yml`](./review-policy.yml) lê a review do Cursor no
 SHA atual e materializa a decisão no check autoritativo **`review-policy`**.
-Configure a automação com trigger **CI completed** — setup em
+O procedimento de revisão manual está em
 [CURSOR-REVISAR-PR-SETUP.md](../CURSOR-REVISAR-PR-SETUP.md).
 
 | Situação | `test:all + R-07` | `review-policy` |

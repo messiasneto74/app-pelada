@@ -1,27 +1,23 @@
-# Automação Cursor **app-pelada — revisar PR** + enforcement
+# Revisão manual do Cursor + enforcement
 
-Objetivo: a automação revisa o SHA atual e publica um parecer. O workflow
-**Review policy** transforma esse parecer em um gate confiável chamado
-**`review-policy`**.
+Objetivo: o agente Cursor revisa manualmente o SHA atual e publica um parecer.
+O workflow **Review policy** transforma esse parecer no único gate confiável,
+chamado **`review-policy`**.
 
-## Trigger da automação — **CI completed**
+## Automação externa desativada
 
-1. Abra [app-pelada — revisar PR](https://cursor.com/automations/f4919674-ce37-11f1-89ee-7aa6f0729b11) (ou Automations → editar).
-2. Repositório: **`messiasneto74/app-pelada`**.
-3. **Adicione** o trigger **GitHub → CI completed**.
-4. Filtro do check: **`test:all + R-07`** (nome exato do job em `.github/workflows/pr-tests.yml`).
-5. Mantenha também **Pull request pushed** se quiser iniciar a revisão já no push.
-6. Salve e ative.
+A automação **app-pelada — revisar PR** deve permanecer desativada. Ela criava
+um check verde quando a execução terminava, mesmo se o parecer reprovava o PR.
 
-A automação dispara quando `test:all + R-07` termina. Não existe mais job de
-webhook que fica verde sem revisar nada.
+Para revisar, abra manualmente um agente Cursor, informe a URL e o número do PR
+e mande seguir `AGENTS.md`. O agente deve publicar a review pelo usuário
+**`cursor`** no SHA atual. Nenhum check operacional separado deve ser criado.
 
 ## O que aparece no GitHub
 
 | Onde | O quê |
 |------|--------|
 | **Checks** | `test:all + R-07` (Actions) |
-| **Checks** | `Cursor Automation: app-pelada — revisar PR` — indica somente que a automação executou; **não é aprovação** |
 | **Checks** | `review-policy` — gate autoritativo do parecer |
 | **Conversation / Reviews** | Comentário de review do usuário **`cursor`** com VEREDITO |
 
@@ -35,10 +31,10 @@ webhook que fica verde sem revisar nada.
 | Cursor registra review `APPROVED` | ❌ vermelho — o agente não pode aprovar |
 
 Cada push muda o SHA e invalida o parecer anterior. O check permanece vermelho
-até a automação revisar o novo SHA. Verde significa somente **apto para a decisão
-manual do mantenedor**; o agente nunca aprova nem faz merge.
+até o agente revisar manualmente o novo SHA. Verde significa somente **apto para
+a decisão manual do mantenedor**; o agente nunca aprova nem faz merge.
 
 ## Re-run manual no PR
 
-- **Checks** → re-run **PR tests**; o trigger **CI completed** inicia nova revisão.
+- Peça uma nova revisão manual do SHA atual ao agente Cursor.
 - Depois do novo parecer, `pull_request_review` recalcula `review-policy`.

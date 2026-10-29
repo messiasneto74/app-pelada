@@ -45,7 +45,7 @@ No Windows PowerShell, use `npm.cmd` se scripts estiverem bloqueados.
 - Dev local: `docs/desenvolvimento-local.md`
 - Credenciais Keycloak dev: `docs/credenciais-dev-local.md`
 
-**Antes de considerar um PR pronto:** `npm run test:all` verde + checks GitHub **`test:all + R-07`** e **`review-policy`** verdes + test plan no PR. O check nativo **`Cursor Automation: app-pelada — revisar PR`** indica somente execução da automação e nunca vale como aprovação. CI: `docs/ci-github.md`.
+**Antes de considerar um PR pronto:** `npm run test:all` verde + checks GitHub **`test:all + R-07`** e **`review-policy`** verdes + test plan no PR. A automação externa **`app-pelada — revisar PR`** deve permanecer desativada; a revisão do agente Cursor é solicitada manualmente para o SHA atual. CI: `docs/ci-github.md`.
 
 **Em todo PR ou quando a revisão/check falhar:** colar no corpo da resposta o bloco **Testes locais (PowerShell)** em `docs/processo-testes-e-qualidade.md` (não só “rode os testes”).
 
