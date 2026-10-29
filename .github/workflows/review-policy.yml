@@ -25,6 +25,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+          path: trusted-policy
+          fetch-depth: 1
+
+      # Exceção de bootstrap: só acontece no PR que introduz esta política,
+      # enquanto o script ainda não existe em main. Depois do primeiro merge,
+      # todas as execuções usam exclusivamente a cópia confiável de main.
+      - name: Checkout temporário da política no PR de bootstrap
+        if: ${{ hashFiles('trusted-policy/scripts/check-review-policy.mjs') == '' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: trusted-policy
           fetch-depth: 1
 
       - name: Node 20
@@ -37,4 +49,4 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node scripts/check-review-policy.mjs
+        run: node trusted-policy/scripts/check-review-policy.mjs
