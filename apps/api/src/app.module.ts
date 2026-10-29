@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { MeModule } from './me/me.module';
 import { PeladasModule } from './peladas/peladas.module';
+import { MatchesModule } from './matches/matches.module';
 import { ProbeModule } from './probe/probe.module';
 
 /** Monorepo: `.env` na raiz; npm -w roda com cwd em `apps/api`. */
@@ -29,6 +30,7 @@ function resolveEnvFilePaths(): string[] {
     PrismaModule,
     MeModule,
     PeladasModule,
+    MatchesModule,
     ProbeModule,
   ],
   controllers: [AppController],

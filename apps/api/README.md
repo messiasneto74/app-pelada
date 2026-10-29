@@ -53,6 +53,9 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 
 - **Sem** rotas `/auth/*` — login só no Keycloak (Angular F0-5).
 - `GET /me` e `PATCH /me` exigem `Authorization: Bearer <access_token>`.
+- JWT validado via JWKS (`KEYCLOAK_ISSUER`, `KEYCLOAK_JWKS_URI`).
+- Primeiro acesso cria `User` no Postgres (JIT por `sub`).
+- Dev local: `DEV_AUTH_BYPASS=true` + qualquer `Bearer` (ver `.env.example`); **nunca** em produção.
 
 ## Peladas (L1-API)
 
@@ -66,13 +69,16 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 - `GET /peladas/:peladaId/rules` — JWT; membro da pelada.
 - `PATCH /peladas/:peladaId/rules` — JWT; **ORGANIZADOR**; body `PatchPeladaRulesDto` (`domain/dto/`).
 - Validação GK: `extra.goalkeeperPerTeam` e `extra.fixedGoalkeeper` não podem ser true juntos; conflito com `goalkeeperMode` → `400`.
-- JWT validado via JWKS (`KEYCLOAK_ISSUER`, `KEYCLOAK_JWKS_URI`).
-- Primeiro acesso cria `User` no Postgres (JIT por `sub`).
-- Dev local: `DEV_AUTH_BYPASS=true` + qualquer `Bearer` (ver `.env.example`); **nunca** em produção.
+
+## Exceção de regras por partida (3.2-EXC)
+
+- `GET /peladas/:peladaId/matches/:matchId/rules` — JWT; membro; resposta `{ matchId, peladaId, rulesOverride, defaultRules, effectiveRules }`.
+- `PATCH /peladas/:peladaId/matches/:matchId/rules-override` — JWT; **ORGANIZADOR**; body `PatchMatchRulesOverrideDto`; persiste só em `Match.rulesOverride` (não altera `PeladaRules`).
+- Mesma validação GK do patch de regras da pelada, aplicada ao merge **effective** antes de salvar.
 
 ## Testes de integração (TEST-API-HARNESS)
 
 - Runner: `test/jest-integration.json` (incluído em `npm run test:api`).
 - Postgres dedicado: `npm run db:test:up` + `db:test:migrate` na raiz; `DATABASE_URL_TEST` no `.env`.
 - Com DB de teste: `$env:RUN_DB_TESTS="1"; npm.cmd run test:api` — health, 401, JIT com JWT RS256 de fixture (`test/helpers/sign-test-jwt.ts`).
-- Factories: `test/factories/user.factory.ts`, `pelada.factory.ts`.
+- Factories: `test/factories/user.factory.ts`, `pelada.factory.ts`, `match.factory.ts`.
