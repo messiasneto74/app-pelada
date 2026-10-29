@@ -23,7 +23,6 @@
     "test:scripts:r07": "npm run test:scripts:cov && node scripts/check-pr-line-coverage.mjs",
     "test:no-skipped": "node scripts/check-no-skipped-tests.mjs",
     "check:review-policy": "node scripts/check-review-policy.mjs",
-    "check:codex-review-policy": "node scripts/check-codex-review-policy.mjs",
     "test:all": "npm run test:no-skipped && npm run test:core && npm run test:api && npm run test:web && npm run test:scripts:r07",
     "test:all:ci": "npm run test:no-skipped && npm run test:core && npm run test:api && npm run test:web:ci && npm run test:scripts:r07",
     "issue:mark-dod": "node scripts/mark-issue-dod.mjs",
