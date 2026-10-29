@@ -210,9 +210,34 @@ export async function runReviewPolicy({
     return { exitCode: 0, result };
   }
 
+  if (result.code === 'awaiting_cursor_review') {
+    log.log(result.message);
+    return { exitCode: 2, result };
+  }
+
   log.error(`::error title=Review policy::${result.message}`);
-  return {
-    exitCode: result.code === 'awaiting_cursor_review' ? 2 : 1,
-    result,
+  return { exitCode: 1, result };
+}
+
+export async function waitForReviewPolicy({
+  runOnce = () => runReviewPolicy(),
+  attempts = 180,
+  intervalMs = 10_000,
+  sleepFn = (milliseconds) =>
+    new Promise((resolve) => setTimeout(resolve, milliseconds)),
+  log = console,
+} = {}) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const outcome = await runOnce();
+    if (outcome.exitCode !== 2) return outcome;
+    if (attempt < attempts) await sleepFn(intervalMs);
+  }
+
+  const result = {
+    allowed: false,
+    code: 'cursor_review_timeout',
+    message: 'Timeout aguardando parecer do Cursor para o SHA atual.',
   };
+  log.error(`::error title=Review policy::${result.message}`);
+  return { exitCode: 1, result };
 }

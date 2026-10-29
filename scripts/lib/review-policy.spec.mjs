@@ -4,6 +4,7 @@ import {
   fetchPullRequestReviews,
   parseReviewVerdict,
   runReviewPolicy,
+  waitForReviewPolicy,
 } from './review-policy.mjs';
 
 const headSha = 'abc1234abc1234abc1234abc1234abc1234abc12';
@@ -225,5 +226,61 @@ describe('review policy GitHub integration', () => {
     expect(log.log).toHaveBeenCalledWith(
       expect.stringContaining('apto para aprovação manual'),
     );
+  });
+});
+
+describe('review policy polling', () => {
+  it('retries exit code 2 until the current SHA review is available', async () => {
+    const runOnce = vi
+      .fn()
+      .mockResolvedValueOnce({ exitCode: 2 })
+      .mockResolvedValueOnce({ exitCode: 2 })
+      .mockResolvedValueOnce({ exitCode: 0, result: { allowed: true } });
+    const sleepFn = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      waitForReviewPolicy({ runOnce, sleepFn, attempts: 3, intervalMs: 10 }),
+    ).resolves.toMatchObject({ exitCode: 0, result: { allowed: true } });
+    expect(runOnce).toHaveBeenCalledTimes(3);
+    expect(sleepFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops immediately when the review rejects the SHA', async () => {
+    const runOnce = vi.fn().mockResolvedValue({
+      exitCode: 1,
+      result: { allowed: false, code: 'changes_requested' },
+    });
+    const sleepFn = vi.fn();
+
+    await expect(
+      waitForReviewPolicy({ runOnce, sleepFn }),
+    ).resolves.toMatchObject({
+      exitCode: 1,
+      result: { code: 'changes_requested' },
+    });
+    expect(runOnce).toHaveBeenCalledOnce();
+    expect(sleepFn).not.toHaveBeenCalled();
+  });
+
+  it('fails closed after exhausting the review wait timeout', async () => {
+    const runOnce = vi.fn().mockResolvedValue({ exitCode: 2 });
+    const sleepFn = vi.fn().mockResolvedValue(undefined);
+    const log = { error: vi.fn() };
+
+    await expect(
+      waitForReviewPolicy({
+        runOnce,
+        sleepFn,
+        log,
+        attempts: 2,
+        intervalMs: 10,
+      }),
+    ).resolves.toMatchObject({
+      exitCode: 1,
+      result: { code: 'cursor_review_timeout' },
+    });
+    expect(runOnce).toHaveBeenCalledTimes(2);
+    expect(sleepFn).toHaveBeenCalledOnce();
+    expect(log.error).toHaveBeenCalledWith(expect.stringContaining('Timeout'));
   });
 });

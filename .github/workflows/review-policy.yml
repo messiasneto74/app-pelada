@@ -32,7 +32,7 @@ jobs:
       # enquanto o script ainda não existe em main. Depois do primeiro merge,
       # todas as execuções usam exclusivamente a cópia confiável de main.
       - name: Checkout temporário da política no PR de bootstrap
-        if: ${{ hashFiles('trusted-policy/scripts/check-review-policy.mjs') == '' }}
+        if: ${{ hashFiles('trusted-policy/scripts/wait-review-policy.mjs') == '' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -106,18 +106,4 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -u
-          for attempt in $(seq 1 180); do
-            node trusted-policy/scripts/check-review-policy.mjs
-            code=$?
-            if [ "$code" -eq 0 ]; then
-              exit 0
-            fi
-            if [ "$code" -ne 2 ]; then
-              exit "$code"
-            fi
-            sleep 10
-          done
-          echo "::error title=Review policy::Timeout aguardando parecer do Cursor para o SHA atual."
-          exit 1
+        run: node trusted-policy/scripts/wait-review-policy.mjs
