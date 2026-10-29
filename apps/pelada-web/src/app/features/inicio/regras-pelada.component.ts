@@ -10,6 +10,7 @@ import {
   type PeladaRulesFormValues,
 } from '../../core/pelada/pelada-rules.model';
 import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
+import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaCardComponent } from '../../ui/card.component';
 import { PeladaFieldComponent } from '../../ui/field.component';
@@ -170,6 +171,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
 export class RegrasPeladaComponent implements OnInit {
   private readonly peladaContext = inject(PeladaContextService);
   private readonly rulesService = inject(PeladaRulesService);
+  private readonly rulesApi = inject(PeladaRulesApiService);
   private readonly router = inject(Router);
 
   readonly values = signal<PeladaRulesFormValues>({ ...DEFAULT_PELADA_RULES });
@@ -204,7 +206,18 @@ export class RegrasPeladaComponent implements OnInit {
       return;
     }
     this.peladaName.set(pelada.name);
-    const loaded = this.rulesService.getDefaultRules(pelada.id);
+    this.rulesApi.fetchRules(pelada.id).subscribe({
+      next: (dto) => {
+        const loaded = this.rulesApi.mapFromApi(dto);
+        this.applyLoadedRules(loaded);
+      },
+      error: () => {
+        this.applyLoadedRules(this.rulesService.getDefaultRules(pelada.id));
+      },
+    });
+  }
+
+  private applyLoadedRules(loaded: PeladaRulesFormValues): void {
     this.values.set(loaded);
     this.syncSegmentsFromValues(loaded);
   }
@@ -249,10 +262,18 @@ export class RegrasPeladaComponent implements OnInit {
       this.savedMessage.set(null);
       return;
     }
-    this.rulesService.saveDefaultRules(pelada.id, merged);
-    this.values.set(merged);
-    this.formError.set(null);
-    this.savedMessage.set('Regras salvas como padrão do grupo.');
+    this.rulesApi.saveRules(pelada.id, merged).subscribe({
+      next: () => {
+        this.rulesService.saveDefaultRules(pelada.id, merged);
+        this.values.set(merged);
+        this.formError.set(null);
+        this.savedMessage.set('Regras salvas como padrão do grupo.');
+      },
+      error: () => {
+        this.formError.set('Não foi possível salvar as regras. Tente de novo.');
+        this.savedMessage.set(null);
+      },
+    });
   }
 
   private mergeSegmentsIntoValues(): PeladaRulesFormValues {

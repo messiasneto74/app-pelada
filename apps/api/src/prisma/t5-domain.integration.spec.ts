@@ -14,9 +14,9 @@ const runDb =
   it('persiste regras, jogador, partida, presença, time e pagamento', async () => {
     const pelada = await createPelada(prisma, { name: 'T5 domain' });
 
-    await prisma.peladaRules.create({
+    await prisma.peladaRules.update({
+      where: { peladaId: pelada.id },
       data: {
-        peladaId: pelada.id,
         playersPerTeam: 6,
         teamCount: 2,
         capacity: 14,

@@ -60,6 +60,12 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 - Resposta `201`: `{ id, name, city, state, photoUrl?, role: "ORGANIZADOR" }`.
 - Cria `Pelada`, `PeladaMember` (ORGANIZADOR) e `PeladaRules` padrão; foto em `UPLOAD_DIR` (padrão `./uploads`) servida em `/uploads/...` (`PUBLIC_UPLOAD_BASE_URL` no `.env`).
 - Arquivo grande demais: `413` (Multer `LIMIT_FILE_SIZE`).
+
+## Regras (3.2-API)
+
+- `GET /peladas/:peladaId/rules` — JWT; membro da pelada.
+- `PATCH /peladas/:peladaId/rules` — JWT; **ORGANIZADOR**; body `PatchPeladaRulesDto` (`domain/dto/`).
+- Validação GK: `extra.goalkeeperPerTeam` e `extra.fixedGoalkeeper` não podem ser true juntos; conflito com `goalkeeperMode` → `400`.
 - JWT validado via JWKS (`KEYCLOAK_ISSUER`, `KEYCLOAK_JWKS_URI`).
 - Primeiro acesso cria `User` no Postgres (JIT por `sub`).
 - Dev local: `DEV_AUTH_BYPASS=true` + qualquer `Bearer` (ver `.env.example`); **nunca** em produção.
