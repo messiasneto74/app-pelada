@@ -67,8 +67,10 @@ export const routes: Routes = [
       },
       {
         path: 'inicio/regras',
-        loadComponent: placeholder,
-        data: { title: 'Regras da pelada', eyebrow: 'Início' },
+        loadComponent: () =>
+          import('./features/inicio/regras-pelada.component').then(
+            (m) => m.RegrasPeladaComponent,
+          ),
       },
       {
         path: 'inicio/criar-partida',

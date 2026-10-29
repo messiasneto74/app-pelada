@@ -27,18 +27,19 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       } @else if (healthError) {
         <p class="pelada-text-warn">API offline — rode <code>npm run dev:api</code></p>
       }
-      <nav>
-        <a routerLink="/entrar">Entrar</a>
-        @if (profile) {
-          <span class="pelada-muted"> · logado ({{ profile.email ?? profile.keycloakSub }})</span>
-        }
+      <nav class="shortcuts">
+        <a routerLink="/inicio/regras" peladaButton variant="secondary">Regras da pelada</a>
+        <a routerLink="/inicio/criar-partida" peladaButton variant="secondary">Criar partida</a>
       </nav>
     </section>
   `,
   styles: [
     `
-      nav {
+      nav.shortcuts {
         margin-top: var(--pelada-space-4);
+        display: flex;
+        flex-direction: column;
+        gap: var(--pelada-space-3);
       }
       code {
         font-size: 0.85em;
