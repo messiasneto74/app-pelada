@@ -1,6 +1,5 @@
-# CI-1 — mesmo gate que a automação Cursor "app-pelada — revisar PR":
-# npm run test:all (core + api + web + test:scripts:r07 / R-07 ≥80% no diff vs base).
-# Falha aqui = PR vermelho no GitHub (requer branch protection para bloquear merge).
+# CI-1 — testes objetivos do projeto.
+# O parecer do agente é validado separadamente pelo check obrigatório `review-policy`.
 name: PR tests
 
 on:
@@ -49,37 +48,3 @@ jobs:
           CHROME_EXECUTABLE: ${{ steps.chrome.outputs.chrome-path }}
           CHROME_BIN: ${{ github.workspace }}/scripts/chromium-ci.sh
         run: chmod +x scripts/chromium-ci.sh && xvfb-run --auto-servernum npm run test:all:ci
-
-  cursor-revisar-pr:
-    name: Cursor Automation — revisar PR
-    needs: test-all
-    if: >-
-      always() &&
-      needs.test-all.result != 'cancelled' &&
-      github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    steps:
-      - name: Disparar automação Cursor (webhook opcional)
-        env:
-          WEBHOOK_URL: ${{ secrets.CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK }}
-          WEBHOOK_KEY: ${{ secrets.CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK_KEY }}
-        run: |
-          set -euo pipefail
-          if [ -z "${WEBHOOK_URL:-}" ]; then
-            echo "::notice title=Cursor revisar PR::Sem secret CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK. Configure trigger CI completed (check test:all + R-07) na automação — ver .github/CURSOR-REVISAR-PR-SETUP.md"
-            exit 0
-          fi
-          curl_args=(-fsS -X POST "$WEBHOOK_URL" -H "Content-Type: application/json")
-          if [ -n "${WEBHOOK_KEY:-}" ]; then
-            curl_args+=(-H "Authorization: Bearer ${WEBHOOK_KEY}")
-          fi
-          payload=$(jq -n \
-            --arg repo "${{ github.repository }}" \
-            --argjson pr "${{ github.event.pull_request.number }}" \
-            --arg sha "${{ github.event.pull_request.head.sha }}" \
-            --arg url "${{ github.event.pull_request.html_url }}" \
-            --arg ci "${{ needs.test-all.result }}" \
-            '{repository:$repo, pull_request_number:$pr, head_sha:$sha, pull_url:$url, ci_test_all_result:$ci}')
-          curl "${curl_args[@]}" -d "$payload"
-          echo "Webhook Cursor revisar PR enviado (test-all=${{ needs.test-all.result }})."

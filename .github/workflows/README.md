@@ -9,17 +9,24 @@
 
 ### Relação com a automação Cursor
 
-A automação **app-pelada — revisar PR** usa as mesmas regras (R-01…R-07). Ela comenta no PR (ex.: **TESTES FALHANDO**); o workflow **materializa o veredito de testes** como check vermelho no GitHub.
+A automação **app-pelada — revisar PR** usa as regras de revisão e publica um
+parecer. O check nativo **Cursor Automation: …** informa apenas que a automação
+terminou; ele pode ficar verde mesmo quando o parecer reprova o PR.
 
-**Disparo junto com este workflow:** após o job `test:all + R-07`, o job **`Cursor Automation — revisar PR`** envia webhook (se configurado) ou use trigger **CI completed** na automação — setup em [CURSOR-REVISAR-PR-SETUP.md](./CURSOR-REVISAR-PR-SETUP.md).
+O workflow [`review-policy.yml`](./review-policy.yml) lê a review do Cursor no
+SHA atual e materializa a decisão no check autoritativo **`review-policy`**.
+Configure a automação com trigger **CI completed** — setup em
+[CURSOR-REVISAR-PR-SETUP.md](../CURSOR-REVISAR-PR-SETUP.md).
 
-| Situação | Comentário do agente | Check **test:all + R-07** |
-|----------|----------------------|---------------------------|
-| Jest/Vitest/Karma falhou | TESTES FALHANDO | ❌ Failed |
-| 0 falhas, R-07 &lt; 80% | TESTES FALHANDO | ❌ Failed |
-| Tudo verde | Aprovado / OK | ✅ Success |
+| Situação | `test:all + R-07` | `review-policy` |
+|----------|----------------------|-----------------|
+| Teste ou R-07 falhou | ❌ Failed | aguarda/reprova conforme parecer |
+| Agente reprovou | pode estar verde | ❌ Failed |
+| Sem parecer para o SHA atual | independente | ❌ Failed |
+| Testes verdes e agente declarou apto | ✅ Success | ✅ Success |
 
-**Merge bloqueado** só se o mantenedor ativar *branch protection* exigindo este check (ver [ci-github.md](../../docs/ci-github.md)).
+O merge fica bloqueado quando a proteção da `main` exige **os dois** checks (ver
+[ci-github.md](../../docs/ci-github.md)).
 
 ### Variáveis
 
