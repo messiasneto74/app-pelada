@@ -1,17 +1,21 @@
-# Revisão manual do Cursor + enforcement
+# Revisão Cursor via webhook + enforcement
 
-Objetivo: o agente Cursor revisa manualmente o SHA atual e publica um parecer.
+Objetivo: o GitHub dispara o agente Cursor via webhook e ele publica um parecer.
 O workflow **Review policy** transforma esse parecer no único gate confiável,
 chamado **`review-policy`**.
 
-## Automação externa desativada
+## Configuração obrigatória no Cursor
 
-A automação **app-pelada — revisar PR** deve permanecer desativada. Ela criava
-um check verde quando a execução terminava, mesmo se o parecer reprovava o PR.
+A automação **app-pelada — revisar PR** deve ficar ativa somente com o trigger
+**Webhook**. Remova `PR opened`, `PR pushed` e `CI completed`, pois esses triggers
+criavam um check operacional verde separado.
 
-Para revisar, abra manualmente um agente Cursor, informe a URL e o número do PR
-e mande seguir `AGENTS.md`. O agente deve publicar a review pelo usuário
-**`cursor`** no SHA atual. Nenhum check operacional separado deve ser criado.
+Cadastre no GitHub Actions os secrets
+`CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK` e
+`CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK_KEY`. O workflow envia repositório, PR,
+URL e SHA ao webhook somente depois que `test:all + R-07` passar. O secret da
+chave aceita tanto o valor puro quanto o cabeçalho `Bearer ...`. O agente deve
+publicar a review pelo usuário **`cursor`**.
 
 ## O que aparece no GitHub
 
@@ -31,10 +35,10 @@ e mande seguir `AGENTS.md`. O agente deve publicar a review pelo usuário
 | Cursor registra review `APPROVED` | ❌ vermelho — o agente não pode aprovar |
 
 Cada push muda o SHA e invalida o parecer anterior. O check permanece vermelho
-até o agente revisar manualmente o novo SHA. Verde significa somente **apto para
+até o agente revisar o novo SHA. Verde significa somente **apto para
 a decisão manual do mantenedor**; o agente nunca aprova nem faz merge.
 
 ## Re-run manual no PR
 
-- Peça uma nova revisão manual do SHA atual ao agente Cursor.
-- Depois do novo parecer, `pull_request_review` recalcula `review-policy`.
+- Faça push do SHA corrigido; o webhook inicia uma nova revisão.
+- O próprio check aguarda o CI e o parecer antes de terminar.

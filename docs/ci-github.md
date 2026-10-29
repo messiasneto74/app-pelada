@@ -8,7 +8,7 @@ Workflows:
 ## O que você vê no PR
 
 1. **`test:all + R-07`** — resultado objetivo da suíte de testes.
-2. **`review-policy`** — lê o parecer manual do agente Cursor para o SHA atual. É o único check autoritativo para o veredito da revisão.
+2. **`review-policy`** — aguarda os testes, dispara o agente via webhook e lê o parecer para o SHA atual. É o único check autoritativo para o veredito da revisão.
 
 `review-policy` fica verde somente com o cabeçalho exato
 `VEREDITO: APTO PARA APROVAÇÃO MANUAL`, SHA atual, issue, milestone,
@@ -46,7 +46,7 @@ Antes de dizer “pronto para merge”:
 3. Confirmar **`test:all + R-07`** verde
 4. Confirmar **`review-policy`** verde para o mesmo SHA
 
-A automação externa do Cursor deve permanecer desativada. Solicite a revisão
-manualmente e use somente **`review-policy`** como autorização técnica.
+A automação Cursor deve usar somente o trigger Webhook. Triggers GitHub/CI devem
+permanecer removidos. Use somente **`review-policy`** como autorização técnica.
 
 Regras: `.cursor/rules/pelada-agente-testes.mdc`, `AGENTS.md`.

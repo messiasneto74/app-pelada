@@ -211,5 +211,8 @@ export async function runReviewPolicy({
   }
 
   log.error(`::error title=Review policy::${result.message}`);
-  return { exitCode: 1, result };
+  return {
+    exitCode: result.code === 'awaiting_cursor_review' ? 2 : 1,
+    result,
+  };
 }

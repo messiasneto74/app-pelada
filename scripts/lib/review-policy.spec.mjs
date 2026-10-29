@@ -184,6 +184,26 @@ describe('review policy GitHub integration', () => {
     });
   });
 
+  it('uses exit code 2 only while waiting for the current SHA review', async () => {
+    const log = { log: vi.fn(), error: vi.fn() };
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    });
+    const env = {
+      GITHUB_TOKEN: 'token',
+      GITHUB_REPOSITORY: 'owner/repo',
+      PR_NUMBER: '10',
+      HEAD_SHA: headSha,
+      GITHUB_API_URL: 'https://api.example.test',
+    };
+
+    await expect(runReviewPolicy({ env, fetchFn, log })).resolves.toMatchObject({
+      exitCode: 2,
+      result: { code: 'awaiting_cursor_review' },
+    });
+  });
+
   it('returns the verdict as process outcome', async () => {
     const log = { log: vi.fn(), error: vi.fn() };
     const fetchFn = vi.fn().mockResolvedValue({

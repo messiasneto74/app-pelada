@@ -9,13 +9,13 @@
 
 ### Relação com o agente Cursor
 
-O agente Cursor é acionado manualmente para revisar o SHA atual e publica um
-parecer seguindo `AGENTS.md`. A antiga automação externa permanece desativada
-para não criar um check verde apenas por ter terminado a execução.
+O workflow aciona o agente Cursor por webhook para revisar o SHA atual. A
+automação usa somente o trigger Webhook, evitando o check operacional verde dos
+triggers GitHub do Cursor.
 
 O workflow [`review-policy.yml`](./review-policy.yml) lê a review do Cursor no
 SHA atual e materializa a decisão no check autoritativo **`review-policy`**.
-O procedimento de revisão manual está em
+O procedimento de configuração está em
 [CURSOR-REVISAR-PR-SETUP.md](../CURSOR-REVISAR-PR-SETUP.md).
 
 | Situação | `test:all + R-07` | `review-policy` |
