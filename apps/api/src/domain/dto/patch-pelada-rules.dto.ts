@@ -51,5 +51,9 @@ export class PatchPeladaRulesDto {
 
   @IsOptional()
   @IsObject()
-  drawWeights?: Record<string, number>;
+  drawWeights?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsObject()
+  extra?: Record<string, unknown>;
 }

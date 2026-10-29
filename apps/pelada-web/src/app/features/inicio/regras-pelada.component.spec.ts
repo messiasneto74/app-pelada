@@ -1,8 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { of } from 'rxjs';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
+import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
 import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
+import { DEFAULT_PELADA_RULES } from '../../core/pelada/pelada-rules.model';
 import { RegrasPeladaComponent } from './regras-pelada.component';
 
 describe('RegrasPeladaComponent', () => {
@@ -22,6 +25,34 @@ describe('RegrasPeladaComponent', () => {
         {
           provide: OAuthService,
           useValue: { getIdentityClaims: () => ({ sub: 'user-regras' }) },
+        },
+        {
+          provide: PeladaRulesApiService,
+          useValue: {
+            fetchRules: () =>
+              of({
+                peladaId: 'p1',
+                playersPerTeam: DEFAULT_PELADA_RULES.playersPerTeam,
+                teamCount: DEFAULT_PELADA_RULES.teamCount,
+                modality: DEFAULT_PELADA_RULES.modality,
+                goalkeeperMode: 'ROTATING',
+                fixedListOnly: false,
+                drawWeights: {},
+                extra: {},
+              }),
+            saveRules: () =>
+              of({
+                peladaId: 'p1',
+                playersPerTeam: 6,
+                teamCount: 2,
+                modality: 'campo',
+                goalkeeperMode: 'ROTATING',
+                fixedListOnly: false,
+                drawWeights: {},
+                extra: {},
+              }),
+            mapFromApi: () => ({ ...DEFAULT_PELADA_RULES }),
+          },
         },
       ],
     }).compileComponents();

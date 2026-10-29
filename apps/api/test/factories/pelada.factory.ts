@@ -29,6 +29,9 @@ export async function createPelada(
           role: 'ORGANIZADOR',
         },
       },
+      rules: {
+        create: {},
+      },
     },
     include: {
       owner: true,
