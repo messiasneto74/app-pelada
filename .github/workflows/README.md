@@ -18,15 +18,25 @@ SHA atual e materializa a decisão no check autoritativo **`review-policy`**.
 O procedimento de configuração está em
 [CURSOR-REVISAR-PR-SETUP.md](../CURSOR-REVISAR-PR-SETUP.md).
 
-| Situação | `test:all + R-07` | `review-policy` |
-|----------|----------------------|-----------------|
-| Teste ou R-07 falhou | ❌ Failed | aguarda/reprova conforme parecer |
-| Agente reprovou | pode estar verde | ❌ Failed |
-| Sem parecer para o SHA atual | independente | ❌ Failed |
-| Testes verdes e agente declarou apto | ✅ Success | ✅ Success |
+| Situação | `test:all + R-07` | `review-policy` | `codex-review-policy` |
+|----------|----------------------|-----------------|-----------------------|
+| Teste ou R-07 falhou | ❌ Failed | aguarda/reprova | reprova ao testar |
+| Cursor reprovou | pode estar verde | ❌ Failed | independente |
+| Codex reprovou | pode estar verde | independente | ❌ Failed |
+| Parecer ausente/inválido | independente | ❌ Failed | ❌ Failed |
+| Tudo verde e ambos aptos | ✅ Success | ✅ Success | ✅ Success |
 
-O merge fica bloqueado quando a proteção da `main` exige **os dois** checks (ver
+O merge fica bloqueado quando a proteção da `main` exige **os três** checks (ver
 [ci-github.md](../../docs/ci-github.md)).
+
+### Relação com o agente Codex
+
+O workflow [`codex-review.yml`](./codex-review.yml) executa uma segunda revisão
+independente usando a action oficial `openai/codex-action`. O mesmo job publica o
+parecer e aplica o veredito ao check **`codex-review-policy`**, evitando um verde
+operacional separado. Para frontend, o verde exige validação funcional da tela,
+viewport 390×844 e evidência visual. Configuração em
+[CODEX-REVISAR-PR-SETUP.md](../CODEX-REVISAR-PR-SETUP.md).
 
 ### Variáveis
 

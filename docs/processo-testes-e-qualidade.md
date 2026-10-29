@@ -8,7 +8,7 @@ Instruções do repositório para agentes (local, Cloud e revisão de PR): **`AG
 
 | Ambiente | Uso no MVP |
 |----------|------------|
-| **Sua máquina (Windows)** | **Único obrigatório** — `npm.cmd run test:all` (`test:core`, `test:api`, `test:web`, `test:scripts:cov` ≥80% em `scripts/lib`) |
+| **Sua máquina (Windows)** | Gate local — `npm.cmd run test:all` (`test:core`, `test:api`, `test:web`, `test:scripts:cov` ≥80% em `scripts/lib`) |
 | **GitHub Actions (CI-1)** | Todo PR → `test:all` + R-07 (check **`test:all + R-07`**). Bloqueia merge só com [branch protection](ci-github.md). |
 | **VPS / staging** | Só para deploy manual (`DEPLOY-1`); E2E pode rodar local sem VPS |
 
@@ -48,6 +48,7 @@ Ver check do PR: `gh pr checks` (número do PR).
 |------|--------|--------|
 | **Você (desenvolvedor)** | Antes de **aprovar merge** | `npm.cmd run test:all` + smokes manuais da issue (Docker quando aplicável). |
 | **Agente Cursor (IA)** | Implementação + **após merge confirmado** | `test:all` verde; então `npm.cmd run issue:mark-dod -- <#issue>` para marcar checkboxes no GitHub. Alinhado à automação **app-pelada — revisar PR** (R-01…R-07). |
+| **Agente Codex (IA)** | Todo PR | Revisão independente, testes/build/audit e, quando houver frontend, fluxo real da tela em 390×844 com evidência. Materializa o resultado em `codex-review-policy`. |
 | **Ninguém em background** | — | Não há robô rodando 130+ testes 24h sem uma tarefa de implementação. |
 
 ## O que o agente **não** faz
@@ -63,11 +64,14 @@ Ver check do PR: `gh pr checks` (número do PR).
 3. Roda `npm.cmd run test:all` (e smokes da issue).
 4. Mostra passou/falhou e itera até verde; scripts em `scripts/lib` com cobertura ≥80% (R-07).
 
-## Automação de PR (Cursor) + CI
+## Automação de PR (Cursor + Codex) + CI
 
 Veredito **TESTES FALHANDO** com **0 testes falhando** = reprovação por **R-07** (cobertura) ou **§5** (domínio fora do escopo da issue). Ver `.cursor/rules/pelada-agente-testes.mdc`.
 
-O workflow [pr-tests.yml](../.github/workflows/pr-tests.yml) repete o mesmo gate no GitHub (check vermelho). Detalhes: [ci-github.md](ci-github.md).
+Os workflows [pr-tests.yml](../.github/workflows/pr-tests.yml),
+[review-policy.yml](../.github/workflows/review-policy.yml) e
+[codex-review.yml](../.github/workflows/codex-review.yml) materializam os três
+gates no GitHub. Detalhes: [ci-github.md](ci-github.md).
 
 ## Definition of Done (toda issue de implementação)
 

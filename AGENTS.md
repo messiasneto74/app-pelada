@@ -1,6 +1,6 @@
 # AGENTS.md — app-pelada (monorepo)
 
-Instruções para **Cursor Cloud Agents**, **Automations** e qualquer agente trabalhando neste repositório (`messiasneto74/app-pelada`).
+Instruções para **Cursor Cloud Agents**, **Codex**, **Automations** e qualquer agente trabalhando neste repositório (`messiasneto74/app-pelada`).
 
 ## Visão geral
 
@@ -45,7 +45,7 @@ No Windows PowerShell, use `npm.cmd` se scripts estiverem bloqueados.
 - Dev local: `docs/desenvolvimento-local.md`
 - Credenciais Keycloak dev: `docs/credenciais-dev-local.md`
 
-**Antes de considerar um PR pronto:** `npm run test:all` verde + checks GitHub **`test:all + R-07`** e **`review-policy`** verdes + test plan no PR. A automação **`app-pelada — revisar PR`** usa exclusivamente trigger Webhook; triggers GitHub/CI são proibidos para não gerar check operacional verde separado. CI: `docs/ci-github.md`.
+**Antes de considerar um PR pronto:** `npm run test:all` verde + checks GitHub **`test:all + R-07`**, **`review-policy`** (Cursor) e **`codex-review-policy`** verdes + test plan no PR. A automação **`app-pelada — revisar PR`** usa exclusivamente trigger Webhook; triggers GitHub/CI são proibidos para não gerar check operacional verde separado. CI: `docs/ci-github.md`.
 
 **Em todo PR ou quando a revisão/check falhar:** colar no corpo da resposta o bloco **Testes locais (PowerShell)** em `docs/processo-testes-e-qualidade.md` (não só “rode os testes”).
 
@@ -90,6 +90,29 @@ parecer antigo, texto ambíguo ou `APPROVED` deixam o check vermelho. Somente
 exclusivamente manuais.
 
 Regras persistentes em `.cursor/rules/`.
+
+## Code Review Rules
+
+### Comportamento e contratos
+
+- Bloqueie mudanças que atendam ao diff superficialmente, mas quebrem o fluxo da
+  issue, persistência, recarga, autorização, contratos HTTP ou comportamento já
+  existente fora do escopo. Caminho seguro: preservar o contrato ou entregar
+  migração e testes de regressão no mesmo PR.
+
+### Telas e interações
+
+- Para mudanças em `apps/pelada-web`, revisão estática não basta. Exija execução
+  da tela real, fluxo de interação da issue, estados aplicáveis, viewport 390×844 e
+  evidência visual reproduzível. Caminho seguro: harness automatizado ou teste
+  funcional com screenshot anexado; impossibilidade de testar é bloqueante.
+
+### Veredito e enforcement
+
+- Nunca produza sinal verde com falha, skip, teste não executado, evidência
+  ausente ou bloqueante. O Codex usa o formato de
+  `.github/codex/prompts/review.md`; somente zero bloqueantes permite
+  `APTO PARA APROVAÇÃO MANUAL`. Aprovação e merge permanecem humanos.
 
 ## Cursor Cloud specific instructions
 
