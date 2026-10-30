@@ -7,12 +7,19 @@ import {
 
 describe('resolveDatabaseUrlTest', () => {
   it('returns error when DATABASE_URL_TEST missing', () => {
-    const result = resolveDatabaseUrlTest({
-      repoRoot: '/repo',
-      envPath: '/repo/.env.missing',
-    });
-    expect(result.ok).toBe(false);
-    expect(result.message).toMatch(/DATABASE_URL_TEST/);
+    const prev = process.env.DATABASE_URL_TEST;
+    delete process.env.DATABASE_URL_TEST;
+    try {
+      const result = resolveDatabaseUrlTest({
+        repoRoot: '/repo',
+        envPath: '/repo/.env.missing',
+      });
+      expect(result.ok).toBe(false);
+      expect(result.message).toMatch(/DATABASE_URL_TEST/);
+    } finally {
+      if (prev === undefined) delete process.env.DATABASE_URL_TEST;
+      else process.env.DATABASE_URL_TEST = prev;
+    }
   });
 
   it('reads DATABASE_URL_TEST from process.env', () => {
