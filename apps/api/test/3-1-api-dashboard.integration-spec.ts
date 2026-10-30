@@ -42,6 +42,29 @@ const runHarness =
         .expect(401);
     });
 
+    it('GET /peladas/:id/dashboard returns 404 for unknown pelada', async () => {
+      const token = signTestJwt({ sub: 'dash-404', email: 'n@o.c' });
+
+      await request(app.getHttpServer())
+        .get('/peladas/unknown-pelada-id/dashboard')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404);
+    });
+
+    it('GET /peladas/:id/dashboard returns 403 for non-member', async () => {
+      const orgSub = 'dash-org';
+      const otherSub = 'dash-other';
+      const org = await createUser(prisma, { keycloakSub: orgSub });
+      await createUser(prisma, { keycloakSub: otherSub });
+      const pelada = await createPelada(prisma, { owner: org });
+      const token = signTestJwt({ sub: otherSub, email: 'o@t.c' });
+
+      await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/dashboard`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+    });
+
     it('GET /peladas/:id/dashboard returns empty next match for member', async () => {
       const sub = 'dash-empty';
       const user = await createUser(prisma, { keycloakSub: sub });

@@ -17,6 +17,20 @@ jobs:
     name: test:all + R-07
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres-app-test:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pelada_test
+          POSTGRES_PASSWORD: pelada_test_dev
+          POSTGRES_DB: pelada_app_test
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd "pg_isready -U pelada_test -d pelada_app_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout (histórico completo para R-07)
         uses: actions/checkout@v4
@@ -43,11 +57,16 @@ jobs:
         if: github.event_name == 'pull_request'
         run: git fetch origin "${{ github.event.pull_request.base.ref }}"
 
+      - name: Migrate Postgres de teste (integração API §B)
+        run: npm run db:test:migrate
+
       - name: npm run test:all:ci
         env:
           COVERAGE_BASE_REF: origin/${{ github.event.pull_request.base.ref || 'main' }}
           CHROME_EXECUTABLE: ${{ steps.chrome.outputs.chrome-path }}
           CHROME_BIN: ${{ github.workspace }}/scripts/chromium-ci.sh
+          RUN_DB_TESTS: '1'
+          DATABASE_URL_TEST: postgresql://pelada_test:pelada_test_dev@localhost:5435/pelada_app_test
         run: chmod +x scripts/chromium-ci.sh && xvfb-run --auto-servernum npm run test:all:ci
 
   cursor-revisar-pr:
