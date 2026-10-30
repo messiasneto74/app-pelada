@@ -48,6 +48,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/inicio-empty',
+    loadComponent: () =>
+      import('./features/dev/inicio-empty-preview.component').then(
+        (m) => m.InicioEmptyPreviewComponent,
+      ),
+  },
+  {
     path: 'onboarding/pelada',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>

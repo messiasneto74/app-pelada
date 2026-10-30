@@ -27,7 +27,19 @@ export class AuthService {
       this.oauth.configure(buildAuthConfig());
       this.configured = true;
     }
-    await this.oauth.loadDiscoveryDocumentAndTryLogin();
+    try {
+      const login = this.oauth.loadDiscoveryDocumentAndTryLogin();
+      if (environment.production) {
+        await login;
+      } else {
+        await Promise.race([
+          login,
+          new Promise<void>((resolve) => setTimeout(resolve, 4_000)),
+        ]);
+      }
+    } catch {
+      /* IdP indisponível — rotas /dev e fluxo manual em localhost */
+    }
     this.peladaContext.refreshFromStorage();
   }
 
