@@ -7,6 +7,7 @@ Screenshots anexados nos PRs correspondentes; paths estáveis no repo para revis
 | #15 L1 | [l1-15-onboarding-390.png](./l1-15-onboarding-390.png) | **390×844 px** (PNG; rota `/dev/criar-pelada`, viewport mobile) |
 | #23 3.1-EMPTY | [3-1-empty-23-inicio-390.jpg](./3-1-empty-23-inicio-390.jpg) | **390×844 px** (JPG; rota `/dev/inicio-empty`, sem partida + elenco vazio) |
 | #24 3.7 | [3-7-24-jogadores-390.jpg](./3-7-24-jogadores-390.jpg) | **390×844 px** (JPG; rota `/dev/jogadores-list`, elenco de exemplo) |
+| #26 3.8 | [3-8-26-jogador-perfil-390.jpg](./3-8-26-jogador-perfil-390.jpg) | **390×844 px** (JPG; rota `/dev/jogador-perfil`, perfil de exemplo) |
 
 Validar dimensões antes do PR:
 

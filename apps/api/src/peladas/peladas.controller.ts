@@ -88,6 +88,16 @@ export class PeladasController {
     return this.peladaPlayersService.listPlayers(user, peladaId);
   }
 
+  @Get('peladas/:peladaId/players/:playerId')
+  @UseGuards(JwtAuthGuard)
+  getPeladaPlayer(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('playerId') playerId: string,
+  ) {
+    return this.peladaPlayersService.getPlayer(user, peladaId, playerId);
+  }
+
   @Post('peladas/:peladaId/players')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(JwtAuthGuard)

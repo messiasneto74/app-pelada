@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   type PeladaRosterDto,
   resolveIsFixedListForWrite,
+  toPlayerProfileDto,
   toRosterPlayerDto,
 } from './pelada-roster.logic';
 
@@ -37,6 +38,24 @@ export class PeladaPlayersService {
       peladaId,
       players: players.map(toRosterPlayerDto),
     };
+  }
+
+  async getPlayer(
+    auth: AuthUserPayload,
+    peladaId: string,
+    playerId: string,
+  ) {
+    const user = await this.meService.getOrCreateUser(auth);
+    await this.assertMember(peladaId, user.id);
+
+    const player = await this.prisma.player.findFirst({
+      where: { id: playerId, peladaId },
+    });
+    if (!player) {
+      throw new NotFoundException('Jogador não encontrado nesta pelada.');
+    }
+
+    return toPlayerProfileDto(player);
   }
 
   async createPlayer(
