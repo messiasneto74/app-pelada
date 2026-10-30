@@ -21,6 +21,8 @@ export type PeladaRulesFormValues = {
   drawUseRating: boolean;
   drawUseAttributes: boolean;
   drawUseStyleTags: boolean;
+  /** História 27 — jogador pode editar próprio perfil no elenco. */
+  allowPlayerSelfEdit: boolean;
 };
 
 export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
@@ -36,6 +38,7 @@ export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
   drawUseRating: true,
   drawUseAttributes: true,
   drawUseStyleTags: true,
+  allowPlayerSelfEdit: false,
 };
 
 export function validateGoalkeeperToggles(
