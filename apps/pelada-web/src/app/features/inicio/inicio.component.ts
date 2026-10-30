@@ -5,6 +5,7 @@ import {
   type InicioDashboardView,
 } from '../../core/inicio/inicio-dashboard.model';
 import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
+import { resolveInicioEmptyStates } from '../../core/inicio/inicio-empty-states';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaAvatarComponent } from '../../ui/avatar.component';
 import { PeladaButtonComponent } from '../../ui/button.component';
@@ -80,10 +81,20 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           </pelada-card>
         }
 
-        @if (dash.rosterPlayerCount === 0) {
-          <p class="pelada-muted roster-hint">
-            Ainda não há jogadores no elenco — adicione pelo atalho Elenco.
-          </p>
+        @if (resolveInicioEmptyStates(dash).showNoRoster) {
+          <pelada-card title="Elenco vazio">
+            <p class="pelada-muted">
+              Adicione jogadores para confirmar presença, sortear times e usar o caixa.
+            </p>
+            <a
+              routerLink="/jogadores"
+              peladaButton
+              variant="secondary"
+              [peladaButtonBlock]="true"
+            >
+              Ir para o elenco
+            </a>
+          </pelada-card>
         }
 
         <div class="shortcut-grid">
@@ -128,10 +139,6 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         gap: var(--pelada-space-2);
         margin-bottom: var(--pelada-space-3);
       }
-      .roster-hint {
-        margin: 0 0 var(--pelada-space-4);
-        font-size: 0.875rem;
-      }
       .shortcut-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -161,6 +168,7 @@ export class InicioComponent implements OnInit {
   readonly shortcuts = INICIO_SHORTCUTS;
   readonly dashboard = signal<InicioDashboardView | null>(null);
   readonly loading = signal(true);
+  readonly resolveInicioEmptyStates = resolveInicioEmptyStates;
 
   ngOnInit(): void {
     const pelada = this.peladaContext.getActivePelada();
