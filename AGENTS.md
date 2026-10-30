@@ -45,7 +45,7 @@ No Windows PowerShell, use `npm.cmd` se scripts estiverem bloqueados.
 - Dev local: `docs/desenvolvimento-local.md`
 - Credenciais Keycloak dev: `docs/credenciais-dev-local.md`
 
-**Antes de considerar um PR pronto:** `npm run test:all` verde + check GitHub **`test:all + R-07`** verde + test plan no PR. Automação **app-pelada — revisar PR** usa as mesmas regras (`.cursor/rules/pelada-agente-testes.mdc`). CI: `docs/ci-github.md`.
+**Antes de considerar um PR pronto:** `npm run test:all` verde + checks GitHub **`test:all + R-07`** e **`review-policy`** verdes + test plan no PR. A automação **`app-pelada — revisar PR`** usa exclusivamente trigger Webhook; triggers GitHub/CI são proibidos para não gerar check operacional verde separado. CI: `docs/ci-github.md`.
 
 **Em todo PR ou quando a revisão/check falhar:** colar no corpo da resposta o bloco **Testes locais (PowerShell)** em `docs/processo-testes-e-qualidade.md` (não só “rode os testes”).
 
@@ -66,6 +66,28 @@ Ao revisar um pull request:
 4. Backend: migrations Prisma se `schema.prisma` mudou; erros HTTP no formato F0-3 (`statusCode`, `error`, `message`, `path`, `timestamp`).
 5. Segurança: sem secrets no git; auth JWT só nas issues F0-4+; ver `docs/escopo-seguranca-fora-mvp.md`.
 6. Comentar no PR com resumo (ok / ajustes necessários) e checklist DoD.
+
+O parecer deve começar com exatamente um destes cabeçalhos:
+
+- `## VEREDITO: REQUEST_CHANGES — REPROVADO`
+- `## VEREDITO: APTO PARA APROVAÇÃO MANUAL`
+
+Todo parecer deve informar `Issue: #N`, `Milestone: ...`, o
+`SHA revisado: \`<SHA completo atual>\`` e
+`Bloqueantes: B0=<N>, B1=<N>, B2=<N>`. Um parecer apto exige obrigatoriamente
+`B0=0, B1=0, B2=0` e não pode conter `FALHOU`, `REPROVADO` ou
+`REQUEST_CHANGES` em nenhuma outra seção.
+
+Qualquer contagem de teste/suíte `skipped`, pulado, ignorado ou pendente é
+bloqueante, mesmo se o scanner estático `test:no-skipped` tiver passado. Nesse
+caso é proibido declarar o PR apto.
+
+O agente nunca registra `APPROVED` e nunca faz merge. Se houver qualquer
+bloqueante, o primeiro cabeçalho é obrigatório. O check autoritativo
+**`review-policy`** valida a review no SHA atual: reprovação, ausência de parecer,
+parecer antigo, texto ambíguo ou `APPROVED` deixam o check vermelho. Somente
+**APTO PARA APROVAÇÃO MANUAL** deixa o check verde; aprovação e merge continuam
+exclusivamente manuais.
 
 Regras persistentes em `.cursor/rules/`.
 

@@ -1,13 +1,20 @@
 # CI no GitHub (CI-1)
 
-Workflow: [`.github/workflows/pr-tests.yml`](../.github/workflows/pr-tests.yml)  
-Check no PR: **`test:all + R-07`**
+Workflows:
+
+- [`.github/workflows/pr-tests.yml`](../.github/workflows/pr-tests.yml) — check **`test:all + R-07`**
+- [`.github/workflows/review-policy.yml`](../.github/workflows/review-policy.yml) — check **`review-policy`**
 
 ## O que você vê no PR
 
-1. Aba **Checks** — job **test:all + R-07** verde ou vermelho.
-2. Automação Cursor **app-pelada — revisar PR** — comentário/review alinhado (ex. TESTES FALHANDO). Deve rodar **no SHA do PR após** o check **`test:all + R-07`**: configure trigger **CI completed** (check `test:all + R-07`) ou webhook via job homônimo no workflow — ver [.github/CURSOR-REVISAR-PR-SETUP.md](../.github/CURSOR-REVISAR-PR-SETUP.md).
-3. Os dois devem concordar: se o agente reprovar, o workflow também falha após o push (ou re-run).
+1. **`test:all + R-07`** — resultado objetivo da suíte de testes.
+2. **`review-policy`** — aguarda os testes, dispara o agente via webhook e lê o parecer para o SHA atual. É o único check autoritativo para o veredito da revisão.
+
+`review-policy` fica verde somente com o cabeçalho exato
+`VEREDITO: APTO PARA APROVAÇÃO MANUAL`, SHA atual, issue, milestone,
+`B0=0, B1=0, B2=0` e nenhuma indicação contraditória de falha ou reprovação.
+Fica vermelho quando o agente reprova, ainda não revisou o SHA atual, omite
+evidências, contradiz o veredito ou tenta registrar `APPROVED`.
 
 ## Bloquear merge quando o check falhar (mantenedor)
 
@@ -16,15 +23,19 @@ Requer **admin** no repositório `messiasneto74/app-pelada`:
 1. GitHub → **Settings** → **Branches** → **Add branch protection rule**
 2. Branch name pattern: `main`
 3. Marque **Require status checks to pass before merging**
-4. Em **Status checks**, procure e selecione: **`test:all + R-07`** (aparece após o primeiro PR com o workflow verde ou falho)
-5. Opcional: **Require branches to be up to date before merging**
-6. Salve
+4. Em **Status checks**, selecione **`test:all + R-07`** e **`review-policy`**
+5. Marque **Require conversation resolution before merging**
+6. Marque **Require branches to be up to date before merging**
+7. Salve
 
-**Sem essa regra**, o GitHub ainda mostra o botão **Merge** mesmo com check vermelho — só o comentário do agente avisava. **Com a regra**, merge fica **bloqueado** até **test:all + R-07** passar.
+Com a regra, o merge manual fica bloqueado até os testes passarem, o parecer do
+SHA atual declarar que está apto e todas as conversas serem resolvidas. O agente
+continua sem aprovar e sem fazer merge.
 
 ## Re-run
 
-Na aba Checks → **Re-run all jobs** após corrigir o branch.
+Após corrigir, faça push. O SHA muda, então o parecer anterior deixa de valer.
+Aguarde nova review do Cursor; ela dispara novamente o `review-policy`.
 
 ## Agentes de código (Cursor)
 
@@ -32,6 +43,10 @@ Antes de dizer “pronto para merge”:
 
 1. `npm.cmd run test:all` local verde
 2. Push no branch do PR
-3. Confirmar check **test:all + R-07** verde no GitHub (não ignorar comentário TESTES FALHANDO)
+3. Confirmar **`test:all + R-07`** verde
+4. Confirmar **`review-policy`** verde para o mesmo SHA
+
+A automação Cursor deve usar somente o trigger Webhook. Triggers GitHub/CI devem
+permanecer removidos. Use somente **`review-policy`** como autorização técnica.
 
 Regras: `.cursor/rules/pelada-agente-testes.mdc`, `AGENTS.md`.

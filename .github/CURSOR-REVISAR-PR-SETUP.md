@@ -1,42 +1,44 @@
-# Automação Cursor **app-pelada — revisar PR** + CI
+# Revisão Cursor via webhook + enforcement
 
-Objetivo: toda vez que o check **`test:all + R-07`** terminar no PR, a automação **revisar PR** roda no **mesmo SHA** e publica o veredito (review `cursor` + check **Cursor Automation: …** quando aplicável).
+Objetivo: o GitHub dispara o agente Cursor via webhook e ele publica um parecer.
+O workflow **Review policy** transforma esse parecer no único gate confiável,
+chamado **`review-policy`**.
 
-## Opção A — **CI completed** (recomendado, sem secret no GitHub)
+## Configuração obrigatória no Cursor
 
-1. Abra [app-pelada — revisar PR](https://cursor.com/automations/f4919674-ce37-11f1-89ee-7aa6f0729b11) (ou Automations → editar).
-2. Repositório: **`messiasneto74/app-pelada`**.
-3. **Adicione** o trigger **GitHub → CI completed**.
-4. Filtro do check: **`test:all + R-07`** (nome exato do job em `.github/workflows/pr-tests.yml`).
-5. Mantenha também **Pull request pushed** (revisão no push, se quiser paralelo ao CI).
-6. Salve e ative.
+A automação **app-pelada — revisar PR** deve ficar ativa somente com o trigger
+**Webhook**. Remova `PR opened`, `PR pushed` e `CI completed`, pois esses triggers
+criavam um check operacional verde separado.
 
-A automação dispara **quando o workflow PR tests termina** (verde ou vermelho).
-
-## Opção B — Webhook no fim do workflow (disparo explícito)
-
-1. Na mesma automação, adicione trigger **Webhook** e salve.
-2. Copie a **URL** e a **API key** do webhook.
-3. No GitHub (repo **app-pelada**):
-
-```powershell
-gh secret set CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK --repo messiasneto74/app-pelada
-gh secret set CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK_KEY --repo messiasneto74/app-pelada
-```
-
-O job **`Cursor Automation — revisar PR`** em `pr-tests.yml` faz `POST` no webhook **depois** de `test:all + R-07` (sucesso ou falha).
+Cadastre no GitHub Actions os secrets
+`CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK` e
+`CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK_KEY`. O workflow envia repositório, PR,
+URL e SHA ao webhook somente depois que `test:all + R-07` passar. O secret da
+chave aceita tanto o valor puro quanto o cabeçalho `Bearer ...`. O agente deve
+publicar a review pelo usuário **`cursor`**.
 
 ## O que aparece no GitHub
 
 | Onde | O quê |
 |------|--------|
 | **Checks** | `test:all + R-07` (Actions) |
-| **Checks** | `Cursor Automation: app-pelada — revisar PR` (quando a automação roda) |
+| **Checks** | `review-policy` — gate autoritativo do parecer |
 | **Conversation / Reviews** | Comentário de review do usuário **`cursor`** com VEREDITO |
 
-O veredito **não** substitui o check de testes; os dois convivem.
+## Regra do check autoritativo
+
+| Parecer do Cursor no SHA atual | `review-policy` |
+|--------------------------------|-----------------|
+| `VEREDITO: APTO PARA APROVAÇÃO MANUAL`, SHA atual, issue/milestone e `B0=0, B1=0, B2=0` sem texto contraditório | ✅ verde |
+| `VEREDITO: REQUEST_CHANGES — REPROVADO` | ❌ vermelho |
+| Parecer ausente, antigo, dispensado, incompleto ou contraditório | ❌ vermelho |
+| Cursor registra review `APPROVED` | ❌ vermelho — o agente não pode aprovar |
+
+Cada push muda o SHA e invalida o parecer anterior. O check permanece vermelho
+até o agente revisar o novo SHA. Verde significa somente **apto para
+a decisão manual do mantenedor**; o agente nunca aprova nem faz merge.
 
 ## Re-run manual no PR
 
-- **Checks** → re-run **PR tests** → com Opção A, a automação dispara de novo ao fim do CI.
-- Ou **workflow_dispatch** em **PR tests** (se habilitado) + novo push.
+- Faça push do SHA corrigido; o webhook inicia uma nova revisão.
+- O próprio check aguarda o CI e o parecer antes de terminar.

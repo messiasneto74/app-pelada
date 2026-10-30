@@ -7,19 +7,26 @@
 | Todo **pull_request** para `main` | `npm run test:all:ci` (Karma `ChromeHeadless` + `CHROME_HEADLESS_FLAGS` no Linux) |
 | Inclui | `test:core`, `test:api`, `test:web`, `test:scripts:r07` (Vitest + **R-07** ≥80% linhas no diff vs branch base) |
 
-### Relação com a automação Cursor
+### Relação com o agente Cursor
 
-A automação **app-pelada — revisar PR** usa as mesmas regras (R-01…R-07). Ela comenta no PR (ex.: **TESTES FALHANDO**); o workflow **materializa o veredito de testes** como check vermelho no GitHub.
+O workflow aciona o agente Cursor por webhook para revisar o SHA atual. A
+automação usa somente o trigger Webhook, evitando o check operacional verde dos
+triggers GitHub do Cursor.
 
-**Disparo junto com este workflow:** após o job `test:all + R-07`, o job **`Cursor Automation — revisar PR`** envia webhook (se configurado) ou use trigger **CI completed** na automação — setup em [CURSOR-REVISAR-PR-SETUP.md](./CURSOR-REVISAR-PR-SETUP.md).
+O workflow [`review-policy.yml`](./review-policy.yml) lê a review do Cursor no
+SHA atual e materializa a decisão no check autoritativo **`review-policy`**.
+O procedimento de configuração está em
+[CURSOR-REVISAR-PR-SETUP.md](../CURSOR-REVISAR-PR-SETUP.md).
 
-| Situação | Comentário do agente | Check **test:all + R-07** |
-|----------|----------------------|---------------------------|
-| Jest/Vitest/Karma falhou | TESTES FALHANDO | ❌ Failed |
-| 0 falhas, R-07 &lt; 80% | TESTES FALHANDO | ❌ Failed |
-| Tudo verde | Aprovado / OK | ✅ Success |
+| Situação | `test:all + R-07` | `review-policy` |
+|----------|----------------------|-----------------|
+| Teste ou R-07 falhou | ❌ Failed | aguarda/reprova conforme parecer |
+| Agente reprovou | pode estar verde | ❌ Failed |
+| Sem parecer para o SHA atual | independente | ❌ Failed |
+| Testes verdes e agente declarou apto | ✅ Success | ✅ Success |
 
-**Merge bloqueado** só se o mantenedor ativar *branch protection* exigindo este check (ver [ci-github.md](../../docs/ci-github.md)).
+O merge fica bloqueado quando a proteção da `main` exige **os dois** checks (ver
+[ci-github.md](../../docs/ci-github.md)).
 
 ### Variáveis
 
