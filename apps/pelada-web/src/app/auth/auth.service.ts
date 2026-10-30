@@ -21,14 +21,56 @@ export class AuthService {
   private readonly peladaContext = inject(PeladaContextService);
 
   private configured = false;
+  private oauthSideEffectsBound = false;
 
   async init(): Promise<void> {
     if (!this.configured) {
       this.oauth.configure(buildAuthConfig());
       this.configured = true;
     }
-    await this.oauth.loadDiscoveryDocumentAndTryLogin();
+    this.bindOAuthSideEffects();
+    try {
+      const login = this.oauth.loadDiscoveryDocumentAndTryLogin();
+      void login.finally(() => {
+        this.peladaContext.refreshFromStorage();
+      });
+      if (environment.production) {
+        await login;
+      } else {
+        await Promise.race([
+          login,
+          new Promise<void>((resolve) => setTimeout(resolve, 4_000)),
+        ]);
+      }
+    } catch {
+      /* IdP indisponível — rotas /dev e fluxo manual em localhost */
+    }
     this.peladaContext.refreshFromStorage();
+  }
+
+  /** Dev: bootstrap não bloqueia no OIDC; ao concluir login, recarrega pelada do sub correto. */
+  private bindOAuthSideEffects(): void {
+    if (this.oauthSideEffectsBound) {
+      return;
+    }
+    this.oauthSideEffectsBound = true;
+    this.oauth.events.subscribe((event) => {
+      if (
+        event.type !== 'token_received' &&
+        event.type !== 'token_refreshed' &&
+        event.type !== 'silently_refreshed'
+      ) {
+        return;
+      }
+      this.peladaContext.refreshFromStorage();
+      if (environment.production) {
+        return;
+      }
+      const path = this.router.url.split('?')[0];
+      if (path === '/entrar' && this.isLoggedIn()) {
+        void this.continueAfterLogin();
+      }
+    });
   }
 
   login(): void {

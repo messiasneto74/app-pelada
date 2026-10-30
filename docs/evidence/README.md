@@ -5,6 +5,7 @@ Screenshots anexados nos PRs correspondentes; paths estáveis no repo para revis
 | Issue | Arquivo | Viewport |
 |-------|---------|----------|
 | #15 L1 | [l1-15-onboarding-390.png](./l1-15-onboarding-390.png) | **390×844 px** (PNG; rota `/dev/criar-pelada`, viewport mobile) |
+| #23 3.1-EMPTY | [3-1-empty-23-inicio-390.jpg](./3-1-empty-23-inicio-390.jpg) | **390×844 px** (JPG; rota `/dev/inicio-empty`, sem partida + elenco vazio) |
 
 Validar dimensões antes do PR:
 

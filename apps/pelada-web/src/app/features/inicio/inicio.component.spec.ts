@@ -147,5 +147,51 @@ describe('InicioComponent sem partida', () => {
     const fixture = TestBed.createComponent(InicioComponent);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Nenhuma partida marcada');
+    expect(
+      fixture.nativeElement.querySelector('a[href="/inicio/criar-partida"]'),
+    ).not.toBeNull();
+  });
+});
+
+describe('InicioComponent elenco vazio', () => {
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [InicioComponent],
+      providers: [
+        provideRouter([{ path: 'inicio', component: InicioComponent }]),
+        {
+          provide: OAuthService,
+          useValue: { getIdentityClaims: () => ({ sub: 'user-inicio' }) },
+        },
+        {
+          provide: PeladaDashboardService,
+          useValue: {
+            loadDashboard: (
+              _pelada: unknown,
+              onResult: (view: InicioDashboardView) => void,
+            ) =>
+              onResult({
+                ...mockView,
+                rosterPlayerCount: 0,
+              }),
+          },
+        },
+      ],
+    }).compileComponents();
+
+    TestBed.inject(PeladaContextService).setActivePelada({
+      id: 'p1',
+      name: 'Pelada',
+      defaultWeekday: null,
+      defaultLocation: '',
+      photoPreviewUrl: null,
+    });
+  });
+
+  it('mostra card de elenco vazio com link para jogadores', () => {
+    const fixture = TestBed.createComponent(InicioComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Elenco vazio');
+    expect(fixture.nativeElement.querySelector('a[href="/jogadores"]')).not.toBeNull();
   });
 });
