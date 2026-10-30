@@ -22,7 +22,7 @@ Tokens em `src/theme/` (`resenha-tokens.scss` + utilitários em `resenha-base.sc
 
 ### Shell e navegação (T3)
 
-Rotas autenticadas dentro de `MainShellComponent` com **bottom nav** (Início, Partida, Jogadores, Caixa). **`/inicio`** — tela 3.1 (issue #21): card próxima partida, atalhos, caixa do mês; consome `GET /peladas/:id/dashboard` quando disponível (3.1-API). **`/inicio/regras`** — tela 3.2 + L27. Placeholders em `/partida/*`, `/jogadores`, `/caixa`. Ver [arquitetura §4.2–4.3](../../docs/arquitetura-backend-frontend.md).
+Rotas autenticadas dentro de `MainShellComponent` com **bottom nav** (Início, Partida, Jogadores, Caixa). **`/inicio`** — tela 3.1 (issue #21): card próxima partida, atalhos, caixa do mês; consome `GET /peladas/:id/dashboard` quando disponível (3.1-API). **`/inicio/regras`** — tela 3.2 + L27. **`/jogadores`** — lista §3.7 (#24): busca, segmentos Todos/GK/Linha, link para perfil; dados via `GET /peladas/:id/players` (3.7-API #25). Placeholders em `/partida/*`, `/caixa`. Ver [arquitetura §4.2–4.3](../../docs/arquitetura-backend-frontend.md).
 
 ### Componentes base (T2)
 

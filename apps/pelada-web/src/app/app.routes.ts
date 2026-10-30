@@ -55,6 +55,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/jogadores-list',
+    loadComponent: () =>
+      import('./features/dev/jogadores-list-preview.component').then(
+        (m) => m.JogadoresListPreviewComponent,
+      ),
+  },
+  {
     path: 'onboarding/pelada',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>
@@ -102,8 +109,15 @@ export const routes: Routes = [
       },
       {
         path: 'jogadores',
+        loadComponent: () =>
+          import('./features/jogadores/jogadores-lista.component').then(
+            (m) => m.JogadoresListaComponent,
+          ),
+      },
+      {
+        path: 'jogadores/:playerId',
         loadComponent: placeholder,
-        data: { title: 'Jogadores', eyebrow: 'Elenco' },
+        data: { title: 'Perfil do jogador', eyebrow: 'Elenco', subtitle: '§3.8 — issue #26' },
       },
       {
         path: 'caixa',
