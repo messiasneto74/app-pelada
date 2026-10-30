@@ -76,9 +76,15 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 - `PATCH /peladas/:peladaId/matches/:matchId/rules-override` — JWT; **ORGANIZADOR**; body `PatchMatchRulesOverrideDto`; persiste só em `Match.rulesOverride` (não altera `PeladaRules`).
 - Mesma validação GK do patch de regras da pelada, aplicada ao merge **effective** antes de salvar.
 
+## Dashboard Início (3.1-API)
+
+- `GET /peladas/:peladaId/dashboard` — JWT; membro; `{ peladaId, nextMatch, rosterPlayerCount, cashMonth }`.
+- `nextMatch`: próxima partida não finalizada com `scheduledAt` futuro; confirmados, capacidade (regras efetivas), avatares/nomes.
+- `cashMonth`: soma `PAID` no mês UTC (`receivedCents`) e `PENDING`+`PAID` criados no mês (`expectedCents`).
+
 ## Testes de integração (TEST-API-HARNESS)
 
 - Runner: `test/jest-integration.json` (incluído em `npm run test:api`).
 - Postgres dedicado: `npm run db:test:up` + `db:test:migrate` na raiz; `DATABASE_URL_TEST` no `.env`.
 - Com DB de teste: `$env:RUN_DB_TESTS="1"; npm.cmd run test:api` — health, 401, JIT com JWT RS256 de fixture (`test/helpers/sign-test-jwt.ts`).
-- Factories: `test/factories/user.factory.ts`, `pelada.factory.ts`, `match.factory.ts`.
+- Factories: `test/factories/user.factory.ts`, `pelada.factory.ts`, `match.factory.ts`, `player.factory.ts`.

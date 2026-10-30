@@ -62,4 +62,13 @@ export class PeladasController {
   ) {
     return this.peladasService.patchPeladaRules(user, peladaId, body);
   }
+
+  @Get('peladas/:peladaId/dashboard')
+  @UseGuards(JwtAuthGuard)
+  getPeladaDashboard(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+  ) {
+    return this.peladasService.getPeladaDashboard(user, peladaId);
+  }
 }
