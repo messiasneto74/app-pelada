@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import type { InicioDashboardView } from '../../core/inicio/inicio-dashboard.model';
 import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
+import type { ActivePelada } from '../../core/pelada/active-pelada.model';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { InicioComponent } from '../inicio/inicio.component';
 
@@ -14,11 +15,30 @@ const emptyDashboardView: InicioDashboardView = {
   cashPercent: 0,
 };
 
+const previewPelada: ActivePelada = {
+  id: 'dev-empty-evidence',
+  name: 'Pelada Resenha',
+  defaultWeekday: null,
+  defaultLocation: '',
+  photoPreviewUrl: null,
+};
+
+/** Mock isolado — não persiste em sessionStorage (não sobrescreve sessão real). */
+const previewPeladaContext = {
+  activePelada: signal(previewPelada).asReadonly(),
+  hasActivePelada: () => true,
+  getActivePelada: () => previewPelada,
+  setActivePelada: () => {},
+  clearActivePelada: () => {},
+  refreshFromStorage: () => {},
+} as unknown as PeladaContextService;
+
 @Component({
   selector: 'app-inicio-empty-preview',
   standalone: true,
   imports: [InicioComponent],
   providers: [
+    { provide: PeladaContextService, useValue: previewPeladaContext },
     {
       provide: PeladaDashboardService,
       useValue: {
@@ -31,16 +51,4 @@ const emptyDashboardView: InicioDashboardView = {
   ],
   template: `<app-inicio />`,
 })
-export class InicioEmptyPreviewComponent {
-  private readonly peladaContext = inject(PeladaContextService);
-
-  constructor() {
-    this.peladaContext.setActivePelada({
-      id: 'dev-empty-evidence',
-      name: 'Pelada Resenha',
-      defaultWeekday: null,
-      defaultLocation: '',
-      photoPreviewUrl: null,
-    });
-  }
-}
+export class InicioEmptyPreviewComponent {}
