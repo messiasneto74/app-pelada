@@ -4,6 +4,11 @@ O workflow `codex-review.yml` executa o Codex pela action oficial da OpenAI e
 materializa o resultado no único check **`codex-review-policy`**. Não existe um
 check operacional Codex separado: execução e veredito pertencem ao mesmo job.
 
+O gatilho é `pull_request_target`: workflow, `AGENTS.md`, prompt e parser são
+sempre lidos da `main`. O SHA do PR recebe checkout isolado em `pr/`, sem
+credencial Git persistida. PR de fork falha explicitamente, em vez de gerar job
+pulando com aparência verde.
+
 ## Secret obrigatório
 
 GitHub → **Settings** → **Secrets and variables** → **Actions** →
@@ -20,6 +25,8 @@ grave a chave em arquivo, PR, log ou comentário.
 - Ausência/erro de credencial: vermelho.
 - Codex não respondeu ou formato inválido: vermelho.
 - Teste, build, audit, skip ou bloqueante: vermelho.
+- Issue/milestone divergente, campo vazio/duplicado ou comando obrigatório
+  omitido: vermelho.
 - Frontend sem teste funcional 390×844 e evidência visual: vermelho.
 - Somente veredito apto, SHA atual e B0=B1=B2=0: verde.
 - O Codex nunca aprova nem faz merge; verde significa apenas apto para decisão
@@ -27,3 +34,6 @@ grave a chave em arquivo, PR, log ou comentário.
 
 Depois do primeiro run, adicione **`codex-review-policy`** aos status checks
 obrigatórios da proteção da branch `main`.
+
+O workflow provisiona Postgres de teste, aplica migrations, usa
+`RUN_DB_TESTS=1` e exige zero skips também nas suítes condicionais de integração.

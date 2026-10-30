@@ -8,7 +8,9 @@ Workflows:
 ## O que você vê no PR
 
 1. **`test:all + R-07`** — resultado objetivo da suíte de testes.
-2. **`codex-review-policy`** — executa a revisão independente do Codex, incluindo testes funcionais de telas quando houver frontend.
+2. **`codex-review-policy`** — executa a revisão independente do Codex a partir
+   da política confiável da `main`, com Postgres de teste e testes funcionais de
+   telas quando houver frontend. Forks falham explicitamente.
 3. Automação Cursor **app-pelada — revisar PR** — parecer independente, sem poder de aprovar ou fazer merge.
 
 ## Bloquear merge quando o check falhar (mantenedor)
