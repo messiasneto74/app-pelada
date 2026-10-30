@@ -33,6 +33,8 @@ viewport 390×844 e evidência visual. Configuração em
 Esse gate usa `pull_request_target`: política e instruções vêm da `main`; o PR é
 checado separadamente em `pr/`. Fork, contexto inválido, campo duplicado, teste
 condicional pulado ou evidência declarada sem arquivo mantêm o check vermelho.
+Comandos preparatórios do PR rodam em container; o parser final é baixado da
+base somente depois da execução e roda fora do workspace gravável pelo agente.
 
 ### Variáveis
 

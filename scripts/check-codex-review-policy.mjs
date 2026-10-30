@@ -1,4 +1,4 @@
-import { stat, readFile } from 'node:fs/promises';
+import { realpath, stat, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { evaluateCodexReview } from './lib/codex-review-policy.mjs';
 
@@ -27,10 +27,10 @@ try {
     console.error(`::error title=Codex review policy::${result.message}`);
     process.exitCode = 1;
   } else if (frontendChanged) {
-    const artifactRoot = path.resolve(
-      process.env.CODEX_ARTIFACT_DIR ?? 'codex-artifacts',
+    const artifactRoot = await realpath(
+      path.resolve(process.env.CODEX_ARTIFACT_DIR ?? 'codex-artifacts'),
     );
-    const evidencePath = path.resolve(result.evidencePath);
+    const evidencePath = await realpath(path.resolve(result.evidencePath));
     if (!evidencePath.startsWith(`${artifactRoot}${path.sep}`)) {
       throw new Error(
         'Evidência visual precisa estar dentro de codex-artifacts/.',
