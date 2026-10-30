@@ -5,11 +5,21 @@ import { PatchPeladaRulesDto } from '../domain/dto/patch-pelada-rules.dto';
 import { MeService } from '../me/me.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PhotoStorageService } from '../storage/photo-storage.service';
+import {
+  mergeEffectiveMatchRules,
+  type MatchRulesOverrideJson,
+} from '../matches/match-rules.merge';
 import { CreatePeladaDto } from './dto/create-pelada.dto';
 import {
   assertGoalkeeperExclusive,
   mergeExtra,
 } from './pelada-rules.validation';
+import {
+  computeMatchCapacity,
+  effectiveModalityForMatch,
+  monthUtcBounds,
+  type PeladaDashboardResponse,
+} from './pelada-dashboard.logic';
 
 export type PeladaRulesResponse = {
   peladaId: string;
@@ -158,6 +168,98 @@ export class PeladasService {
     });
 
     return this.toRulesResponse(updated);
+  }
+
+  async getPeladaDashboard(
+    auth: AuthUserPayload,
+    peladaId: string,
+  ): Promise<PeladaDashboardResponse> {
+    const user = await this.meService.getOrCreateUser(auth);
+    await this.assertMember(peladaId, user.id);
+
+    const rules = await this.prisma.peladaRules.findUnique({
+      where: { peladaId },
+    });
+    if (!rules) {
+      throw new NotFoundException('Regras da pelada não encontradas.');
+    }
+
+    const now = new Date();
+    const { start: monthStart, end: monthEnd } = monthUtcBounds(now);
+
+    const [rosterPlayerCount, nextMatch, receivedAgg, expectedAgg] =
+      await Promise.all([
+        this.prisma.player.count({ where: { peladaId } }),
+        this.prisma.match.findFirst({
+          where: {
+            peladaId,
+            status: { not: 'FINISHED' },
+            scheduledAt: { gte: now },
+          },
+          orderBy: { scheduledAt: 'asc' },
+          include: {
+            attendances: {
+              where: { status: 'CONFIRMED' },
+              include: { player: true },
+              orderBy: { createdAt: 'asc' },
+              take: 8,
+            },
+          },
+        }),
+        this.prisma.paymentLedger.aggregate({
+          where: {
+            peladaId,
+            status: 'PAID',
+            paidAt: { gte: monthStart, lt: monthEnd },
+          },
+          _sum: { amountCents: true },
+        }),
+        this.prisma.paymentLedger.aggregate({
+          where: {
+            peladaId,
+            status: { in: ['PENDING', 'PAID'] },
+            createdAt: { gte: monthStart, lt: monthEnd },
+          },
+          _sum: { amountCents: true },
+        }),
+      ]);
+
+    let nextMatchJson: PeladaDashboardResponse['nextMatch'] = null;
+    if (nextMatch) {
+      const effective = mergeEffectiveMatchRules(
+        rules,
+        nextMatch.rulesOverride as MatchRulesOverrideJson | null,
+      );
+      const capacity = computeMatchCapacity(effective);
+      const confirmedCount = await this.prisma.matchAttendance.count({
+        where: { matchId: nextMatch.id, status: 'CONFIRMED' },
+      });
+      const confirmedPlayers = nextMatch.attendances.map((a) => ({
+        id: a.playerId,
+        displayName: a.isGuest
+          ? (a.guestName?.trim() || 'Convidado')
+          : a.player.displayName,
+      }));
+      nextMatchJson = {
+        id: nextMatch.id,
+        scheduledAt: nextMatch.scheduledAt.toISOString(),
+        location: nextMatch.location,
+        modality: effectiveModalityForMatch(rules, nextMatch.rulesOverride),
+        confirmedCount,
+        capacity,
+        confirmedPlayers,
+      };
+    }
+
+    return {
+      peladaId,
+      nextMatch: nextMatchJson,
+      rosterPlayerCount,
+      cashMonth: {
+        receivedCents: receivedAgg._sum.amountCents ?? 0,
+        expectedCents: expectedAgg._sum.amountCents ?? 0,
+      },
+    };
   }
 
   private async assertMember(peladaId: string, userId: string): Promise<void> {
