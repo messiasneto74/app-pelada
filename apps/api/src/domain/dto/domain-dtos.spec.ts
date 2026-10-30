@@ -4,6 +4,7 @@ import { validate } from 'class-validator';
 import { CreateMatchDto } from './create-match.dto';
 import { CreatePlayerDto } from './create-player.dto';
 import { PatchPeladaRulesDto } from './patch-pelada-rules.dto';
+import { PatchPlayerDto } from './patch-player.dto';
 
 describe('T5 domain DTOs', () => {
   it('PatchPeladaRulesDto aceita goalkeeperMode válido', async () => {
@@ -27,6 +28,11 @@ describe('T5 domain DTOs', () => {
 
     const bad = plainToInstance(CreatePlayerDto, { displayName: 'J' });
     expect((await validate(bad)).length).toBeGreaterThan(0);
+  });
+
+  it('PatchPlayerDto aceita patch parcial', async () => {
+    const dto = plainToInstance(PatchPlayerDto, { rating: 9 });
+    expect((await validate(dto)).length).toBe(0);
   });
 
   it('CreateMatchDto converte scheduledAt', async () => {

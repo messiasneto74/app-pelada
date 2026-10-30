@@ -82,6 +82,14 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 - `nextMatch`: próxima partida não finalizada com `scheduledAt` futuro; confirmados, capacidade (regras efetivas), avatares/nomes.
 - `cashMonth`: soma `PAID` no mês UTC (`receivedCents`) e `PENDING`+`PAID` criados no mês (`expectedCents`).
 
+## Elenco / jogadores (3.7-API)
+
+- `GET /peladas/:peladaId/players` — JWT; membro; `{ peladaId, players[] }` (contrato alinhado ao web §3.7).
+- `POST /peladas/:peladaId/players` — JWT; **ORGANIZADOR**; body `CreatePlayerDto`.
+- `PATCH /peladas/:peladaId/players/:playerId` — JWT; **ORGANIZADOR**; body `PatchPlayerDto`.
+- `DELETE /peladas/:peladaId/players/:playerId` — JWT; **ORGANIZADOR**; `204`.
+- `isFixedList: true` só é aceito quando `PeladaRules.fixedListOnly` está ativo (regra 16); caso contrário `400`.
+
 ## Testes de integração (TEST-API-HARNESS)
 
 - Runner: `test/jest-integration.json` (incluído em `npm run test:api`).
