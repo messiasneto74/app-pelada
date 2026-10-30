@@ -120,6 +120,12 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <p class="pelada-muted hint">
           Marcar jogadores como fixos no elenco só fica disponível com esta opção ligada.
         </p>
+        <pelada-switch [(checked)]="allowPlayerSelfEdit">
+          Jogador edita o próprio perfil
+        </pelada-switch>
+        <p class="pelada-muted hint">
+          Desligado: só o organizador altera nota, atributos e tags no elenco (história 27).
+        </p>
         <pelada-field label="Modelo de pagamento">
           <pelada-segment [options]="paymentOptions" [(value)]="paymentSegment" />
         </pelada-field>
@@ -195,6 +201,7 @@ export class RegrasPeladaComponent implements OnInit {
   readonly paymentSegment = model('PER_MATCH');
   readonly drawSegment = model('BALANCED');
   readonly fixedListOnly = model(false);
+  readonly allowPlayerSelfEdit = model(false);
   readonly drawUseRating = model(true);
   readonly drawUseAttributes = model(true);
   readonly drawUseStyleTags = model(true);
@@ -280,6 +287,7 @@ export class RegrasPeladaComponent implements OnInit {
     return {
       ...this.values(),
       fixedListOnly: this.fixedListOnly(),
+      allowPlayerSelfEdit: this.allowPlayerSelfEdit(),
       paymentModel: this.paymentSegment() as PaymentModel,
       drawMode: this.drawSegment() as PeladaRulesFormValues['drawMode'],
       drawUseRating: this.drawUseRating(),
@@ -290,6 +298,7 @@ export class RegrasPeladaComponent implements OnInit {
 
   private syncSegmentsFromValues(v: PeladaRulesFormValues): void {
     this.fixedListOnly.set(v.fixedListOnly);
+    this.allowPlayerSelfEdit.set(v.allowPlayerSelfEdit);
     this.paymentSegment.set(v.paymentModel);
     this.drawSegment.set(v.drawMode);
     this.drawUseRating.set(v.drawUseRating);

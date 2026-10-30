@@ -12,6 +12,7 @@ export type PeladaRulesApiDto = {
   modality: string;
   goalkeeperMode: string;
   fixedListOnly: boolean;
+  allowPlayerSelfEdit?: boolean;
   drawWeights: Record<string, unknown>;
   extra: Record<string, unknown>;
 };
@@ -30,6 +31,7 @@ export function peladaRulesFromApi(dto: PeladaRulesApiDto): PeladaRulesFormValue
       (extra['fixedGkRotation'] as PeladaRulesFormValues['fixedGkRotation']) ??
       DEFAULT_PELADA_RULES.fixedGkRotation,
     fixedListOnly: dto.fixedListOnly,
+    allowPlayerSelfEdit: dto.allowPlayerSelfEdit === true,
     paymentModel:
       (extra['paymentModel'] as PeladaRulesFormValues['paymentModel']) ??
       DEFAULT_PELADA_RULES.paymentModel,
@@ -51,6 +53,7 @@ export function peladaRulesToPatchBody(
     modality: values.modality,
     goalkeeperMode: toGoalkeeperMode(values),
     fixedListOnly: values.fixedListOnly,
+    allowPlayerSelfEdit: values.allowPlayerSelfEdit,
     drawWeights: toDrawWeights(values),
     extra: {
       paymentModel: values.paymentModel,

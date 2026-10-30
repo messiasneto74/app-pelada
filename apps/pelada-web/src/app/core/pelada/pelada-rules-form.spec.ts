@@ -35,6 +35,10 @@ describe('pelada rules form (3.2)', () => {
     expect(DEFAULT_PELADA_RULES.drawUseAttributes).toBe(true);
   });
 
+  it('desliga edição de perfil pelo jogador por padrão (história 27)', () => {
+    expect(DEFAULT_PELADA_RULES.allowPlayerSelfEdit).toBe(false);
+  });
+
   it('mapeia drawWeights para API', () => {
     expect(
       toDrawWeights({
