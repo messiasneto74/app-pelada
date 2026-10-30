@@ -21,6 +21,21 @@ A automação **app-pelada — revisar PR** usa as mesmas regras (R-01…R-07). 
 
 **Merge bloqueado** só se o mantenedor ativar *branch protection* exigindo este check (ver [ci-github.md](../../docs/ci-github.md)).
 
+### Relação com o agente Codex
+
+O workflow [`codex-review.yml`](./codex-review.yml) executa uma segunda revisão
+independente usando a action oficial `openai/codex-action`. O mesmo job publica o
+parecer e aplica o veredito ao check **`codex-review-policy`**, evitando um verde
+operacional separado. Para frontend, o verde exige validação funcional da tela,
+viewport 390×844 e evidência visual. Configuração em
+[CODEX-REVISAR-PR-SETUP.md](../CODEX-REVISAR-PR-SETUP.md).
+
+Esse gate usa `pull_request_target`: política e instruções vêm da `main`; o PR é
+checado separadamente em `pr/`. Fork, contexto inválido, campo duplicado, teste
+condicional pulado ou evidência declarada sem arquivo mantêm o check vermelho.
+Comandos preparatórios do PR rodam em container; o parser final é baixado da
+base somente depois da execução e roda fora do workspace gravável pelo agente.
+
 ### Variáveis
 
 - `COVERAGE_BASE_REF` — passada ao `scripts/check-pr-line-coverage.mjs` (padrão local: `origin/main`).
@@ -32,4 +47,5 @@ A automação **app-pelada — revisar PR** usa as mesmas regras (R-01…R-07). 
 npm.cmd run test:all
 ```
 
-Integração com Postgres de teste (`RUN_DB_TESTS=1`) **não** roda no CI por padrão (opcional depois).
+O gate Codex provisiona Postgres de teste e executa as suítes condicionais com
+`RUN_DB_TESTS=1`; skips em runtime são bloqueantes.
