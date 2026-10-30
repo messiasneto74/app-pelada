@@ -22,7 +22,7 @@ Tokens em `src/theme/` (`resenha-tokens.scss` + utilitários em `resenha-base.sc
 
 ### Shell e navegação (T3)
 
-Rotas autenticadas dentro de `MainShellComponent` com **bottom nav** (Início, Partida, Jogadores, Caixa). **`/inicio/regras`** — tela 3.2 + interruptor história 27 (`allowPlayerSelfEdit`, issue #20). Placeholders em `/partida/*`, `/jogadores`, `/caixa`. Ver [arquitetura §4.2–4.3](../../docs/arquitetura-backend-frontend.md).
+Rotas autenticadas dentro de `MainShellComponent` com **bottom nav** (Início, Partida, Jogadores, Caixa). **`/inicio`** — tela 3.1 (issue #21): card próxima partida, atalhos, caixa do mês; consome `GET /peladas/:id/dashboard` quando disponível (3.1-API). **`/inicio/regras`** — tela 3.2 + L27. Placeholders em `/partida/*`, `/jogadores`, `/caixa`. Ver [arquitetura §4.2–4.3](../../docs/arquitetura-backend-frontend.md).
 
 ### Componentes base (T2)
 
