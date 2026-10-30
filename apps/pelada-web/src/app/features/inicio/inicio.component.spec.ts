@@ -1,7 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
-import type { InicioDashboardView } from '../../core/inicio/inicio-dashboard.model';
+import {
+  INICIO_SHORTCUTS,
+  type InicioDashboardView,
+} from '../../core/inicio/inicio-dashboard.model';
 import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { InicioComponent } from './inicio.component';
@@ -82,6 +85,20 @@ describe('InicioComponent', () => {
     expect(text).toContain('Regras');
     expect(text).toContain('Elenco');
     expect(text).toContain('Cobrar');
+  });
+
+  it('atalhos usam routerLink das rotas corretas (§3.1)', () => {
+    const links = fixture.nativeElement.querySelectorAll(
+      '.shortcut-grid a.shortcut',
+    ) as NodeListOf<HTMLAnchorElement>;
+    expect(links.length).toBe(INICIO_SHORTCUTS.length);
+    const hrefs = [...links].map((a) => a.getAttribute('href'));
+    for (const shortcut of INICIO_SHORTCUTS) {
+      expect(hrefs).withContext(shortcut.label).toContain(shortcut.route);
+    }
+    expect(
+      fixture.nativeElement.querySelector('a[href="/partida/presenca"]'),
+    ).withContext('Abrir lista de presença').not.toBeNull();
   });
 
   it('mostra resumo do caixa em %', () => {
