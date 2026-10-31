@@ -102,6 +102,8 @@ describe('JogadorPerfilComponent (3.8)', () => {
   it('renderiza §3.8 com tags, atributos e plano', async () => {
     fixture.detectChanges();
     await fixture.whenStable();
+    await Promise.resolve();
+    fixture.detectChanges();
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Carlos Lima');
     expect(text).toContain('corredor');
@@ -224,6 +226,8 @@ describe('JogadorPerfilComponent regra 27 (3.8)', () => {
     const selfFixture = TestBed.createComponent(JogadorPerfilComponent);
     selfFixture.detectChanges();
     await selfFixture.whenStable();
+    await Promise.resolve();
+    selfFixture.detectChanges();
     expect(selfFixture.nativeElement.textContent).toContain(
       'Editar perfil (adm)',
     );
