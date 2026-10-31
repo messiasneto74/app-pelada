@@ -79,6 +79,15 @@ export class PeladasController {
     return this.peladasService.getPeladaDashboard(user, peladaId);
   }
 
+  @Get('peladas/:peladaId/membership')
+  @UseGuards(JwtAuthGuard)
+  getPeladaMembership(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+  ) {
+    return this.peladasService.getPeladaMembership(user, peladaId);
+  }
+
   @Get('peladas/:peladaId/players')
   @UseGuards(JwtAuthGuard)
   listPeladaPlayers(
@@ -86,6 +95,16 @@ export class PeladasController {
     @Param('peladaId') peladaId: string,
   ) {
     return this.peladaPlayersService.listPlayers(user, peladaId);
+  }
+
+  @Get('peladas/:peladaId/players/:playerId')
+  @UseGuards(JwtAuthGuard)
+  getPeladaPlayer(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('playerId') playerId: string,
+  ) {
+    return this.peladaPlayersService.getPlayer(user, peladaId, playerId);
   }
 
   @Post('peladas/:peladaId/players')

@@ -118,4 +118,30 @@ const runHarness =
     expect(res.body.playersPerTeam).toBe(7);
     expect(res.body.drawWeights).toMatchObject({ mode: 'BALANCED' });
   });
+
+  it('GET /peladas/:id/membership returns role for member', async () => {
+    const orgSub = 'mem-org';
+    const jogSub = 'mem-jog';
+    const org = await createUser(prisma, { keycloakSub: orgSub });
+    const jog = await createUser(prisma, { keycloakSub: jogSub });
+    const pelada = await createPelada(prisma, { owner: org });
+    await prisma.peladaMember.create({
+      data: { peladaId: pelada.id, userId: jog.id, role: 'JOGADOR' },
+    });
+
+    const orgToken = signTestJwt({ sub: orgSub, email: org.email ?? 'o@z.c' });
+    const jogToken = signTestJwt({ sub: jogSub, email: jog.email ?? 'j@z.c' });
+
+    const orgRes = await request(app.getHttpServer())
+      .get(`/peladas/${pelada.id}/membership`)
+      .set('Authorization', `Bearer ${orgToken}`)
+      .expect(200);
+    expect(orgRes.body).toEqual({ peladaId: pelada.id, role: 'ORGANIZADOR' });
+
+    const jogRes = await request(app.getHttpServer())
+      .get(`/peladas/${pelada.id}/membership`)
+      .set('Authorization', `Bearer ${jogToken}`)
+      .expect(200);
+    expect(jogRes.body.role).toBe('JOGADOR');
+  });
 });

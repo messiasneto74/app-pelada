@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import type { Player } from '@prisma/client';
 import {
   assertFixedListAllowed,
+  normalizePlayerAttributes,
   resolveIsFixedListForWrite,
   toRosterPlayerDto,
 } from './pelada-roster.logic';
@@ -44,5 +45,12 @@ describe('pelada roster logic (3.7-API)', () => {
   it('resolveIsFixedListForWrite força false quando regra desligada', () => {
     expect(resolveIsFixedListForWrite(false, undefined, true)).toBe(false);
     expect(resolveIsFixedListForWrite(true, true, false)).toBe(true);
+  });
+
+  it('normalizePlayerAttributes preenche padrão 5', () => {
+    expect(normalizePlayerAttributes({ chute: 8 })).toMatchObject({
+      chute: 8,
+      tecnica: 5,
+    });
   });
 });

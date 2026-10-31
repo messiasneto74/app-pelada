@@ -174,5 +174,60 @@ const runHarness =
 
       expect(list.body.players).toHaveLength(0);
     });
+
+    it('GET /players/:playerId returns profile with attributes', async () => {
+      const sub = 'roster-get-one';
+      const user = await createUser(prisma, { keycloakSub: sub });
+      const pelada = await createPelada(prisma, { owner: user });
+      const token = signTestJwt({ sub, email: user.email ?? 'x@y.z' });
+
+      const created = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/players`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          displayName: 'Perfil Teste',
+          rating: 9,
+          tags: ['driblador'],
+        })
+        .expect(201);
+
+      const profile = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/players/${created.body.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(profile.body).toMatchObject({
+        displayName: 'Perfil Teste',
+        rating: 9,
+        tags: ['driblador'],
+        paymentPlan: 'PER_MATCH',
+      });
+      expect(profile.body.attributes).toMatchObject({
+        tecnica: 5,
+        chute: 5,
+      });
+    });
+
+    it('GET /players/:playerId returns 404 when player belongs to another pelada', async () => {
+      const sub = 'roster-cross';
+      const user = await createUser(prisma, { keycloakSub: sub });
+      const peladaA = await createPelada(prisma, { owner: user });
+      const peladaB = await createPelada(prisma, {
+        owner: user,
+        name: 'Pelada B',
+      });
+      const token = signTestJwt({ sub, email: user.email ?? 'x@y.z' });
+
+      const player = await request(app.getHttpServer())
+        .post(`/peladas/${peladaA.id}/players`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ displayName: 'Só A' })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .get(`/peladas/${peladaB.id}/players/${player.body.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404);
+    });
   },
 );
