@@ -84,6 +84,7 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 
 ## Elenco / jogadores (3.7-API)
 
+- `GET /peladas/:peladaId/membership` — JWT; membro; `{ peladaId, role }` (`ORGANIZADOR` | `JOGADOR`).
 - `GET /peladas/:peladaId/players` — JWT; membro; `{ peladaId, players[] }` (contrato alinhado ao web §3.7).
 - `GET /peladas/:peladaId/players/:playerId` — JWT; membro; perfil §3.8 (`attributes`, `paymentPlan`, `userId`).
 - `POST /peladas/:peladaId/players` — JWT; **ORGANIZADOR**; body `CreatePlayerDto`.

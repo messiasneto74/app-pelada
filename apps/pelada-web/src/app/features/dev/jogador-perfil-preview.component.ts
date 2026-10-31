@@ -74,7 +74,10 @@ const previewPeladaContext = {
     },
     {
       provide: PeladaOrganizadorContextService,
-      useValue: { isOrganizador: () => true },
+      useValue: {
+        isOrganizador: (id: string) => id === previewPelada.id,
+        refreshMembership: () => {},
+      },
     },
     {
       provide: ActivatedRoute,

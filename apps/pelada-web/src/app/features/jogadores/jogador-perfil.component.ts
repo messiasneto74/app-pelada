@@ -1,5 +1,6 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { AuthService } from '../../auth/auth.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
@@ -180,10 +181,12 @@ export class JogadorPerfilComponent implements OnInit {
   private readonly profileService = inject(PeladaPlayerProfileService);
   private readonly rulesService = inject(PeladaRulesService);
   private readonly orgContext = inject(PeladaOrganizadorContextService);
+  private readonly authService = inject(AuthService);
 
   readonly loading = signal(true);
   readonly profile = signal<PeladaPlayerProfileDto | null>(null);
   readonly editHint = signal('');
+  readonly currentAppUserId = signal<string | null>(null);
 
   readonly formatRosterRating = formatRosterRating;
   readonly attributeDefs = PLAYER_PROFILE_ATTRIBUTES;
@@ -227,10 +230,10 @@ export class JogadorPerfilComponent implements OnInit {
     if (!p || !pelada) return false;
     const rules = this.rulesService.getDefaultRules(pelada.id);
     return canShowEditProfile({
-      isOrganizador: this.orgContext.isOrganizador(),
+      isOrganizador: this.orgContext.isOrganizador(pelada.id),
       allowPlayerSelfEdit: rules.allowPlayerSelfEdit,
       playerUserId: p.userId,
-      currentAppUserId: null,
+      currentAppUserId: this.currentAppUserId(),
     });
   });
 
@@ -241,6 +244,11 @@ export class JogadorPerfilComponent implements OnInit {
       this.loading.set(false);
       return;
     }
+    this.orgContext.refreshMembership(pelada.id);
+    void this.authService
+      .getMe()
+      .then((me) => this.currentAppUserId.set(me.id))
+      .catch(() => this.currentAppUserId.set(null));
     this.profileService.loadProfile(pelada, playerId, (dto) => {
       this.profile.set(dto);
       this.loading.set(false);

@@ -79,6 +79,15 @@ export class PeladasController {
     return this.peladasService.getPeladaDashboard(user, peladaId);
   }
 
+  @Get('peladas/:peladaId/membership')
+  @UseGuards(JwtAuthGuard)
+  getPeladaMembership(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+  ) {
+    return this.peladasService.getPeladaMembership(user, peladaId);
+  }
+
   @Get('peladas/:peladaId/players')
   @UseGuards(JwtAuthGuard)
   listPeladaPlayers(
