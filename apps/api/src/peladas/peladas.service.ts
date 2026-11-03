@@ -170,6 +170,18 @@ export class PeladasService {
     return this.toRulesResponse(updated);
   }
 
+  async getPeladaMembership(
+    auth: AuthUserPayload,
+    peladaId: string,
+  ): Promise<{ peladaId: string; role: string }> {
+    const user = await this.meService.getOrCreateUser(auth);
+    await this.assertMember(peladaId, user.id);
+    const member = await this.prisma.peladaMember.findUnique({
+      where: { peladaId_userId: { peladaId, userId: user.id } },
+    });
+    return { peladaId, role: member!.role };
+  }
+
   async getPeladaDashboard(
     auth: AuthUserPayload,
     peladaId: string,

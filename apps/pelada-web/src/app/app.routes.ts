@@ -62,6 +62,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/jogador-perfil',
+    loadComponent: () =>
+      import('./features/dev/jogador-perfil-preview.component').then(
+        (m) => m.JogadorPerfilPreviewComponent,
+      ),
+  },
+  {
     path: 'onboarding/pelada',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>
@@ -116,8 +123,10 @@ export const routes: Routes = [
       },
       {
         path: 'jogadores/:playerId',
-        loadComponent: placeholder,
-        data: { title: 'Perfil do jogador', eyebrow: 'Elenco', subtitle: '§3.8 — issue #26' },
+        loadComponent: () =>
+          import('./features/jogadores/jogador-perfil.component').then(
+            (m) => m.JogadorPerfilComponent,
+          ),
       },
       {
         path: 'caixa',
