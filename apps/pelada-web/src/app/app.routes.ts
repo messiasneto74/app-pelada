@@ -69,6 +69,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/jogador-perfil-edit',
+    loadComponent: () =>
+      import('./features/dev/jogador-perfil-edit-preview.component').then(
+        (m) => m.JogadorPerfilEditPreviewComponent,
+      ),
+  },
+  {
     path: 'onboarding/pelada',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>
