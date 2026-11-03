@@ -8,6 +8,7 @@ Screenshots anexados nos PRs correspondentes; paths estáveis no repo para revis
 | #23 3.1-EMPTY | [3-1-empty-23-inicio-390.jpg](./3-1-empty-23-inicio-390.jpg) | **390×844 px** (JPG; rota `/dev/inicio-empty`, sem partida + elenco vazio) |
 | #24 3.7 | [3-7-24-jogadores-390.jpg](./3-7-24-jogadores-390.jpg) | **390×844 px** (JPG; rota `/dev/jogadores-list`, elenco de exemplo) |
 | #26 3.8 | [3-8-26-jogador-perfil-390.jpg](./3-8-26-jogador-perfil-390.jpg) | **390×844 px** (JPG; rota `/dev/jogador-perfil`, perfil de exemplo) |
+| #27 3.8-EDIT | [3-8-edit-27-jogador-perfil-edit-390.jpg](./3-8-edit-27-jogador-perfil-edit-390.jpg) | **390×844 px** (JPG; rota `/dev/jogador-perfil-edit`, modo edição adm) |
 
 Validar dimensões antes do PR:
 

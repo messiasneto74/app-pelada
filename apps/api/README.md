@@ -88,7 +88,7 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 - `GET /peladas/:peladaId/players` — JWT; membro; `{ peladaId, players[] }` (contrato alinhado ao web §3.7).
 - `GET /peladas/:peladaId/players/:playerId` — JWT; membro; perfil §3.8 (`attributes`, `paymentPlan`, `userId`).
 - `POST /peladas/:peladaId/players` — JWT; **ORGANIZADOR**; body `CreatePlayerDto`.
-- `PATCH /peladas/:peladaId/players/:playerId` — JWT; **ORGANIZADOR**; body `PatchPlayerDto`.
+- `PATCH /peladas/:peladaId/players/:playerId` — JWT; **ORGANIZADOR** ou jogador com **L27** no próprio vínculo; body `PatchPlayerDto` (`attributes` opcional).
 - `DELETE /peladas/:peladaId/players/:playerId` — JWT; **ORGANIZADOR**; `204`.
 - `isFixedList: true` só é aceito quando `PeladaRules.fixedListOnly` está ativo (regra 16); caso contrário `400`.
 

@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import type { Player } from '@prisma/client';
 import {
   assertFixedListAllowed,
+  canPatchPlayerProfile,
   normalizePlayerAttributes,
   resolveIsFixedListForWrite,
   toRosterPlayerDto,
@@ -52,5 +53,32 @@ describe('pelada roster logic (3.7-API)', () => {
       chute: 8,
       tecnica: 5,
     });
+  });
+
+  it('canPatchPlayerProfile respeita organizador e L27', () => {
+    expect(
+      canPatchPlayerProfile({
+        isOrganizador: true,
+        allowPlayerSelfEdit: false,
+        playerUserId: 'u2',
+        currentUserId: 'u1',
+      }),
+    ).toBe(true);
+    expect(
+      canPatchPlayerProfile({
+        isOrganizador: false,
+        allowPlayerSelfEdit: true,
+        playerUserId: 'u1',
+        currentUserId: 'u1',
+      }),
+    ).toBe(true);
+    expect(
+      canPatchPlayerProfile({
+        isOrganizador: false,
+        allowPlayerSelfEdit: false,
+        playerUserId: 'u1',
+        currentUserId: 'u1',
+      }),
+    ).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   Max,
@@ -43,4 +44,8 @@ export class PatchPlayerDto {
   @IsOptional()
   @IsBoolean()
   isFixedList?: boolean;
+
+  @IsOptional()
+  @IsObject()
+  attributes?: Record<string, number>;
 }

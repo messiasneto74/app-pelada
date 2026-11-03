@@ -226,7 +226,7 @@ describe('JogadorPerfilComponent regra 27 (3.8)', () => {
     await Promise.resolve();
     selfFixture.detectChanges();
     expect(selfFixture.nativeElement.textContent).toContain(
-      'Editar perfil (adm)',
+      'Editar meu perfil',
     );
   });
 });
@@ -286,6 +286,75 @@ describe('JogadorPerfilComponent regras via HTTP (3.8)', () => {
     await Promise.resolve();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Editar perfil (adm)');
+    expect(fixture.nativeElement.textContent).toContain('Editar meu perfil');
+  });
+});
+
+describe('JogadorPerfilComponent modo edição (3.8-EDIT)', () => {
+  it('abre formulário e salva via PATCH', async () => {
+    const updateSpy = jasmine.createSpy('updateProfile').and.returnValue(
+      of({
+        ...profile,
+        rating: 8,
+        tags: ['novo'],
+      }),
+    );
+
+    await TestBed.configureTestingModule({
+      imports: [JogadorPerfilComponent],
+      providers: [
+        provideRouter([
+          { path: 'jogadores/:playerId', component: JogadorPerfilComponent },
+        ]),
+        routeProvider,
+        peladaContextProvider,
+        profileServiceProvider,
+        {
+          provide: PeladaRulesApiService,
+          useValue: rulesApiMock(false),
+        },
+        {
+          provide: PeladaOrganizadorContextService,
+          useValue: orgContextMock(true),
+        },
+        { provide: AuthService, useValue: authMock('user-org') },
+        {
+          provide: PeladaPlayerProfileService,
+          useValue: {
+            loadProfile: (
+              _p: typeof pelada,
+              id: string,
+              cb: (dto: PeladaPlayerProfileDto | null) => void,
+            ) => cb(id === 'pl1' ? profile : null),
+            updateProfile: updateSpy,
+          },
+        },
+      ],
+    }).compileComponents();
+
+    const editFixture = TestBed.createComponent(JogadorPerfilComponent);
+    editFixture.detectChanges();
+    await editFixture.whenStable();
+    await Promise.resolve();
+    editFixture.detectChanges();
+
+    const btn: HTMLButtonElement | null =
+      editFixture.nativeElement.querySelector('button[peladaButton]');
+    expect(btn?.textContent).toContain('Editar perfil (adm)');
+    btn?.click();
+    editFixture.detectChanges();
+
+    expect(editFixture.nativeElement.textContent).toContain('Salvar perfil');
+
+    editFixture.componentInstance.patchTagsText({
+      target: { value: 'novo' },
+    } as unknown as Event);
+    editFixture.componentInstance.onSave(new Event('submit'));
+    await editFixture.whenStable();
+    editFixture.detectChanges();
+
+    expect(updateSpy).toHaveBeenCalled();
+    expect(editFixture.componentInstance.editing()).toBe(false);
+    expect(editFixture.nativeElement.textContent).toContain('novo');
   });
 });

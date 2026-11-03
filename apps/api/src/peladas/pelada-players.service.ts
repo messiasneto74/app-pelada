@@ -10,6 +10,9 @@ import { MeService } from '../me/me.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   type PeladaRosterDto,
+  canPatchPlayerProfile,
+  normalizePlayerAttributes,
+  pickSelfEditPatch,
   resolveIsFixedListForWrite,
   toPlayerProfileDto,
   toRosterPlayerDto,
@@ -95,7 +98,7 @@ export class PeladaPlayersService {
     dto: PatchPlayerDto,
   ) {
     const user = await this.meService.getOrCreateUser(auth);
-    const fixedListOnly = await this.assertOrganizadorWithRules(peladaId, user.id);
+    await this.assertMember(peladaId, user.id);
 
     const existing = await this.prisma.player.findFirst({
       where: { id: playerId, peladaId },
@@ -104,32 +107,70 @@ export class PeladaPlayersService {
       throw new NotFoundException('Jogador não encontrado nesta pelada.');
     }
 
+    const member = await this.prisma.peladaMember.findUnique({
+      where: { peladaId_userId: { peladaId, userId: user.id } },
+    });
+    const rules = await this.prisma.peladaRules.findUnique({
+      where: { peladaId },
+    });
+    if (!rules) {
+      throw new NotFoundException('Regras da pelada não encontradas.');
+    }
+
+    const isOrganizador = member?.role === 'ORGANIZADOR';
+    if (
+      !canPatchPlayerProfile({
+        isOrganizador,
+        allowPlayerSelfEdit: rules.allowPlayerSelfEdit,
+        playerUserId: existing.userId,
+        currentUserId: user.id,
+      })
+    ) {
+      throw new ForbiddenException('Sem permissão para alterar este perfil.');
+    }
+
+    const patchDto = isOrganizador
+      ? dto
+      : (pickSelfEditPatch(dto as Record<string, unknown>) as PatchPlayerDto);
+
+    const fixedListOnly = rules.fixedListOnly;
     const isFixedList = resolveIsFixedListForWrite(
       fixedListOnly,
-      dto.isFixedList,
+      patchDto.isFixedList,
       existing.isFixedList,
     );
+
+    const attributes =
+      patchDto.attributes !== undefined
+        ? normalizePlayerAttributes({
+            ...((existing.attributes as Record<string, unknown>) ?? {}),
+            ...patchDto.attributes,
+          })
+        : undefined;
 
     const player = await this.prisma.player.update({
       where: { id: playerId },
       data: {
-        ...(dto.displayName !== undefined && {
-          displayName: dto.displayName.trim(),
+        ...(patchDto.displayName !== undefined && {
+          displayName: patchDto.displayName.trim(),
         }),
-        ...(dto.isGoalkeeper !== undefined && {
-          isGoalkeeper: dto.isGoalkeeper,
+        ...(patchDto.isGoalkeeper !== undefined && {
+          isGoalkeeper: patchDto.isGoalkeeper,
         }),
-        ...(dto.position !== undefined && {
-          position: dto.position.trim() || null,
+        ...(patchDto.position !== undefined && {
+          position: patchDto.position.trim() || null,
         }),
-        ...(dto.rating !== undefined && { rating: dto.rating }),
-        ...(dto.tags !== undefined && { tags: dto.tags }),
-        ...(dto.paymentPlan !== undefined && { paymentPlan: dto.paymentPlan }),
+        ...(patchDto.rating !== undefined && { rating: patchDto.rating }),
+        ...(patchDto.tags !== undefined && { tags: patchDto.tags }),
+        ...(patchDto.paymentPlan !== undefined && {
+          paymentPlan: patchDto.paymentPlan,
+        }),
+        ...(attributes !== undefined && { attributes }),
         isFixedList,
       },
     });
 
-    return toRosterPlayerDto(player);
+    return toPlayerProfileDto(player);
   }
 
   async deletePlayer(

@@ -7,6 +7,12 @@ import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.servic
 import type { PeladaPlayerProfileDto } from '../../core/roster/pelada-player-profile-api.model';
 import { PeladaPlayerProfileService } from '../../core/roster/pelada-player-profile.service';
 import {
+  buildPatchFromForm,
+  editProfileButtonLabel,
+  profileToEditForm,
+  type PlayerProfileEditForm,
+} from '../../core/roster/player-profile-edit.logic';
+import {
   attributeBarPercent,
   canShowEditProfile,
   paymentPlanLabel,
@@ -21,6 +27,7 @@ import { PeladaAvatarComponent } from '../../ui/avatar.component';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaCardComponent } from '../../ui/card.component';
 import { PeladaChipComponent } from '../../ui/chip.component';
+import { PeladaFieldComponent } from '../../ui/field.component';
 import { PeladaProgressComponent } from '../../ui/progress.component';
 import { ScreenHeaderComponent } from '../../ui/screen-header.component';
 
@@ -35,12 +42,13 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
     PeladaProgressComponent,
     PeladaButtonComponent,
     PeladaAvatarComponent,
+    PeladaFieldComponent,
   ],
   template: `
     <section class="pelada-shell">
       <pelada-screen-header
         eyebrow="Elenco"
-        title="Perfil do jogador"
+        [title]="editing() ? 'Editar perfil' : 'Perfil do jogador'"
         subtitle="Nota e atributos usados no sorteio (§3.8)."
       />
 
@@ -51,6 +59,97 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           <p class="pelada-muted">Volte à lista e tente novamente.</p>
           <a routerLink="/jogadores" peladaButton variant="ghost">Voltar ao elenco</a>
         </pelada-card>
+      } @else if (editing()) {
+        <form class="edit-form" (submit)="onSave($event)">
+          <pelada-card title="Nota e tags">
+            <pelada-field label="Nota geral (1–10)" forId="profile-rating">
+              <input
+                id="profile-rating"
+                class="pelada-input"
+                type="number"
+                min="1"
+                max="10"
+                step="1"
+                [value]="editForm().rating"
+                (input)="patchRating($event)"
+                required
+              />
+            </pelada-field>
+            <pelada-field
+              label="Tags (separadas por vírgula)"
+              forId="profile-tags"
+              hint="Estilo de jogo — ex.: corredor, passe"
+            >
+              <input
+                id="profile-tags"
+                class="pelada-input"
+                type="text"
+                maxlength="120"
+                [value]="editForm().tagsText"
+                (input)="patchTagsText($event)"
+              />
+            </pelada-field>
+            @if (isOrganizador()) {
+              <pelada-field label="Plano de pagamento" forId="profile-plan">
+                <select
+                  id="profile-plan"
+                  class="pelada-input"
+                  [value]="editForm().paymentPlan"
+                  (change)="patchPaymentPlan($event)"
+                >
+                  <option value="PER_MATCH">Por partida</option>
+                  <option value="MONTHLY">Mensalista</option>
+                </select>
+              </pelada-field>
+            }
+          </pelada-card>
+
+          <pelada-card title="Atributos">
+            <ul class="attr-list">
+              @for (attr of attributeDefs; track attr.key) {
+                <li>
+                  <div class="attr-row">
+                    <label [attr.for]="'attr-' + attr.key">{{ attr.label }}</label>
+                    <span class="attr-value">{{ editForm().attributes[attr.key] }}/10</span>
+                  </div>
+                  <input
+                    [id]="'attr-' + attr.key"
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    class="attr-range"
+                    [value]="editForm().attributes[attr.key]"
+                    (input)="patchAttribute(attr.key, $event)"
+                  />
+                </li>
+              }
+            </ul>
+          </pelada-card>
+
+          @if (saveError()) {
+            <p class="pelada-field__error" role="alert">{{ saveError() }}</p>
+          }
+
+          <div class="edit-actions">
+            <button
+              type="button"
+              peladaButton
+              variant="ghost"
+              (click)="cancelEdit()"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              peladaButton
+              variant="lime"
+              [disabled]="saving()"
+            >
+              {{ saving() ? 'Salvando…' : 'Salvar perfil' }}
+            </button>
+          </div>
+        </form>
       } @else {
         <div class="profile-hero">
           <pelada-avatar [name]="profile()!.displayName" tone="lime" />
@@ -96,13 +195,10 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
             peladaButton
             variant="lime"
             [peladaButtonBlock]="true"
-            (click)="onEditProfile()"
+            (click)="startEdit()"
           >
-            Editar perfil (adm)
+            {{ editButtonLabel() }}
           </button>
-          @if (editHint()) {
-            <p class="pelada-muted edit-hint" role="status">{{ editHint() }}</p>
-          }
         }
 
         <a routerLink="/jogadores" class="back-link pelada-muted">← Voltar ao elenco</a>
@@ -153,18 +249,33 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       .attr-value {
         font-weight: 600;
       }
+      .attr-range {
+        width: 100%;
+        accent-color: var(--pelada-lime);
+      }
       .plan-label {
         margin: 0 0 var(--pelada-space-1);
         font-weight: 600;
         font-size: 1.125rem;
       }
-      .plan-hint,
-      .edit-hint {
+      .plan-hint {
         margin: var(--pelada-space-2) 0 0;
         font-size: 0.875rem;
       }
       [peladaButton] {
         margin-top: var(--pelada-space-3);
+      }
+      .edit-form pelada-card + pelada-card {
+        margin-top: var(--pelada-space-3);
+      }
+      .edit-actions {
+        display: flex;
+        gap: var(--pelada-space-2);
+        margin-top: var(--pelada-space-4);
+      }
+      .edit-actions [peladaButton] {
+        flex: 1;
+        margin-top: 0;
       }
       .back-link {
         display: inline-block;
@@ -185,9 +296,24 @@ export class JogadorPerfilComponent implements OnInit {
 
   readonly loading = signal(true);
   readonly profile = signal<PeladaPlayerProfileDto | null>(null);
-  readonly editHint = signal('');
+  readonly editing = signal(false);
+  readonly saving = signal(false);
+  readonly saveError = signal('');
+  readonly tagsDirty = signal(false);
+  readonly editForm = signal<PlayerProfileEditForm>({
+    rating: 5,
+    tagsText: '',
+    paymentPlan: 'PER_MATCH',
+    attributes: {
+      tecnica: 5,
+      forca: 5,
+      chute: 5,
+      passe: 5,
+      defesa: 5,
+      velocidade: 5,
+    },
+  });
   readonly currentAppUserId = signal<string | null>(null);
-  /** L27 — valor persistido na API (`GET /peladas/:id/rules`), não sessionStorage local. */
   readonly allowPlayerSelfEdit = signal(false);
 
   readonly formatRosterRating = formatRosterRating;
@@ -226,12 +352,21 @@ export class JogadorPerfilComponent implements OnInit {
     return paymentPlanLabel(plan);
   });
 
+  readonly isOrganizador = computed(() => {
+    const pelada = this.peladaContext.getActivePelada();
+    return pelada ? this.orgContext.isOrganizador(pelada.id) : false;
+  });
+
+  readonly editButtonLabel = computed(() =>
+    editProfileButtonLabel(this.isOrganizador()),
+  );
+
   readonly showEdit = computed(() => {
     const p = this.profile();
     const pelada = this.peladaContext.getActivePelada();
     if (!p || !pelada) return false;
     return canShowEditProfile({
-      isOrganizador: this.orgContext.isOrganizador(pelada.id),
+      isOrganizador: this.isOrganizador(),
       allowPlayerSelfEdit: this.allowPlayerSelfEdit(),
       playerUserId: p.userId,
       currentAppUserId: this.currentAppUserId(),
@@ -264,9 +399,72 @@ export class JogadorPerfilComponent implements OnInit {
     });
   }
 
-  onEditProfile(): void {
-    this.editHint.set(
-      'Formulário de edição entra na issue 3.8-EDIT (modo adm + regra 27).',
-    );
+  startEdit(): void {
+    const p = this.profile();
+    if (!p) return;
+    this.saveError.set('');
+    this.tagsDirty.set(false);
+    this.editForm.set(profileToEditForm(p));
+    this.editing.set(true);
+  }
+
+  cancelEdit(): void {
+    this.editing.set(false);
+    this.saveError.set('');
+    this.tagsDirty.set(false);
+  }
+
+  patchRating(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    this.editForm.update((f) => ({ ...f, rating: value }));
+  }
+
+  patchTagsText(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.tagsDirty.set(true);
+    this.editForm.update((f) => ({ ...f, tagsText: value }));
+  }
+
+  patchPaymentPlan(event: Event): void {
+    const value = (event.target as HTMLSelectElement)
+      .value as PlayerProfileEditForm['paymentPlan'];
+    this.editForm.update((f) => ({ ...f, paymentPlan: value }));
+  }
+
+  patchAttribute(
+    key: keyof PlayerProfileEditForm['attributes'],
+    event: Event,
+  ): void {
+    const value = Number((event.target as HTMLInputElement).value);
+    this.editForm.update((f) => ({
+      ...f,
+      attributes: { ...f.attributes, [key]: value },
+    }));
+  }
+
+  onSave(event: Event): void {
+    event.preventDefault();
+    const p = this.profile();
+    const pelada = this.peladaContext.getActivePelada();
+    if (!p || !pelada || this.saving()) return;
+
+    this.saving.set(true);
+    this.saveError.set('');
+    const body = buildPatchFromForm(this.editForm(), this.isOrganizador(), {
+      includeTags: this.tagsDirty(),
+    });
+    this.profileService.updateProfile(pelada.id, p.id, body).subscribe({
+      next: (updated) => {
+        this.profile.set(updated);
+        this.editing.set(false);
+        this.saving.set(false);
+      },
+      error: () => {
+        this.saveError.set(
+          'Não foi possível salvar. Verifique permissão ou conexão.',
+        );
+        this.saving.set(false);
+      },
+    });
   }
 }
