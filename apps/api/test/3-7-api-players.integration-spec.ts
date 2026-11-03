@@ -229,5 +229,55 @@ const runHarness =
         .set('Authorization', `Bearer ${token}`)
         .expect(404);
     });
+
+    it('PATCH /players/:id allows self-edit when allowPlayerSelfEdit (L27)', async () => {
+      const sub = 'roster-self-edit';
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const member = await createUser(prisma, { keycloakSub: `${sub}-mem` });
+      const pelada = await createPelada(prisma, { owner: org });
+      const orgToken = signTestJwt({
+        sub: `${sub}-org`,
+        email: org.email ?? 'org@y.z',
+      });
+      const memberToken = signTestJwt({
+        sub: `${sub}-mem`,
+        email: member.email ?? 'mem@y.z',
+      });
+
+      await prisma.peladaMember.create({
+        data: {
+          peladaId: pelada.id,
+          userId: member.id,
+          role: 'JOGADOR',
+        },
+      });
+
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/rules`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ allowPlayerSelfEdit: true })
+        .expect(200);
+
+      const created = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/players`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ displayName: 'Self Edit', rating: 6 })
+        .expect(201);
+
+      await prisma.player.update({
+        where: { id: created.body.id },
+        data: { userId: member.id },
+      });
+
+      const patched = await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/players/${created.body.id}`)
+        .set('Authorization', `Bearer ${memberToken}`)
+        .send({ rating: 8, tags: ['self'], attributes: { chute: 9 } })
+        .expect(200);
+
+      expect(patched.body.rating).toBe(8);
+      expect(patched.body.tags).toEqual(['self']);
+      expect(patched.body.attributes.chute).toBe(9);
+    });
   },
 );

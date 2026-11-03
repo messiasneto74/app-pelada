@@ -91,3 +91,37 @@ export function resolveIsFixedListForWrite(
   }
   return fixedListOnly ? current : false;
 }
+
+/** História 27 — PATCH perfil: organizador ou jogador com L27 no próprio vínculo. */
+export function canPatchPlayerProfile(input: {
+  isOrganizador: boolean;
+  allowPlayerSelfEdit: boolean;
+  playerUserId: string | null;
+  currentUserId: string;
+}): boolean {
+  if (input.isOrganizador) {
+    return true;
+  }
+  if (!input.allowPlayerSelfEdit) {
+    return false;
+  }
+  if (!input.playerUserId) {
+    return false;
+  }
+  return input.playerUserId === input.currentUserId;
+}
+
+const SELF_EDIT_KEYS = ['rating', 'tags', 'attributes'] as const;
+
+/** Limita campos quando o jogador edita o próprio perfil (L27). */
+export function pickSelfEditPatch<T extends Record<string, unknown>>(
+  dto: T,
+): Partial<T> {
+  const out: Partial<T> = {};
+  for (const key of SELF_EDIT_KEYS) {
+    if (dto[key] !== undefined) {
+      out[key as keyof T] = dto[key as keyof T];
+    }
+  }
+  return out;
+}

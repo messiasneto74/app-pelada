@@ -11,5 +11,6 @@ export const JOGADOR_PERFIL_CHECKLIST: JogadorPerfilChecklistItem[] = [
   { id: 'attrs', label: 'Barras de atributos (6 eixos)', automated: true },
   { id: 'pay', label: 'Plano de pagamento do jogador', automated: true },
   { id: 'edit', label: 'Botão editar só para quem tem permissão', automated: true },
+  { id: 'edit-form', label: 'Modo edição: nota, tags, atributos, salvar/cancelar', automated: true },
   { id: '390', label: 'Layout 390×844 — screenshot no PR', automated: false },
 ];
