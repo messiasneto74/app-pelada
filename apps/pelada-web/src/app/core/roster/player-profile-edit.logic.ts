@@ -42,19 +42,26 @@ export function parseTagsText(text: string): string[] {
   return text
     .split(',')
     .map((t) => t.trim())
-    .filter((t) => t.length > 0)
-    .slice(0, 8);
+    .filter((t) => t.length > 0);
 }
+
+export type BuildPatchFromFormOptions = {
+  /** Só envia `tags` no PATCH quando o usuário alterou o campo (evita truncar elenco existente). */
+  includeTags?: boolean;
+};
 
 export function buildPatchFromForm(
   form: PlayerProfileEditForm,
   isOrganizador: boolean,
+  options: BuildPatchFromFormOptions = {},
 ): PatchPlayerProfileBody {
   const base: PatchPlayerProfileBody = {
     rating: clampRating(form.rating),
-    tags: parseTagsText(form.tagsText),
     attributes: { ...form.attributes },
   };
+  if (options.includeTags) {
+    base.tags = parseTagsText(form.tagsText);
+  }
   if (isOrganizador) {
     base.paymentPlan = form.paymentPlan;
   }

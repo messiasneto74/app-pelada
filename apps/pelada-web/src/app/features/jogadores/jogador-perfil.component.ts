@@ -299,6 +299,7 @@ export class JogadorPerfilComponent implements OnInit {
   readonly editing = signal(false);
   readonly saving = signal(false);
   readonly saveError = signal('');
+  readonly tagsDirty = signal(false);
   readonly editForm = signal<PlayerProfileEditForm>({
     rating: 5,
     tagsText: '',
@@ -402,6 +403,7 @@ export class JogadorPerfilComponent implements OnInit {
     const p = this.profile();
     if (!p) return;
     this.saveError.set('');
+    this.tagsDirty.set(false);
     this.editForm.set(profileToEditForm(p));
     this.editing.set(true);
   }
@@ -409,6 +411,7 @@ export class JogadorPerfilComponent implements OnInit {
   cancelEdit(): void {
     this.editing.set(false);
     this.saveError.set('');
+    this.tagsDirty.set(false);
   }
 
   patchRating(event: Event): void {
@@ -418,6 +421,7 @@ export class JogadorPerfilComponent implements OnInit {
 
   patchTagsText(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
+    this.tagsDirty.set(true);
     this.editForm.update((f) => ({ ...f, tagsText: value }));
   }
 
@@ -446,7 +450,9 @@ export class JogadorPerfilComponent implements OnInit {
 
     this.saving.set(true);
     this.saveError.set('');
-    const body = buildPatchFromForm(this.editForm(), this.isOrganizador());
+    const body = buildPatchFromForm(this.editForm(), this.isOrganizador(), {
+      includeTags: this.tagsDirty(),
+    });
     this.profileService.updateProfile(pelada.id, p.id, body).subscribe({
       next: (updated) => {
         this.profile.set(updated);

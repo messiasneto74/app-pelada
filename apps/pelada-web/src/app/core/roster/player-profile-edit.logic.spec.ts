@@ -50,8 +50,32 @@ describe('player-profile-edit.logic (3.8-EDIT)', () => {
     const self = buildPatchFromForm(form, false);
     expect(self.paymentPlan).toBeUndefined();
     expect(self.rating).toBe(7);
+    expect(self.tags).toBeUndefined();
 
     const org = buildPatchFromForm(form, true);
     expect(org.paymentPlan).toBe('PER_MATCH');
+    expect(org.tags).toBeUndefined();
+  });
+
+  it('omit tags no PATCH quando includeTags false (só nota/atributos)', () => {
+    const manyTags: PeladaPlayerProfileDto = {
+      ...profile,
+      tags: ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10'],
+    };
+    const form = profileToEditForm(manyTags);
+    form.rating = 9;
+    const patch = buildPatchFromForm(form, true, { includeTags: false });
+    expect(patch.rating).toBe(9);
+    expect(patch.tags).toBeUndefined();
+  });
+
+  it('envia todas as tags quando includeTags true', () => {
+    const manyTags: PeladaPlayerProfileDto = {
+      ...profile,
+      tags: ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10'],
+    };
+    const form = profileToEditForm(manyTags);
+    const patch = buildPatchFromForm(form, true, { includeTags: true });
+    expect(patch.tags?.length).toBe(10);
   });
 });
