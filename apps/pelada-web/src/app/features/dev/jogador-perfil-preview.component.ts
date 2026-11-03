@@ -9,6 +9,7 @@ import { peladaRulesFromApi } from '../../core/pelada/pelada-rules-api.mapper';
 import type { PeladaRulesApiDto } from '../../core/pelada/pelada-rules-api.mapper';
 import type { PeladaPlayerProfileDto } from '../../core/roster/pelada-player-profile-api.model';
 import { PeladaPlayerProfileService } from '../../core/roster/pelada-player-profile.service';
+import { JogadorPerfilComponent } from '../jogadores/jogador-perfil.component';
 import { of } from 'rxjs';
 
 const previewPelada: ActivePelada = {
