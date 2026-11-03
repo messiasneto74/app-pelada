@@ -72,6 +72,7 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 
 ## Exceção de regras por partida (3.2-EXC)
 
+- `POST /peladas/:peladaId/matches` — JWT; **ORGANIZADOR**; body `CreateMatchDto`; grava snapshot das regras em `Match.rulesOverride`.
 - `GET /peladas/:peladaId/matches/:matchId/rules` — JWT; membro; resposta `{ matchId, peladaId, rulesOverride, defaultRules, effectiveRules }`.
 - `PATCH /peladas/:peladaId/matches/:matchId/rules-override` — JWT; **ORGANIZADOR**; body `PatchMatchRulesOverrideDto`; persiste só em `Match.rulesOverride` (não altera `PeladaRules`).
 - Mesma validação GK do patch de regras da pelada, aplicada ao merge **effective** antes de salvar.

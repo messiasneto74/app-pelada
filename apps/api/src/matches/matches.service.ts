@@ -5,9 +5,11 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { AuthUserPayload } from '../auth/auth-user';
+import { CreateMatchDto } from '../domain/dto/create-match.dto';
 import { PatchMatchRulesOverrideDto } from '../domain/dto/patch-match-rules-override.dto';
 import { MeService } from '../me/me.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { buildInitialMatchRulesOverride } from './match-create.logic';
 import {
   mergeEffectiveMatchRules,
   mergeOverridePatch,
@@ -22,12 +24,66 @@ export type MatchRulesView = {
   effectiveRules: Record<string, unknown>;
 };
 
+export type CreatedMatchResponse = {
+  id: string;
+  peladaId: string;
+  scheduledAt: string;
+  location: string | null;
+  notes: string | null;
+  presenceMode: string | null;
+  status: string;
+};
+
 @Injectable()
 export class MatchesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly meService: MeService,
   ) {}
+
+  async createMatch(
+    auth: AuthUserPayload,
+    peladaId: string,
+    dto: CreateMatchDto,
+  ): Promise<CreatedMatchResponse> {
+    const user = await this.meService.getOrCreateUser(auth);
+    await this.assertOrganizador(peladaId, user.id);
+
+    const defaults = await this.prisma.peladaRules.findUnique({
+      where: { peladaId },
+    });
+    if (!defaults) {
+      throw new NotFoundException('Regras da pelada não encontradas.');
+    }
+
+    const rulesOverride = buildInitialMatchRulesOverride(
+      defaults,
+      dto.rulesOverride ?? null,
+    );
+    mergeEffectiveMatchRules(defaults, rulesOverride);
+
+    const match = await this.prisma.match.create({
+      data: {
+        peladaId,
+        scheduledAt: dto.scheduledAt,
+        location: dto.location?.trim() || null,
+        notes: dto.notes?.trim() || null,
+        presenceMode: dto.presenceMode ?? defaults.presenceMode,
+        rulesOverride: rulesOverride as Prisma.InputJsonValue,
+        status: 'SCHEDULED',
+      },
+    });
+
+    return {
+      id: match.id,
+      peladaId: match.peladaId,
+      scheduledAt: match.scheduledAt.toISOString(),
+      location: match.location,
+      notes: match.notes,
+      presenceMode: match.presenceMode,
+      status: match.status,
+    };
+  }
 
   async getMatchRules(
     auth: AuthUserPayload,
