@@ -1,12 +1,15 @@
 import { Injectable } from '@angular/core';
 import type { PlayerPresenceStatus } from './presence-attendance.model';
 import type { PresenceRow } from './presence-attendance.model';
+import type { RosterPlayer } from '../roster/roster-player.model';
 
 export interface PresenceSessionSnapshot {
   matchId: string;
   listClosed: boolean;
   statusByPlayerId: Record<string, PlayerPresenceStatus>;
   guests: PresenceRow[];
+  extraPlayers: RosterPlayer[];
+  queueOrder: string[];
   presenceMode: 'SELF_CONFIRM' | 'ORGANIZER_CLOSES';
 }
 

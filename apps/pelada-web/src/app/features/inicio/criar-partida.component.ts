@@ -285,6 +285,8 @@ export class CriarPartidaComponent implements OnInit {
           listClosed: false,
           statusByPlayerId: {},
           guests: [],
+          extraPlayers: [],
+          queueOrder: [],
           presenceMode: this.values().presenceMode,
         });
         void this.router.navigate(['/partida/presenca']);

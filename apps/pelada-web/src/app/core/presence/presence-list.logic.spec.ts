@@ -1,6 +1,8 @@
 import type { RosterPlayer } from '../roster/roster-player.model';
 import {
+  assemblePresenceRows,
   buildInitialStatusMap,
+  dashboardConfirmedIdsForSeed,
   filterPresenceBySegment,
   initializePlayerPresence,
   orgTogglePlayer,
@@ -50,6 +52,21 @@ describe('presence-list.logic', () => {
     expect(map.get('p1')).toBe('pending');
   });
 
+  it('dashboardConfirmedIdsForSeed ignora preview truncado', () => {
+    const preview = Array.from({ length: 8 }, (_, i) => ({ id: `c${i}` }));
+    expect(dashboardConfirmedIdsForSeed(10, preview)).toEqual([]);
+    expect(dashboardConfirmedIdsForSeed(8, preview).length).toBe(8);
+  });
+
+  it('buildInitialStatusMap com seed vazio quando dashboard truncado', () => {
+    const preview = Array.from({ length: 8 }, (_, i) => ({ id: `c${i}` }));
+    const apiIds = dashboardConfirmedIdsForSeed(10, preview);
+    expect(apiIds).toEqual([]);
+    const map = buildInitialStatusMap(roster, 14, apiIds, null);
+    expect(map.get('f1')).toBe('confirmed');
+    expect(map.get('p1')).toBe('pending');
+  });
+
   it('presenceCounts e vacancyFillPercent', () => {
     const rows: PresenceRow[] = [
       {
@@ -78,18 +95,31 @@ describe('presence-list.logic', () => {
       player,
       status: 'confirmed' as const,
     }));
-    const next = setPlayerPresenceStatus(rows, 'p2', 'confirmed', 2);
+    const { rows: next } = setPlayerPresenceStatus(rows, 'p2', 'confirmed', 2, []);
     const p2 = next.find((r) => r.kind === 'player' && r.player.id === 'p2');
     expect(p2?.kind === 'player' && p2.status).toBe('queue');
   });
 
-  it('orgTogglePlayer promove fila ao remover confirmado', () => {
+  it('promoteNextFromQueue respeita ordem FIFO da fila', () => {
+    const rows: PresenceRow[] = [
+      { kind: 'player', player: roster[0], status: 'confirmed' },
+      { kind: 'player', player: roster[1], status: 'queue' },
+      { kind: 'player', player: roster[2], status: 'queue' },
+    ];
+    const order = ['p2', 'p1'];
+    const { rows: next } = promoteNextFromQueue(rows, 2, order);
+    const p2 = next.find((r) => r.kind === 'player' && r.player.id === 'p2');
+    expect(p2?.kind === 'player' && p2.status).toBe('confirmed');
+  });
+
+  it('orgTogglePlayer promove fila ao remover confirmado (FIFO)', () => {
     const rows: PresenceRow[] = [
       { kind: 'player', player: roster[0], status: 'confirmed' },
       { kind: 'player', player: roster[1], status: 'confirmed' },
       { kind: 'player', player: roster[2], status: 'queue' },
     ];
-    const next = orgTogglePlayer(rows, 'p1', 2);
+    const order = ['p2'];
+    const { rows: next } = orgTogglePlayer(rows, order, 'p1', 2);
     const p2 = next.find((r) => r.kind === 'player' && r.player.id === 'p2');
     expect(p2?.kind === 'player' && p2.status).toBe('confirmed');
   });
@@ -109,7 +139,7 @@ describe('presence-list.logic', () => {
     expect(statusChipLabel(guest)).toBe('Convidado');
   });
 
-  it('resolveGuest aceita com vaga ou fila', () => {
+  it('resolveGuest aceita com vaga ou fila e retorna extraPlayer', () => {
     const rows: PresenceRow[] = [
       { kind: 'player', player: roster[0], status: 'confirmed' },
       {
@@ -119,30 +149,36 @@ describe('presence-list.logic', () => {
         status: 'guest_pending',
       },
     ];
-    const full = resolveGuest(rows, 'g1', true, 1);
-    const added = full.find((r) => r.kind === 'player' && r.player.id === 'guest-g1');
+    const full = resolveGuest(rows, [], 'g1', true, 1);
+    const added = full.rows.find(
+      (r) => r.kind === 'player' && r.player.id === 'guest-g1',
+    );
     expect(added?.kind === 'player' && added.status).toBe('queue');
+    expect(full.extraPlayer?.displayName).toBe('Visitante');
 
-    const withRoom = resolveGuest(rows, 'g1', true, 2);
-    const added2 = withRoom.find(
+    const withRoom = resolveGuest(rows, [], 'g1', true, 2);
+    const added2 = withRoom.rows.find(
       (r) => r.kind === 'player' && r.player.id === 'guest-g1',
     );
     expect(added2?.kind === 'player' && added2.status).toBe('confirmed');
   });
 
-  it('buildInitialStatusMap mescla confirmados da API', () => {
-    const map = buildInitialStatusMap(roster, 2, ['p2'], null);
-    expect(map.get('f1')).toBe('confirmed');
-    expect(map.get('p2')).toBe('confirmed');
-  });
-
-  it('promoteNextFromQueue preenche vaga', () => {
-    const rows: PresenceRow[] = [
-      { kind: 'player', player: roster[0], status: 'confirmed' },
-      { kind: 'player', player: roster[2], status: 'queue' },
+  it('assemblePresenceRows inclui jogadores extras fora do elenco', () => {
+    const map = new Map<string, 'confirmed'>([['guest-g1', 'confirmed']]);
+    const extra = [
+      {
+        id: 'guest-g1',
+        displayName: 'Visitante',
+        isGoalkeeper: false,
+        position: 'Convidado',
+        rating: 5,
+        tags: [],
+        isFixedList: false,
+      },
     ];
-    const next = promoteNextFromQueue(rows, 2);
-    const p2 = next.find((r) => r.kind === 'player' && r.player.id === 'p2');
-    expect(p2?.kind === 'player' && p2.status).toBe('confirmed');
+    const rows = assemblePresenceRows(roster, map, [], extra);
+    expect(rows.some((r) => r.kind === 'player' && r.player.id === 'guest-g1')).toBe(
+      true,
+    );
   });
 });

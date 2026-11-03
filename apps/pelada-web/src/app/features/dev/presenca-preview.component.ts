@@ -127,6 +127,8 @@ export class PresencaPreviewComponent {
           status: 'guest_pending',
         },
       ],
+      extraPlayers: [],
+      queueOrder: [],
       presenceMode: 'ORGANIZER_CLOSES',
     });
   }

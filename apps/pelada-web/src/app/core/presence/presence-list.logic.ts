@@ -47,6 +47,17 @@ export function filterPresenceBySegment(
   });
 }
 
+/** Dashboard envia no máximo 8 confirmados; não seedar lista parcial. */
+export function dashboardConfirmedIdsForSeed(
+  confirmedCount: number,
+  confirmedPlayers: readonly { id: string }[],
+): string[] {
+  if (confirmedPlayers.length < confirmedCount) {
+    return [];
+  }
+  return confirmedPlayers.map((p) => p.id);
+}
+
 export function initializePlayerPresence(
   roster: RosterPlayer[],
   capacity: number,
@@ -67,39 +78,83 @@ export function initializePlayerPresence(
   return map;
 }
 
-export function setPlayerPresenceStatus(
+export function firstQueuedPlayerId(
+  queueOrder: readonly string[],
   rows: PresenceRow[],
-  playerId: string,
-  next: PlayerPresenceStatus,
-  capacity: number,
-): PresenceRow[] {
-  const counts = presenceCounts(rows);
-  if (next === 'confirmed' && counts.confirmed >= capacity) {
-    next = 'queue';
+): string | null {
+  for (const id of queueOrder) {
+    const row = rows.find(
+      (r) => r.kind === 'player' && r.player.id === id && r.status === 'queue',
+    );
+    if (row) {
+      return id;
+    }
   }
-  return rows.map((row) => {
+  return null;
+}
+
+export function applyPlayerStatusChange(
+  rows: PresenceRow[],
+  queueOrder: readonly string[],
+  playerId: string,
+  requested: PlayerPresenceStatus,
+  capacity: number,
+): { rows: PresenceRow[]; queueOrder: string[] } {
+  let next = requested;
+  if (requested === 'confirmed') {
+    const counts = presenceCounts(rows);
+    if (counts.confirmed >= capacity) {
+      next = 'queue';
+    }
+  }
+  const prev = rows.find(
+    (r) => r.kind === 'player' && r.player.id === playerId,
+  );
+  const prevStatus = prev?.kind === 'player' ? prev.status : undefined;
+
+  const newRows = rows.map((row) => {
     if (row.kind !== 'player' || row.player.id !== playerId) {
       return row;
     }
     return { ...row, status: next };
   });
+
+  let newOrder = [...queueOrder];
+  if (prevStatus === 'queue' && next !== 'queue') {
+    newOrder = newOrder.filter((id) => id !== playerId);
+  }
+  if (next === 'queue' && prevStatus !== 'queue') {
+    if (!newOrder.includes(playerId)) {
+      newOrder = [...newOrder, playerId];
+    }
+  }
+  return { rows: newRows, queueOrder: newOrder };
+}
+
+export function setPlayerPresenceStatus(
+  rows: PresenceRow[],
+  playerId: string,
+  next: PlayerPresenceStatus,
+  capacity: number,
+  queueOrder: readonly string[] = [],
+): { rows: PresenceRow[]; queueOrder: string[] } {
+  return applyPlayerStatusChange(rows, queueOrder, playerId, next, capacity);
 }
 
 export function promoteNextFromQueue(
   rows: PresenceRow[],
   capacity: number,
-): PresenceRow[] {
+  queueOrder: readonly string[],
+): { rows: PresenceRow[]; queueOrder: string[] } {
   const counts = presenceCounts(rows);
   if (counts.confirmed >= capacity) {
-    return rows;
+    return { rows, queueOrder: [...queueOrder] };
   }
-  const next = rows.find(
-    (r) => r.kind === 'player' && r.status === 'queue',
-  );
-  if (!next || next.kind !== 'player') {
-    return rows;
+  const nextId = firstQueuedPlayerId(queueOrder, rows);
+  if (!nextId) {
+    return { rows, queueOrder: [...queueOrder] };
   }
-  return setPlayerPresenceStatus(rows, next.player.id, 'confirmed', capacity);
+  return applyPlayerStatusChange(rows, queueOrder, nextId, 'confirmed', capacity);
 }
 
 export function statusChipLabel(row: PresenceRow): string {
@@ -116,17 +171,32 @@ export function statusChipLabel(row: PresenceRow): string {
   }
 }
 
+export function assemblePresenceRows(
+  roster: RosterPlayer[],
+  statusByPlayerId: Map<string, PlayerPresenceStatus>,
+  guests: PresenceRow[],
+  extraPlayers: RosterPlayer[] = [],
+): PresenceRow[] {
+  const rosterRows: PresenceRow[] = roster.map((player) => ({
+    kind: 'player',
+    player,
+    status: statusByPlayerId.get(player.id) ?? 'pending',
+  }));
+  const extraRows: PresenceRow[] = extraPlayers.map((player) => ({
+    kind: 'player',
+    player,
+    status: statusByPlayerId.get(player.id) ?? 'pending',
+  }));
+  return [...rosterRows, ...extraRows, ...guests];
+}
+
+/** @deprecated use assemblePresenceRows */
 export function rowsFromRosterAndMap(
   roster: RosterPlayer[],
   statusByPlayerId: Map<string, PlayerPresenceStatus>,
   guests: PresenceRow[],
 ): PresenceRow[] {
-  const players: PresenceRow[] = roster.map((player) => ({
-    kind: 'player',
-    player,
-    status: statusByPlayerId.get(player.id) ?? 'pending',
-  }));
-  return [...players, ...guests];
+  return assemblePresenceRows(roster, statusByPlayerId, guests);
 }
 
 export function buildInitialStatusMap(
@@ -159,84 +229,127 @@ export function buildInitialStatusMap(
 
 export function orgTogglePlayer(
   rows: PresenceRow[],
+  queueOrder: readonly string[],
   playerId: string,
   capacity: number,
-): PresenceRow[] {
+): { rows: PresenceRow[]; queueOrder: string[] } {
   const target = rows.find(
     (r) => r.kind === 'player' && r.player.id === playerId,
   );
   if (!target || target.kind !== 'player') {
-    return rows;
+    return { rows, queueOrder: [...queueOrder] };
   }
   if (target.status === 'confirmed') {
-    const pending = setPlayerPresenceStatus(rows, playerId, 'pending', capacity);
-    return promoteNextFromQueue(pending, capacity);
+    const pending = applyPlayerStatusChange(
+      rows,
+      queueOrder,
+      playerId,
+      'pending',
+      capacity,
+    );
+    return promoteNextFromQueue(pending.rows, capacity, pending.queueOrder);
   }
   if (target.status === 'queue') {
-    return setPlayerPresenceStatus(rows, playerId, 'pending', capacity);
+    return applyPlayerStatusChange(rows, queueOrder, playerId, 'pending', capacity);
   }
-  return setPlayerPresenceStatus(rows, playerId, 'confirmed', capacity);
+  return applyPlayerStatusChange(rows, queueOrder, playerId, 'confirmed', capacity);
 }
 
 export function selfSetPlayerStatus(
   rows: PresenceRow[],
+  queueOrder: readonly string[],
   playerId: string,
   accept: boolean,
   capacity: number,
-): PresenceRow[] {
+): { rows: PresenceRow[]; queueOrder: string[] } {
   const target = rows.find(
     (r) => r.kind === 'player' && r.player.id === playerId,
   );
   if (!target || target.kind !== 'player') {
-    return rows;
+    return { rows, queueOrder: [...queueOrder] };
   }
   if (!accept) {
-    let next = setPlayerPresenceStatus(rows, playerId, 'pending', capacity);
+    const pending = applyPlayerStatusChange(
+      rows,
+      queueOrder,
+      playerId,
+      'pending',
+      capacity,
+    );
     if (target.status === 'confirmed') {
-      next = promoteNextFromQueue(next, capacity);
+      return promoteNextFromQueue(pending.rows, capacity, pending.queueOrder);
     }
-    return next;
+    return pending;
   }
-  return setPlayerPresenceStatus(rows, playerId, 'confirmed', capacity);
+  return applyPlayerStatusChange(rows, queueOrder, playerId, 'confirmed', capacity);
+}
+
+export function guestPlayerFromGuest(
+  guestId: string,
+  displayName: string,
+): RosterPlayer {
+  return {
+    id: `guest-${guestId}`,
+    displayName,
+    isGoalkeeper: false,
+    position: 'Convidado',
+    rating: 5,
+    tags: [],
+    isFixedList: false,
+  };
 }
 
 export function resolveGuest(
   rows: PresenceRow[],
+  queueOrder: readonly string[],
   guestId: string,
   accept: boolean,
   capacity: number,
-): PresenceRow[] {
+): { rows: PresenceRow[]; queueOrder: string[]; extraPlayer?: RosterPlayer } {
   const guest = rows.find((r) => r.kind === 'guest' && r.guestId === guestId);
   if (!guest || guest.kind !== 'guest') {
-    return rows;
+    return { rows, queueOrder: [...queueOrder] };
   }
   if (!accept) {
-    return rows.map((row) =>
-      row.kind === 'guest' && row.guestId === guestId
-        ? { ...row, status: 'guest_declined' as const }
-        : row,
-    );
+    return {
+      rows: rows.map((row) =>
+        row.kind === 'guest' && row.guestId === guestId
+          ? { ...row, status: 'guest_declined' as const }
+          : row,
+      ),
+      queueOrder: [...queueOrder],
+    };
   }
   const withoutGuest = rows.filter(
     (r) => !(r.kind === 'guest' && r.guestId === guestId),
   );
+  const player = guestPlayerFromGuest(guestId, guest.displayName);
   const counts = presenceCounts(withoutGuest);
   const status: PlayerPresenceStatus =
     counts.confirmed < capacity ? 'confirmed' : 'queue';
   const playerRow: PresenceRow = {
     kind: 'player',
-    player: {
-      id: `guest-${guestId}`,
-      displayName: guest.displayName,
-      isGoalkeeper: false,
-      position: 'Convidado',
-      rating: 5,
-      tags: [],
-      isFixedList: false,
-    },
+    player,
     status,
   };
-  return [...withoutGuest, playerRow];
+  let order = [...queueOrder];
+  const merged = [...withoutGuest, playerRow];
+  if (status === 'queue') {
+    order = order.includes(player.id) ? order : [...order, player.id];
+  }
+  return { rows: merged, queueOrder: order, extraPlayer: player };
+}
+
+export function extraPlayersFromRows(
+  rows: PresenceRow[],
+  rosterIds: ReadonlySet<string>,
+): RosterPlayer[] {
+  return rows
+    .filter(
+      (r) => r.kind === 'player' && !rosterIds.has(r.player.id),
+    )
+    .map((r) => (r.kind === 'player' ? r.player : null))
+    .filter((p): p is RosterPlayer => p !== null);
 }
 
 export function segmentOptionsWithCounts(counts: {

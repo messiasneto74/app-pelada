@@ -121,6 +121,8 @@ describe('PresencaPartidaComponent §3.4', () => {
           status: 'guest_pending',
         },
       ],
+      extraPlayers: [],
+      queueOrder: [],
       presenceMode: 'ORGANIZER_CLOSES',
     });
     fixture = TestBed.createComponent(PresencaPartidaComponent);
@@ -131,5 +133,36 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(text).toContain('Visitante');
     expect(text).toContain('Aceitar');
     expect(text).toContain('Recusar');
+  });
+
+  it('restaura convidado aceito após remount da sessão', () => {
+    const session = TestBed.inject(PresenceSessionService);
+    session.save({
+      matchId: 'm1',
+      listClosed: false,
+      statusByPlayerId: {
+        a1: 'confirmed',
+        b1: 'pending',
+        'guest-g1': 'confirmed',
+      },
+      guests: [],
+      extraPlayers: [
+        {
+          id: 'guest-g1',
+          displayName: 'Visitante Aceito',
+          isGoalkeeper: false,
+          position: 'Convidado',
+          rating: 5,
+          tags: [],
+          isFixedList: false,
+        },
+      ],
+      queueOrder: [],
+      presenceMode: 'ORGANIZER_CLOSES',
+    });
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Visitante Aceito');
+    expect(fixture.nativeElement.textContent).toContain('Confirmou');
   });
 });

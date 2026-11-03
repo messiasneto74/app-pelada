@@ -10,12 +10,14 @@ import {
 } from '../../core/presence/presence-action.logic';
 import type { PresenceSegment } from '../../core/presence/presence-attendance.model';
 import {
+  assemblePresenceRows,
   buildInitialStatusMap,
+  dashboardConfirmedIdsForSeed,
+  extraPlayersFromRows,
   filterPresenceBySegment,
   orgTogglePlayer,
   presenceCounts,
   resolveGuest,
-  rowsFromRosterAndMap,
   segmentOptionsWithCounts,
   statusChipLabel,
   vacancyFillPercent,
@@ -304,6 +306,7 @@ export class PresencaPartidaComponent implements OnInit {
   readonly presenceMode = signal<MatchPresenceMode>('ORGANIZER_CLOSES');
   readonly roster = signal<RosterPlayer[]>([]);
   readonly rows = signal<PresenceRow[]>([]);
+  readonly queueOrder = signal<string[]>([]);
   readonly segment = model<PresenceSegment>('confirmed');
 
   readonly headerTitle = computed(() => {
@@ -374,14 +377,27 @@ export class PresencaPartidaComponent implements OnInit {
     if (this.listClosed() || !this.isOrganizador()) {
       return;
     }
-    this.updateRows(orgTogglePlayer(this.rows(), playerId, this.capacity()));
+    const result = orgTogglePlayer(
+      this.rows(),
+      this.queueOrder(),
+      playerId,
+      this.capacity(),
+    );
+    this.applyPresenceState(result.rows, result.queueOrder);
   }
 
   onGuest(accept: boolean, guestId: string): void {
     if (!this.isOrganizador() || this.listClosed()) {
       return;
     }
-    this.updateRows(resolveGuest(this.rows(), guestId, accept, this.capacity()));
+    const result = resolveGuest(
+      this.rows(),
+      this.queueOrder(),
+      guestId,
+      accept,
+      this.capacity(),
+    );
+    this.applyPresenceState(result.rows, result.queueOrder, result.extraPlayer);
   }
 
   closeListAndDraw(): void {
@@ -414,7 +430,10 @@ export class PresencaPartidaComponent implements OnInit {
       this.listClosed.set(saved.listClosed);
     }
 
-    const apiConfirmed = match.confirmedPlayers.map((p) => p.id);
+    const apiConfirmed = dashboardConfirmedIdsForSeed(
+      match.confirmedCount,
+      match.confirmedPlayers,
+    );
     const map = buildInitialStatusMap(
       players,
       match.capacity,
@@ -424,7 +443,30 @@ export class PresencaPartidaComponent implements OnInit {
     const guests =
       saved?.guests?.filter((g) => g.kind === 'guest') ??
       ([] as PresenceRow[]);
-    this.rows.set(rowsFromRosterAndMap(players, map, guests));
+    const extraPlayers = saved?.extraPlayers ?? [];
+    const order = saved?.queueOrder ?? [];
+    this.queueOrder.set(order);
+    this.rows.set(
+      assemblePresenceRows(players, map, guests, extraPlayers),
+    );
+    this.persist();
+  }
+
+  private applyPresenceState(
+    nextRows: PresenceRow[],
+    order: string[],
+    extraAdded?: RosterPlayer,
+  ): void {
+    this.rows.set(nextRows);
+    this.queueOrder.set(order);
+    if (extraAdded) {
+      const saved = this.session.load(this.matchId() ?? '') ?? null;
+      const extras = saved?.extraPlayers ?? [];
+      if (!extras.some((p) => p.id === extraAdded.id)) {
+        this.persist([...extras, extraAdded]);
+        return;
+      }
+    }
     this.persist();
   }
 
@@ -433,11 +475,12 @@ export class PresencaPartidaComponent implements OnInit {
     this.persist();
   }
 
-  private persist(): void {
+  private persist(extraPlayersOverride?: RosterPlayer[]): void {
     const matchId = this.matchId();
     if (!matchId) {
       return;
     }
+    const rosterIds = new Set(this.roster().map((p) => p.id));
     const statusByPlayerId: Record<string, PlayerPresenceStatus> = {};
     for (const row of this.rows()) {
       if (row.kind === 'player') {
@@ -445,11 +488,16 @@ export class PresencaPartidaComponent implements OnInit {
       }
     }
     const guests = this.rows().filter((r) => r.kind === 'guest');
+    const extraPlayers =
+      extraPlayersOverride ??
+      extraPlayersFromRows(this.rows(), rosterIds);
     this.session.save({
       matchId,
       listClosed: this.listClosed(),
       statusByPlayerId,
       guests,
+      extraPlayers,
+      queueOrder: this.queueOrder(),
       presenceMode: this.presenceMode(),
     });
   }
