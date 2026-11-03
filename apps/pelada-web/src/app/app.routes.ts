@@ -76,6 +76,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/criar-partida',
+    loadComponent: () =>
+      import('./features/dev/criar-partida-preview.component').then(
+        (m) => m.CriarPartidaPreviewComponent,
+      ),
+  },
+  {
     path: 'onboarding/pelada',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>
@@ -102,8 +109,10 @@ export const routes: Routes = [
       },
       {
         path: 'inicio/criar-partida',
-        loadComponent: placeholder,
-        data: { title: 'Criar partida', eyebrow: 'Início' },
+        loadComponent: () =>
+          import('./features/inicio/criar-partida.component').then(
+            (m) => m.CriarPartidaComponent,
+          ),
       },
       { path: 'partida', redirectTo: 'partida/presenca', pathMatch: 'full' },
       {
