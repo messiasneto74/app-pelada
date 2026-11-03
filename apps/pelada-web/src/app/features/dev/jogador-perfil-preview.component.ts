@@ -1,12 +1,15 @@
 import { Component } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { AuthService } from '../../auth/auth.service';
 import type { ActivePelada } from '../../core/pelada/active-pelada.model';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
-import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
+import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
+import { peladaRulesFromApi } from '../../core/pelada/pelada-rules-api.mapper';
+import type { PeladaRulesApiDto } from '../../core/pelada/pelada-rules-api.mapper';
 import type { PeladaPlayerProfileDto } from '../../core/roster/pelada-player-profile-api.model';
 import { PeladaPlayerProfileService } from '../../core/roster/pelada-player-profile.service';
-import { JogadorPerfilComponent } from '../jogadores/jogador-perfil.component';
+import { of } from 'rxjs';
 
 const previewPelada: ActivePelada = {
   id: 'dev-profile-evidence',
@@ -64,12 +67,21 @@ const previewPeladaContext = {
       },
     },
     {
-      provide: PeladaRulesService,
+      provide: PeladaRulesApiService,
       useValue: {
-        getDefaultRules: () => ({
-          fixedListOnly: true,
-          allowPlayerSelfEdit: false,
-        }),
+        fetchRules: () =>
+          of({
+            peladaId: previewPelada.id,
+            playersPerTeam: 6,
+            teamCount: 2,
+            modality: 'futsal',
+            goalkeeperMode: 'ROTATING',
+            fixedListOnly: true,
+            allowPlayerSelfEdit: false,
+            drawWeights: {},
+            extra: {},
+          } satisfies PeladaRulesApiDto),
+        mapFromApi: (d: PeladaRulesApiDto) => peladaRulesFromApi(d),
       },
     },
     {
@@ -78,6 +90,10 @@ const previewPeladaContext = {
         isOrganizador: (id: string) => id === previewPelada.id,
         refreshMembership: () => {},
       },
+    },
+    {
+      provide: AuthService,
+      useValue: { getMe: () => Promise.reject(new Error('dev preview')) },
     },
     {
       provide: ActivatedRoute,

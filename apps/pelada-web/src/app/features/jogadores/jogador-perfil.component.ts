@@ -3,7 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
-import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
+import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
 import type { PeladaPlayerProfileDto } from '../../core/roster/pelada-player-profile-api.model';
 import { PeladaPlayerProfileService } from '../../core/roster/pelada-player-profile.service';
 import {
@@ -179,7 +179,7 @@ export class JogadorPerfilComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly peladaContext = inject(PeladaContextService);
   private readonly profileService = inject(PeladaPlayerProfileService);
-  private readonly rulesService = inject(PeladaRulesService);
+  private readonly rulesApi = inject(PeladaRulesApiService);
   private readonly orgContext = inject(PeladaOrganizadorContextService);
   private readonly authService = inject(AuthService);
 
@@ -187,6 +187,8 @@ export class JogadorPerfilComponent implements OnInit {
   readonly profile = signal<PeladaPlayerProfileDto | null>(null);
   readonly editHint = signal('');
   readonly currentAppUserId = signal<string | null>(null);
+  /** L27 — valor persistido na API (`GET /peladas/:id/rules`), não sessionStorage local. */
+  readonly allowPlayerSelfEdit = signal(false);
 
   readonly formatRosterRating = formatRosterRating;
   readonly attributeDefs = PLAYER_PROFILE_ATTRIBUTES;
@@ -228,10 +230,9 @@ export class JogadorPerfilComponent implements OnInit {
     const p = this.profile();
     const pelada = this.peladaContext.getActivePelada();
     if (!p || !pelada) return false;
-    const rules = this.rulesService.getDefaultRules(pelada.id);
     return canShowEditProfile({
       isOrganizador: this.orgContext.isOrganizador(pelada.id),
-      allowPlayerSelfEdit: rules.allowPlayerSelfEdit,
+      allowPlayerSelfEdit: this.allowPlayerSelfEdit(),
       playerUserId: p.userId,
       currentAppUserId: this.currentAppUserId(),
     });
@@ -245,6 +246,14 @@ export class JogadorPerfilComponent implements OnInit {
       return;
     }
     this.orgContext.refreshMembership(pelada.id);
+    this.rulesApi.fetchRules(pelada.id).subscribe({
+      next: (dto) => {
+        this.allowPlayerSelfEdit.set(
+          this.rulesApi.mapFromApi(dto).allowPlayerSelfEdit,
+        );
+      },
+      error: () => this.allowPlayerSelfEdit.set(false),
+    });
     void this.authService
       .getMe()
       .then((me) => this.currentAppUserId.set(me.id))
