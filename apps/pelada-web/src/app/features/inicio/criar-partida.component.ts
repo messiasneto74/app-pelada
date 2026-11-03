@@ -283,7 +283,7 @@ export class CriarPartidaComponent implements OnInit {
       error: () => {
         this.submitting.set(false);
         this.submitError.set(
-          'Não foi possível criar a partida. A API POST (issue 3.3-API) pode ainda não estar disponível.',
+          'Não foi possível criar a partida. Verifique permissão ou conexão.',
         );
       },
     });
