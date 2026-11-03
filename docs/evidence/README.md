@@ -10,6 +10,7 @@ Screenshots anexados nos PRs correspondentes; paths estáveis no repo para revis
 | #26 3.8 | [3-8-26-jogador-perfil-390.jpg](./3-8-26-jogador-perfil-390.jpg) | **390×844 px** (JPG; rota `/dev/jogador-perfil`, perfil de exemplo) |
 | #27 3.8-EDIT | [3-8-edit-27-jogador-perfil-edit-390.jpg](./3-8-edit-27-jogador-perfil-edit-390.jpg) | **390×844 px** (JPG; rota `/dev/jogador-perfil-edit`, modo edição adm) |
 | #28 3.3 | [3-3-28-criar-partida-390.jpg](./3-3-28-criar-partida-390.jpg) | **390×844 px** (JPG; rota `/dev/criar-partida`) |
+| #30 3.4 | [3-4-30-presenca-390.jpg](./3-4-30-presenca-390.jpg) | **390×844 px** (JPG; rota `/dev/presenca`, aba Confirmados) |
 
 Validar dimensões antes do PR:
 
