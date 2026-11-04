@@ -200,7 +200,7 @@ export class JogadoresListaComponent implements OnInit {
     }
     const rules = this.rulesService.getDefaultRules(pelada.id);
     this.showFixedChip.set(rules.fixedListOnly);
-    this.rosterService.loadRoster(pelada, (list) => {
+    this.rosterService.loadRoster(pelada, (list, _outcome) => {
       this.players.set(list);
       this.loading.set(false);
     });

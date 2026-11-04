@@ -330,6 +330,7 @@ export class JogadorPerfilComponent implements OnInit {
       rating: p.rating,
       tags: p.tags,
       isFixedList: p.isFixedList,
+      userId: p.userId,
     };
     return rosterPositionLabel(rosterLike);
   });

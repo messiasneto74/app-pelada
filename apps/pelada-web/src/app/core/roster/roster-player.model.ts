@@ -7,6 +7,8 @@ export type RosterPlayer = {
   rating: number | null;
   tags: string[];
   isFixedList: boolean;
+  /** Vínculo app ↔ elenco (lista §3.7-API); ausente em mocks antigos. */
+  userId?: string | null;
 };
 
 export type RosterSegment = 'all' | 'gk' | 'line';

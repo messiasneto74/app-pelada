@@ -10,6 +10,7 @@ export function mapRosterPlayerDto(dto: PeladaRosterPlayerDto): RosterPlayer {
     rating: dto.rating,
     tags: dto.tags ?? [],
     isFixedList: dto.isFixedList,
+    userId: dto.userId ?? null,
   };
 }
 

@@ -83,6 +83,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/presenca',
+    loadComponent: () =>
+      import('./features/dev/presenca-preview.component').then(
+        (m) => m.PresencaPreviewComponent,
+      ),
+  },
+  {
     path: 'onboarding/pelada',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>
@@ -117,8 +124,10 @@ export const routes: Routes = [
       { path: 'partida', redirectTo: 'partida/presenca', pathMatch: 'full' },
       {
         path: 'partida/presenca',
-        loadComponent: placeholder,
-        data: { title: 'Presença', eyebrow: 'Partida' },
+        loadComponent: () =>
+          import('./features/partida/presenca-partida.component').then(
+            (m) => m.PresencaPartidaComponent,
+          ),
       },
       {
         path: 'partida/sorteio',

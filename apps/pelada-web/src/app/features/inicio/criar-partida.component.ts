@@ -12,6 +12,7 @@ import {
   type CreateMatchFormValues,
 } from '../../core/match/create-match-form.logic';
 import { PeladaMatchCreateService } from '../../core/match/pelada-match-create.service';
+import { PresenceSessionService } from '../../core/presence/presence-session.service';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaCardComponent } from '../../ui/card.component';
 import { PeladaFieldComponent } from '../../ui/field.component';
@@ -204,6 +205,7 @@ export class CriarPartidaComponent implements OnInit {
   private readonly peladaContext = inject(PeladaContextService);
   private readonly rulesApi = inject(PeladaRulesApiService);
   private readonly matchCreate = inject(PeladaMatchCreateService);
+  private readonly presenceSession = inject(PresenceSessionService);
   private readonly router = inject(Router);
 
   readonly presenceOptions = PRESENCE_MODE_OPTIONS;
@@ -276,8 +278,17 @@ export class CriarPartidaComponent implements OnInit {
     this.submitting.set(true);
     this.submitError.set('');
     this.matchCreate.createMatch(pelada.id, body).subscribe({
-      next: () => {
+      next: (created) => {
         this.submitting.set(false);
+        this.presenceSession.save({
+          matchId: created.id,
+          listClosed: false,
+          statusByPlayerId: {},
+          guests: [],
+          extraPlayers: [],
+          queueOrder: [],
+          presenceMode: this.values().presenceMode,
+        });
         void this.router.navigate(['/partida/presenca']);
       },
       error: () => {
