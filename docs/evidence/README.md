@@ -11,6 +11,7 @@ Screenshots anexados nos PRs correspondentes; paths estáveis no repo para revis
 | #27 3.8-EDIT | [3-8-edit-27-jogador-perfil-edit-390.jpg](./3-8-edit-27-jogador-perfil-edit-390.jpg) | **390×844 px** (JPG; rota `/dev/jogador-perfil-edit`, modo edição adm) |
 | #28 3.3 | [3-3-28-criar-partida-390.jpg](./3-3-28-criar-partida-390.jpg) | **390×844 px** (JPG; rota `/dev/criar-partida`) |
 | #30 3.4 | [3-4-30-presenca-390.jpg](./3-4-30-presenca-390.jpg) | **390×844 px** (JPG; rota `/dev/presenca`, aba Confirmados) |
+| #32 L45 | [l45-32-presenca-format-modal-390.jpg](./l45-32-presenca-format-modal-390.jpg) | **390×844 px** (JPG; `/dev/presenca`, modal “Confirmados ≠ capacidade ideal” após *Fechar lista e sortear*) |
 
 Validar dimensões antes do PR:
 
