@@ -24,6 +24,30 @@ const MIN_LINE = 4;
 const MAX_LINE = 11;
 const MIN_TEAMS = 2;
 const MAX_TEAMS = 6;
+/** Alinhado a `PatchPeladaRulesDto` (@Min(4) @Max(40)). */
+const MIN_CAPACITY = 4;
+const MAX_CAPACITY = 40;
+
+function isValidApiCapacity(cap: number): boolean {
+  return cap >= MIN_CAPACITY && cap <= MAX_CAPACITY;
+}
+
+function effectiveCapacity(
+  rules: Pick<FormatRulesInput, 'playersPerTeam' | 'teamCount' | 'capacity'>,
+): number {
+  return computeIdealCapacity({
+    playersPerTeam: rules.playersPerTeam,
+    teamCount: rules.teamCount,
+    capacity: rules.capacity ?? null,
+  });
+}
+
+function wouldChangeIdealCapacity(
+  current: FormatRulesInput,
+  proposed: Pick<FormatRulesInput, 'playersPerTeam' | 'teamCount' | 'capacity'>,
+): boolean {
+  return effectiveCapacity(proposed) !== effectiveCapacity(current);
+}
 
 function rulesDistance(
   current: FormatRulesInput,
@@ -53,7 +77,7 @@ function findRuleAdjustments(
         teamCount: tc,
         capacity: null,
       });
-      if (cap !== playerCount) {
+      if (cap !== playerCount || !isValidApiCapacity(cap)) {
         continue;
       }
       hits.push({
@@ -71,7 +95,10 @@ function findRuleAdjustments(
     id: `adjust-${h.tc}x${h.ppt}-${index}`,
     title: formatSummary(h.ppt, h.tc, h.cap),
     detail:
-      h.dist === 0
+      h.dist === 0 &&
+      h.cap === effectiveCapacity(current) &&
+      h.ppt === current.playersPerTeam &&
+      h.tc === current.teamCount
         ? 'Formato atual já bate com o número de confirmados.'
         : 'Ajuste sugerido para encaixar todos os confirmados no sorteio.',
     proposedRules: {
@@ -120,12 +147,37 @@ export function suggestFormat(
     });
   }
 
+  if (
+    isValidApiCapacity(safeCount) &&
+    wouldChangeIdealCapacity(rules, {
+      playersPerTeam: rules.playersPerTeam,
+      teamCount: rules.teamCount,
+      capacity: safeCount,
+    })
+  ) {
+    options.push({
+      id: 'capacity-only',
+      title: formatSummary(
+        rules.playersPerTeam,
+        rules.teamCount,
+        safeCount,
+      ),
+      detail:
+        'Atualize a capacidade da partida para bater com os confirmados, mantendo times e linha.',
+      proposedRules: {
+        playersPerTeam: rules.playersPerTeam,
+        teamCount: rules.teamCount,
+        capacity: safeCount,
+      },
+    });
+  }
+
   const adjustments = findRuleAdjustments(safeCount, rules);
   for (const adj of adjustments) {
-    if (
-      adj.proposedRules?.playersPerTeam === rules.playersPerTeam &&
-      adj.proposedRules?.teamCount === rules.teamCount
-    ) {
+    if (!adj.proposedRules || !wouldChangeIdealCapacity(rules, adj.proposedRules)) {
+      continue;
+    }
+    if (options.some((o) => o.id === adj.id)) {
       continue;
     }
     options.push(adj);
@@ -134,11 +186,8 @@ export function suggestFormat(
   if (adjustments.length === 0) {
     const nearest = findNearestCapacityAdjustment(safeCount, rules);
     if (
-      nearest &&
-      !(
-        nearest.proposedRules?.playersPerTeam === rules.playersPerTeam &&
-        nearest.proposedRules?.teamCount === rules.teamCount
-      )
+      nearest?.proposedRules &&
+      wouldChangeIdealCapacity(rules, nearest.proposedRules)
     ) {
       options.push(nearest);
     }
@@ -172,6 +221,9 @@ function findNearestCapacityAdjustment(
         teamCount: tc,
         capacity: null,
       });
+      if (!isValidApiCapacity(cap)) {
+        continue;
+      }
       const gap = Math.abs(cap - playerCount);
       const dist = rulesDistance(current, ppt, tc);
       if (

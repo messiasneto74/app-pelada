@@ -58,4 +58,37 @@ describe('suggestFormat', () => {
       capacity: 20,
     });
   });
+
+  it('sugere atualizar capacity quando ppt/tc já batem mas capacidade manual não', () => {
+    const rules = {
+      playersPerTeam: 5,
+      teamCount: 2,
+      capacity: 14,
+    };
+    const result = suggestFormat(20, rules);
+    const adjust = result.options.find(
+      (o) =>
+        o.proposedRules?.capacity === 20 &&
+        o.proposedRules?.playersPerTeam === 5 &&
+        o.proposedRules?.teamCount === 2,
+    );
+    expect(adjust).toBeDefined();
+  });
+
+  it('não propõe capacity acima do teto da API (40)', () => {
+    const result = suggestFormat(50, defaultRules);
+    for (const opt of result.options) {
+      const cap = opt.proposedRules?.capacity;
+      if (typeof cap === 'number') {
+        expect(cap).toBeLessThanOrEqual(40);
+        expect(cap).toBeGreaterThanOrEqual(4);
+      }
+    }
+  });
+
+  it('propõe até 40 confirmados dentro do domínio da API', () => {
+    const result = suggestFormat(40, defaultRules);
+    const adjust = result.options.find((o) => o.proposedRules?.capacity === 40);
+    expect(adjust).toBeDefined();
+  });
 });
