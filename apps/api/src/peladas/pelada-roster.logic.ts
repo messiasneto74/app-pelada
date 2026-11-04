@@ -9,6 +9,7 @@ export type PeladaRosterPlayerDto = {
   rating: number | null;
   tags: string[];
   isFixedList: boolean;
+  userId: string | null;
 };
 
 export type PeladaRosterDto = {
@@ -56,6 +57,7 @@ export function toRosterPlayerDto(player: Player): PeladaRosterPlayerDto {
     rating: player.rating,
     tags: player.tags ?? [],
     isFixedList: player.isFixedList,
+    userId: player.userId,
   };
 }
 

@@ -3,10 +3,14 @@ import { Router, RouterLink } from '@angular/router';
 import type { MatchPresenceMode } from '../../core/match/create-match-form.logic';
 import type { InicioDashboardView } from '../../core/inicio/inicio-dashboard.model';
 import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
+import { AuthService } from '../../auth/auth.service';
 import {
   canOrganizerEditPresence,
+  canPlayerSelfEdit,
   presenceModeHint,
+  resolveSelfPlayerId,
   rowPrimaryActionLabel,
+  selfActionLabels,
 } from '../../core/presence/presence-action.logic';
 import type { PresenceSegment } from '../../core/presence/presence-attendance.model';
 import {
@@ -18,6 +22,7 @@ import {
   orgTogglePlayer,
   presenceCounts,
   resolveGuest,
+  selfSetPlayerStatus,
   segmentOptionsWithCounts,
   statusChipLabel,
   vacancyFillPercent,
@@ -125,6 +130,26 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
                     >
                       {{ rowActionLabel(row) }}
                     </button>
+                  }
+                  @if (showSelfActions(row)) {
+                    @if (selfLabels(row); as labels) {
+                      <button
+                        type="button"
+                        peladaButton
+                        variant="lime"
+                        (click)="onSelfPresence(row.player.id, true)"
+                      >
+                        {{ labels.confirm }}
+                      </button>
+                      <button
+                        type="button"
+                        peladaButton
+                        variant="secondary"
+                        (click)="onSelfPresence(row.player.id, false)"
+                      >
+                        {{ labels.decline }}
+                      </button>
+                    }
                   }
                 } @else {
                   <pelada-avatar [name]="row.displayName" size="small" tone="lime" />
@@ -297,9 +322,12 @@ export class PresencaPartidaComponent implements OnInit {
   private readonly rosterService = inject(PeladaRosterService);
   private readonly orgContext = inject(PeladaOrganizadorContextService);
   private readonly session = inject(PresenceSessionService);
+  private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
   readonly loading = signal(true);
+  readonly rosterLoadFailed = signal(false);
+  readonly currentAppUserId = signal<string | null>(null);
   readonly matchId = signal<string | null>(null);
   readonly capacity = signal(14);
   readonly listClosed = signal(false);
@@ -337,6 +365,10 @@ export class PresencaPartidaComponent implements OnInit {
     canOrganizerEditPresence(this.listClosed()),
   );
 
+  readonly selfPlayerId = computed(() =>
+    resolveSelfPlayerId(this.roster(), this.currentAppUserId()),
+  );
+
   readonly formatRosterRating = formatRosterRating;
   readonly rosterPositionLabel = rosterPositionLabel;
   readonly statusChipLabel = statusChipLabel;
@@ -347,9 +379,15 @@ export class PresencaPartidaComponent implements OnInit {
       this.loading.set(false);
       return;
     }
+    this.orgContext.refreshMembership(pelada.id);
+    void this.authService
+      .getMe()
+      .then((me) => this.currentAppUserId.set(me.id))
+      .catch(() => this.currentAppUserId.set(null));
     this.dashboardService.loadDashboard(pelada, (dash) => {
-      this.rosterService.loadRoster(pelada, (players) => {
-        this.applyLoadedState(dash, players);
+      this.rosterService.loadRoster(pelada, (players, outcome) => {
+        this.rosterLoadFailed.set(outcome === 'fallback');
+        this.applyLoadedState(dash, players, outcome === 'api');
         this.loading.set(false);
       });
     });
@@ -364,6 +402,40 @@ export class PresencaPartidaComponent implements OnInit {
       return '';
     }
     return rowPrimaryActionLabel(this.segment(), row);
+  }
+
+  showSelfActions(row: PresenceRow): boolean {
+    if (row.kind !== 'player') {
+      return false;
+    }
+    if (!canPlayerSelfEdit(this.listClosed(), this.presenceMode())) {
+      return false;
+    }
+    return row.player.id === this.selfPlayerId();
+  }
+
+  selfLabels(row: PresenceRow) {
+    if (row.kind !== 'player') {
+      return null;
+    }
+    return selfActionLabels(row.status);
+  }
+
+  onSelfPresence(playerId: string, accept: boolean): void {
+    if (!canPlayerSelfEdit(this.listClosed(), this.presenceMode())) {
+      return;
+    }
+    if (playerId !== this.selfPlayerId()) {
+      return;
+    }
+    const result = selfSetPlayerStatus(
+      this.rows(),
+      this.queueOrder(),
+      playerId,
+      accept,
+      this.capacity(),
+    );
+    this.applyPresenceState(result.rows, result.queueOrder);
   }
 
   showOrgActions(row: PresenceRow): boolean {
@@ -411,7 +483,11 @@ export class PresencaPartidaComponent implements OnInit {
     this.persist();
   }
 
-  private applyLoadedState(dash: InicioDashboardView, players: RosterPlayer[]): void {
+  private applyLoadedState(
+    dash: InicioDashboardView,
+    players: RosterPlayer[],
+    rosterOk: boolean,
+  ): void {
     this.roster.set(players);
     const match = dash.nextMatch;
     if (!match) {
@@ -422,6 +498,31 @@ export class PresencaPartidaComponent implements OnInit {
     this.capacity.set(match.capacity);
 
     const saved = this.session.load(match.matchId);
+    if (!rosterOk) {
+      if (saved) {
+        const map = new Map(Object.entries(saved.statusByPlayerId));
+        const guests =
+          saved.guests?.filter((g) => g.kind === 'guest') ??
+          ([] as PresenceRow[]);
+        this.queueOrder.set(saved.queueOrder ?? []);
+        if (saved.presenceMode) {
+          this.presenceMode.set(saved.presenceMode);
+        }
+        if (saved.listClosed) {
+          this.listClosed.set(saved.listClosed);
+        }
+        this.rows.set(
+          assemblePresenceRows(
+            players,
+            map,
+            guests,
+            saved.extraPlayers ?? [],
+          ),
+        );
+      }
+      return;
+    }
+
     const persisted = saved?.statusByPlayerId ?? null;
     if (saved?.presenceMode) {
       this.presenceMode.set(saved.presenceMode);

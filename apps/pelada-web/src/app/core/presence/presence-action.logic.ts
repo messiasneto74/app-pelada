@@ -37,6 +37,16 @@ export function rowPrimaryActionLabel(
   return 'Confirmar';
 }
 
+export function resolveSelfPlayerId(
+  roster: ReadonlyArray<{ id: string; userId?: string | null }>,
+  appUserId: string | null,
+): string | null {
+  if (!appUserId) {
+    return null;
+  }
+  return roster.find((p) => p.userId != null && p.userId === appUserId)?.id ?? null;
+}
+
 export function selfActionLabels(status: PresenceRow['status']): {
   confirm: string;
   decline: string;

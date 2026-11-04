@@ -296,6 +296,7 @@ export function guestPlayerFromGuest(
     rating: 5,
     tags: [],
     isFixedList: false,
+    userId: null,
   };
 }
 

@@ -7,6 +7,7 @@ export type PeladaRosterPlayerDto = {
   rating: number | null;
   tags: string[];
   isFixedList: boolean;
+  userId?: string | null;
 };
 
 export type PeladaRosterDto = {

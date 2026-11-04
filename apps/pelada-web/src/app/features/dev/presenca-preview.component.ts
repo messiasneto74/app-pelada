@@ -8,6 +8,7 @@ import type { PeladaRosterDto } from '../../core/roster/pelada-roster-api.model'
 import { mapRosterDto } from '../../core/roster/pelada-roster.mapper';
 import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
 import { PresenceSessionService } from '../../core/presence/presence-session.service';
+import { AuthService } from '../../auth/auth.service';
 import { PresencaPartidaComponent } from '../partida/presenca-partida.component';
 
 const previewPelada: ActivePelada = {
@@ -52,6 +53,7 @@ const rosterDto: PeladaRosterDto = {
       rating: 8,
       tags: ['passe'],
       isFixedList: false,
+      userId: null,
     },
     {
       id: 'p2',
@@ -61,6 +63,7 @@ const rosterDto: PeladaRosterDto = {
       rating: 7,
       tags: ['reflexo'],
       isFixedList: true,
+      userId: null,
     },
     {
       id: 'p3',
@@ -70,6 +73,7 @@ const rosterDto: PeladaRosterDto = {
       rating: 6,
       tags: [],
       isFixedList: false,
+      userId: null,
     },
   ],
 };
@@ -96,14 +100,27 @@ const rosterDto: PeladaRosterDto = {
     {
       provide: PeladaRosterService,
       useValue: {
-        loadRoster: (_p: unknown, cb: (list: ReturnType<typeof mapRosterDto>) => void) =>
-          cb(mapRosterDto(rosterDto)),
+        loadRoster: (_p: unknown, cb: (list: ReturnType<typeof mapRosterDto>, o: 'api') => void) =>
+          cb(mapRosterDto(rosterDto), 'api'),
       },
     },
     {
       provide: PeladaOrganizadorContextService,
       useValue: {
         isOrganizador: (id: string) => id === previewPelada.id,
+        refreshMembership: () => {},
+      },
+    },
+    {
+      provide: AuthService,
+      useValue: {
+        getMe: () =>
+          Promise.resolve({
+            id: 'dev-user',
+            keycloakSub: 'sub',
+            email: null,
+            phone: null,
+          }),
       },
     },
   ],
