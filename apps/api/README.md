@@ -77,6 +77,16 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 - `PATCH /peladas/:peladaId/matches/:matchId/rules-override` — JWT; **ORGANIZADOR**; body `PatchMatchRulesOverrideDto`; persiste só em `Match.rulesOverride` (não altera `PeladaRules`).
 - Mesma validação GK do patch de regras da pelada, aplicada ao merge **effective** antes de salvar.
 
+## Presença (3.4-API)
+
+- `GET /peladas/:peladaId/matches/:matchId/attendance` — JWT; membro; sincroniza linhas do elenco; `{ matchId, listClosed, capacity, counts, entries[] }`.
+- `PATCH .../attendance/:playerId` — JWT; **ORGANIZADOR**; body `{ status: PENDING|CONFIRMED|DECLINED|QUEUE }`; respeita capacidade e fila FIFO (`queuePosition`).
+- `POST .../attendance/self` — JWT; jogador com `Player.userId` vinculado; body `{ action: confirm|decline }`; só se `Match.presenceMode === SELF_CONFIRM`.
+- `POST .../attendance/guests` — JWT; membro; body `{ displayName }`; cria convidado pendente.
+- `POST .../attendance/guests/:playerId/approve|decline` — JWT; **ORGANIZADOR**.
+- `POST .../attendance/close-list` — JWT; **ORGANIZADOR**; `Match.status = LIST_CLOSED`.
+- `POST .../attendance/reopen-list` — JWT; **ORGANIZADOR**; reabre lista (`SCHEDULED`).
+
 ## Dashboard Início (3.1-API)
 
 - `GET /peladas/:peladaId/dashboard` — JWT; membro; `{ peladaId, nextMatch, rosterPlayerCount, cashMonth }`.
