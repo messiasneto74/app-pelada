@@ -9,6 +9,9 @@ import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organi
 import { PresenceSessionService } from '../../core/presence/presence-session.service';
 import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
 import type { RosterPlayer } from '../../core/roster/roster-player.model';
+import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
+import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
+import { DEFAULT_PELADA_RULES } from '../../core/pelada/pelada-rules.model';
 import { PresencaPartidaComponent } from './presenca-partida.component';
 
 const players: RosterPlayer[] = [
@@ -102,6 +105,23 @@ describe('PresencaPartidaComponent §3.4', () => {
             refreshMembership,
           },
         },
+        {
+          provide: PeladaRulesService,
+          useValue: {
+            getDefaultRules: () => ({ ...DEFAULT_PELADA_RULES }),
+          },
+        },
+        {
+          provide: PeladaRulesApiService,
+          useValue: {
+            fetchRules: () => ({
+              subscribe: (handlers: { next?: () => void; error?: () => void }) => {
+                handlers.error?.();
+              },
+            }),
+            mapFromApi: (d: unknown) => d,
+          },
+        },
         PresenceSessionService,
       ],
     }).compileComponents();
@@ -128,6 +148,27 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(text).toContain('de 14 vagas');
     expect(text).toContain('Confirmados');
     expect(text).toContain('Fechar lista e sortear');
+  });
+
+  it('L45: modal de formato quando confirmados ≠ capacidade ideal ao fechar', () => {
+    const buttons = fixture.nativeElement.querySelectorAll('button');
+    let closeBtn: HTMLButtonElement | undefined;
+    for (let i = 0; i < buttons.length; i += 1) {
+      const b = buttons.item(i);
+      if (b?.textContent?.includes('Fechar lista e sortear')) {
+        closeBtn = b;
+        break;
+      }
+    }
+    expect(closeBtn).withContext('botão fechar lista').toBeDefined();
+    closeBtn!.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Confirmados ≠ capacidade ideal',
+    );
+    expect(fixture.nativeElement.textContent).toContain(
+      'Fechar lista e sortear assim',
+    );
   });
 
   it('lista jogador confirmado com chip', () => {
@@ -248,6 +289,21 @@ describe('PresencaPartidaComponent §3.4', () => {
         {
           provide: PeladaOrganizadorContextService,
           useValue: { isOrganizador: () => true, refreshMembership: refreshMembership2 },
+        },
+        {
+          provide: PeladaRulesService,
+          useValue: {
+            getDefaultRules: () => ({ ...DEFAULT_PELADA_RULES }),
+          },
+        },
+        {
+          provide: PeladaRulesApiService,
+          useValue: {
+            fetchRules: () => ({
+              subscribe: (handlers: { error?: () => void }) => handlers.error?.(),
+            }),
+            mapFromApi: (d: unknown) => d,
+          },
         },
         PresenceSessionService,
       ],
