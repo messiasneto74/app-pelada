@@ -91,4 +91,30 @@ describe('suggestFormat', () => {
     const adjust = result.options.find((o) => o.proposedRules?.capacity === 40);
     expect(adjust).toBeDefined();
   });
+
+  it('elenco 44 (11×3) não propõe PATCH inválido (capacity 44 ou efetiva > 40)', () => {
+    const result = suggestFormat(44, {
+      playersPerTeam: 11,
+      teamCount: 3,
+      capacity: null,
+    });
+    for (const opt of result.options) {
+      const pr = opt.proposedRules;
+      if (!pr) {
+        continue;
+      }
+      if (typeof pr.capacity === 'number') {
+        expect(pr.capacity).toBeGreaterThanOrEqual(4);
+        expect(pr.capacity).toBeLessThanOrEqual(40);
+      }
+      const effective =
+        typeof pr.capacity === 'number' && pr.capacity > 0
+          ? pr.capacity
+          : pr.playersPerTeam * pr.teamCount * 2;
+      expect(effective).toBeLessThanOrEqual(40);
+    }
+    expect(
+      result.options.some((o) => o.proposedRules?.capacity === 44),
+    ).toBe(false);
+  });
 });

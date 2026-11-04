@@ -49,6 +49,30 @@ function wouldChangeIdealCapacity(
   return effectiveCapacity(proposed) !== effectiveCapacity(current);
 }
 
+/** Proposta aceitável no PATCH de regras (DTO capacity 4–40 + capacidade efetiva ≤ 40). */
+function isPersistableRulesPatch(
+  proposed: Pick<FormatRulesInput, 'playersPerTeam' | 'teamCount' | 'capacity'>,
+): boolean {
+  if (
+    typeof proposed.capacity === 'number' &&
+    !isValidApiCapacity(proposed.capacity)
+  ) {
+    return false;
+  }
+  return effectiveCapacity(proposed) <= MAX_CAPACITY;
+}
+
+function filterPersistableOptions(
+  options: FormatSuggestionOption[],
+): FormatSuggestionOption[] {
+  return options.filter((opt) => {
+    if (!opt.proposedRules) {
+      return true;
+    }
+    return isPersistableRulesPatch(opt.proposedRules);
+  });
+}
+
 function rulesDistance(
   current: FormatRulesInput,
   ppt: number,
@@ -198,7 +222,7 @@ export function suggestFormat(
     idealCapacity,
     delta,
     mismatch: true,
-    options,
+    options: filterPersistableOptions(options),
   };
 }
 
