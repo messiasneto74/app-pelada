@@ -4,13 +4,18 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "prestart": "npm run build -w @pelada/core",
+    "prebuild": "npm run build -w @pelada/core",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
+    "pretest": "npm run build -w @pelada/core",
     "test": "ng test --watch=false --browsers=ChromeHeadless --no-progress",
+    "pretest:ci": "npm run build -w @pelada/core",
     "test:ci": "ng test --watch=false --browsers=ChromeHeadless --no-progress"
   },
   "private": true,
   "dependencies": {
+    "@pelada/core": "0.0.1",
     "@angular/common": "^19.2.0",
     "@angular/compiler": "^19.2.0",
     "@angular/core": "^19.2.0",

@@ -11,5 +11,10 @@ export const PRESENCA_SCREEN_CHECKLIST: PresencaScreenChecklistItem[] = [
   { id: 'list', label: 'Lista com avatar, nome, posição e chip de status', automated: true },
   { id: 'guest', label: 'Linha de convidado com Aceitar e Recusar', automated: true },
   { id: 'close', label: 'Botão Fechar lista e sortear', automated: true },
+  {
+    id: 'l45-format',
+    label: 'Modal sugestão de formato (hist. 45) antes de fechar se ≠ ideal',
+    automated: true,
+  },
   { id: '390', label: 'Layout 390×844 — screenshot no PR', automated: false },
 ];

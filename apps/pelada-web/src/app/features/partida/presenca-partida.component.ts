@@ -1,5 +1,6 @@
 import { Component, computed, inject, model, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import type { SuggestFormatResult } from '@pelada/core';
 import type { MatchPresenceMode } from '../../core/match/create-match-form.logic';
 import type { InicioDashboardView } from '../../core/inicio/inicio-dashboard.model';
 import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
@@ -30,7 +31,15 @@ import {
 } from '../../core/presence/presence-list.logic';
 import type { PlayerPresenceStatus, PresenceRow } from '../../core/presence/presence-attendance.model';
 import { PresenceSessionService } from '../../core/presence/presence-session.service';
+import { evaluateFormatBeforeClose } from '../../core/presence/presence-format-suggest.logic';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
+import {
+  DEFAULT_PELADA_RULES,
+  type PeladaRulesFormValues,
+} from '../../core/pelada/pelada-rules.model';
+import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
+import type { PeladaRulesApiDto } from '../../core/pelada/pelada-rules-api.mapper';
+import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import {
   formatRosterRating,
@@ -200,10 +209,76 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
             peladaButton
             variant="lime"
             [peladaButtonBlock]="true"
-            (click)="closeListAndDraw()"
+            (click)="attemptCloseListAndDraw()"
           >
             Fechar lista e sortear
           </button>
+        }
+
+        @if (formatModalOpen() && formatSuggestion(); as hint) {
+          <div
+            class="format-modal-backdrop"
+            role="presentation"
+            (click)="cancelFormatModal()"
+          >
+            <div
+              class="format-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="format-modal-title"
+              (click)="$event.stopPropagation()"
+              (keydown.escape)="cancelFormatModal()"
+            >
+              <h2 id="format-modal-title" class="format-modal__title">
+                Confirmados ≠ capacidade ideal
+              </h2>
+              <p class="format-modal__lead pelada-muted">
+                {{ hint.playerCount }} confirmados · ideal {{ hint.idealCapacity }} vagas.
+                @if (hint.delta < 0) {
+                  Faltam {{ absDelta(hint.delta) }} para a capacidade configurada.
+                } @else {
+                  {{ hint.delta }} acima da capacidade ideal.
+                }
+              </p>
+              <ul class="format-modal__options">
+                @for (opt of hint.options; track opt.id) {
+                  <li>
+                    <strong>{{ opt.title }}</strong>
+                    <span class="pelada-muted">{{ opt.detail }}</span>
+                  </li>
+                }
+              </ul>
+              <div class="format-modal__actions">
+                <button
+                  type="button"
+                  peladaButton
+                  variant="lime"
+                  [peladaButtonBlock]="true"
+                  (click)="confirmCloseDespiteFormat()"
+                >
+                  Fechar lista e sortear assim
+                </button>
+                <a
+                  routerLink="/inicio/regras"
+                  peladaButton
+                  variant="secondary"
+                  [peladaButtonBlock]="true"
+                  (click)="cancelFormatModal()"
+                >
+                  Ajustar regras
+                </a>
+                <button
+                  type="button"
+                  peladaButton
+                  variant="secondary"
+                  [peladaButtonBlock]="true"
+                  (click)="cancelFormatModal()"
+                >
+                  Voltar à lista
+                </button>
+              </div>
+            </div>
+          </div>
         }
       }
     </section>
@@ -313,6 +388,54 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       .empty-hint {
         margin-bottom: var(--pelada-space-4);
       }
+      .format-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: rgba(15, 35, 28, 0.55);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: var(--pelada-space-4);
+      }
+      .format-modal {
+        width: min(100%, 390px);
+        max-height: min(85vh, 640px);
+        overflow-y: auto;
+        background: var(--pelada-paper);
+        border-radius: var(--pelada-radius-lg) var(--pelada-radius-lg) 0 0;
+        padding: var(--pelada-space-4);
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+      }
+      .format-modal__title {
+        margin: 0 0 var(--pelada-space-2);
+        font-size: 1.125rem;
+      }
+      .format-modal__lead {
+        margin: 0 0 var(--pelada-space-3);
+        font-size: 0.875rem;
+      }
+      .format-modal__options {
+        list-style: none;
+        margin: 0 0 var(--pelada-space-4);
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--pelada-space-3);
+      }
+      .format-modal__options li {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: var(--pelada-space-3);
+        border: 1px solid var(--pelada-line);
+        border-radius: var(--pelada-radius-md);
+      }
+      .format-modal__actions {
+        display: flex;
+        flex-direction: column;
+        gap: var(--pelada-space-2);
+      }
     `,
   ],
 })
@@ -324,6 +447,8 @@ export class PresencaPartidaComponent implements OnInit {
   private readonly session = inject(PresenceSessionService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly rulesService = inject(PeladaRulesService);
+  private readonly rulesApi = inject(PeladaRulesApiService);
 
   readonly loading = signal(true);
   readonly rosterLoadFailed = signal(false);
@@ -336,6 +461,9 @@ export class PresencaPartidaComponent implements OnInit {
   readonly rows = signal<PresenceRow[]>([]);
   readonly queueOrder = signal<string[]>([]);
   readonly segment = model<PresenceSegment>('confirmed');
+  readonly formatRules = signal<PeladaRulesFormValues>({ ...DEFAULT_PELADA_RULES });
+  readonly formatModalOpen = signal(false);
+  readonly formatSuggestion = signal<SuggestFormatResult | null>(null);
 
   readonly headerTitle = computed(() => {
     const pelada = this.peladaContext.getActivePelada();
@@ -380,6 +508,14 @@ export class PresencaPartidaComponent implements OnInit {
       return;
     }
     this.orgContext.refreshMembership(pelada.id);
+    this.formatRules.set(this.rulesService.getDefaultRules(pelada.id));
+    this.rulesApi.fetchRules(pelada.id).subscribe({
+      next: (dto: PeladaRulesApiDto) =>
+        this.formatRules.set(this.rulesApi.mapFromApi(dto)),
+      error: () => {
+        /* mantém regras locais */
+      },
+    });
     void this.authService
       .getMe()
       .then((me) => this.currentAppUserId.set(me.id))
@@ -472,7 +608,34 @@ export class PresencaPartidaComponent implements OnInit {
     this.applyPresenceState(result.rows, result.queueOrder, result.extraPlayer);
   }
 
-  closeListAndDraw(): void {
+  absDelta(delta: number): number {
+    return Math.abs(delta);
+  }
+
+  attemptCloseListAndDraw(): void {
+    const hint = evaluateFormatBeforeClose(
+      this.counts().confirmed,
+      this.formatRules(),
+      this.capacity(),
+    );
+    if (hint.mismatch) {
+      this.formatSuggestion.set(hint);
+      this.formatModalOpen.set(true);
+      return;
+    }
+    this.finishCloseListAndDraw();
+  }
+
+  cancelFormatModal(): void {
+    this.formatModalOpen.set(false);
+  }
+
+  confirmCloseDespiteFormat(): void {
+    this.formatModalOpen.set(false);
+    this.finishCloseListAndDraw();
+  }
+
+  private finishCloseListAndDraw(): void {
     this.listClosed.set(true);
     this.persist();
     void this.router.navigate(['/partida/sorteio']);

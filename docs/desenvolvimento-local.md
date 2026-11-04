@@ -1,8 +1,8 @@
-# Desenvolvimento e testes — só na sua máquina (MVP)
+# Desenvolvimento e testes — reprodução opcional e gates automatizados
 
-**Decisão:** testes rodam **localmente** (`npm run test:*`) e no **PR** (check `test:all + R-07` — ver [ci-github.md](ci-github.md)).
+**Decisão:** os testes obrigatórios rodam pelos agentes revisores e pelo CI no PR (check `test:all + R-07` — ver [ci-github.md](ci-github.md)). A execução local é opcional e serve apenas para reproduzir uma falha ou investigar um diagnóstico.
 
-**Quem roda:** você antes de fechar a issue; o **agente Cursor** roda os mesmos comandos **no seu PC** enquanto implementa a issue que você pediu (não a suíte inteira sozinho). Processo completo: [processo-testes-e-qualidade.md](processo-testes-e-qualidade.md).
+**Quem roda:** o CI, o agente Cursor e o agente Codex executam os gates no checkout do PR e registram comandos, resultado e falhas. Você apenas consulta os checks e os pareceres; não precisa repetir a suíte localmente. Processo completo: [processo-testes-e-qualidade.md](processo-testes-e-qualidade.md).
 
 ## Pré-requisitos
 
@@ -61,7 +61,7 @@ npm.cmd run test:all
 | `npm.cmd run test:all:ci` | Igual ao runner Linux do GitHub Actions |
 | `npm.cmd run test:api:harness` | Postgres :5435 + migrations + `test:api` com DB |
 
-**Definition of Done (local):** antes de fechar a issue, `npm.cmd run test:all` (e o que a issue pedir) passa **no seu PC**; no PR o check **`test:all + R-07`** verde.
+**Definition of Done automatizado:** antes de fechar a issue, os agentes/CI devem executar os gates aplicáveis, registrar o resultado e deixar o check **`test:all + R-07`** verde. O resultado local no seu PC não é requisito adicional.
 
 ## Variáveis e Keycloak (antes de codar F0-4)
 
@@ -175,6 +175,8 @@ npm.cmd run smoke:keycloak
 npm.cmd run smoke:stack
 npm.cmd run dev:web
 ```
+
+`dev:web` e `ng serve` compilam `@pelada/core` antes (`packages/core/dist`); se aparecer `Cannot find module '@pelada/core'`, rode `npm.cmd run build:core` e reinicie o servidor.
 
 | Serviço | URL |
 |---------|-----|
