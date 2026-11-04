@@ -26,3 +26,5 @@ $i.Dispose()
 O gate `npm audit --omit=dev --audit-level=high` falha no monorepo por **9 highs** em dependências de **produção** (Angular 19.x, Prisma/deepmerge-ts, Multer/Nest) — **pré-existentes**, não introduzidos por issues de UI isoladas.
 
 **Waiver registrado na issue #15:** [comentário MVP baseline](https://github.com/messiasneto74/app-pelada/issues/15#issuecomment-6479362114) — PRs de feature (ex. **#79**) referenciam até upgrade em `DEPLOY-1` / bump Angular.
+
+**Waiver por issue (core-only):** **#33** L45-CORE / PR **#101** — decisão formal no corpo da [#33](https://github.com/messiasneto74/app-pelada/issues/33) § *Decisão mantenedor — gate npm audit*; correção rastreada na **#84**.
