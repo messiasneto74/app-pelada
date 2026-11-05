@@ -23,6 +23,21 @@ describe('presenceListClosedGuard (3.4-NAV)', () => {
       ],
     });
     session = TestBed.inject(PresenceSessionService);
+    sessionStorage.clear();
+  });
+
+  it('permite Sorteio após reload (snapshot fechado, sem activeMatchId em memória)', () => {
+    session.save({
+      matchId: 'm1',
+      listClosed: true,
+      statusByPlayerId: {},
+      guests: [],
+      extraPlayers: [],
+      queueOrder: [],
+      presenceMode: 'ORGANIZER_CLOSES',
+    });
+    session.setActiveMatchId(null);
+    expect(runGuard()).toBe(true);
   });
 
   it('permite Sorteio quando lista fechada', () => {
@@ -55,6 +70,7 @@ describe('presenceListClosedGuard (3.4-NAV)', () => {
   });
 
   it('redireciona se não houver partida ativa', () => {
+    sessionStorage.clear();
     session.setActiveMatchId(null);
     runGuard();
     expect(router.createUrlTree).toHaveBeenCalledWith(['/partida/presenca']);

@@ -9,12 +9,7 @@ import { PresenceSessionService } from './presence-session.service';
 export const presenceListClosedGuard: CanActivateFn = () => {
   const session = inject(PresenceSessionService);
   const router = inject(Router);
-  const matchId = session.getActiveMatchId();
-  if (!matchId) {
-    return router.createUrlTree([PARTIDA_PRESENCA_PATH]);
-  }
-  const snap = session.load(matchId);
-  if (snap?.listClosed) {
+  if (session.resolveMatchIdWithClosedList()) {
     return true;
   }
   return router.createUrlTree([PARTIDA_PRESENCA_PATH]);
