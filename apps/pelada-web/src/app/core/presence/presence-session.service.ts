@@ -17,6 +17,17 @@ const STORAGE_PREFIX = 'pelada:presence:';
 
 @Injectable({ providedIn: 'root' })
 export class PresenceSessionService {
+  private activeMatchId: string | null = null;
+
+  /** Partida em foco na aba Presença (3.4-NAV guard). */
+  setActiveMatchId(matchId: string | null): void {
+    this.activeMatchId = matchId;
+  }
+
+  getActiveMatchId(): string | null {
+    return this.activeMatchId;
+  }
+
   load(matchId: string): PresenceSessionSnapshot | null {
     if (typeof sessionStorage === 'undefined') {
       return null;

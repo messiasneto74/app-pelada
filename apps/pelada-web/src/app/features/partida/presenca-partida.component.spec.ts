@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { OAuthService } from 'angular-oauth2-oidc';
 import type { InicioDashboardView } from '../../core/inicio/inicio-dashboard.model';
@@ -169,6 +169,37 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(fixture.nativeElement.textContent).toContain(
       'Fechar lista e sortear assim',
     );
+  });
+
+  it('3.4-NAV: confirmar fechamento navega para Sorteio e persiste lista fechada', async () => {
+    const router = TestBed.inject(Router);
+    const navigate = spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
+    const buttons = fixture.nativeElement.querySelectorAll('button');
+    let closeBtn: HTMLButtonElement | undefined;
+    for (let i = 0; i < buttons.length; i += 1) {
+      const b = buttons.item(i);
+      if (b?.textContent?.includes('Fechar lista e sortear')) {
+        closeBtn = b;
+        break;
+      }
+    }
+    closeBtn!.click();
+    fixture.detectChanges();
+    const buttonsAfter = fixture.nativeElement.querySelectorAll('button');
+    let confirmBtn: HTMLButtonElement | undefined;
+    for (let i = 0; i < buttonsAfter.length; i += 1) {
+      const b = buttonsAfter.item(i);
+      if (b?.textContent?.includes('Fechar lista e sortear assim')) {
+        confirmBtn = b;
+        break;
+      }
+    }
+    confirmBtn!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(navigate).toHaveBeenCalledWith(['/partida/sorteio']);
+    const saved = TestBed.inject(PresenceSessionService).load('m1');
+    expect(saved?.listClosed).toBe(true);
   });
 
   it('lista jogador confirmado com chip', () => {
