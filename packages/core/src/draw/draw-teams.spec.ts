@@ -287,3 +287,96 @@ describe('swapDrawPlayers (CORE-3)', () => {
     expect(r.teams[1].playerIds).toContain('p1');
   });
 });
+
+/**
+ * CORE-TEST (#38) — estrategia-testes §A: formatos reais, GK, regerar/swap.
+ */
+describe('CORE-TEST: formatos e cenários', () => {
+  it('18 jogadores em 3 times ×6 (linha + GK implícito)', () => {
+    const players = Array.from({ length: 18 }, (_, i) =>
+      i < 3 ? mk(i + 1, 7 - i * 0.5, true) : mk(i + 1, 5 + (i % 4)),
+    );
+    const r = drawTeams({
+      players,
+      teamCount: 3,
+      mode: 'BALANCED',
+      goalkeepersMode: 'ONE_PER_TEAM',
+      seed: 50,
+    });
+    expect(r.teams.map((t) => t.playerIds.length)).toEqual([6, 6, 6]);
+  });
+
+  it('14 jogadores em 2 times ×7', () => {
+    const players = Array.from({ length: 14 }, (_, i) =>
+      i < 2 ? mk(i + 1, 8, true) : mk(i + 1, 5.5 + (i % 3) * 0.25),
+    );
+    const r = drawTeams({
+      players,
+      teamCount: 2,
+      mode: 'BALANCED',
+      goalkeepersMode: 'ONE_PER_TEAM',
+      seed: 88,
+    });
+    expect(r.teams.map((t) => t.playerIds.length)).toEqual([7, 7]);
+  });
+
+  it('elenco mínimo (só linha): 6 em 3 times ×2 — “fila” enxuta ainda sorteia', () => {
+    const players = Array.from({ length: 6 }, (_, i) => mk(i + 1, 6));
+    const r = drawTeams({ players, teamCount: 3, mode: 'BALANCED', seed: 2 });
+    expect(r.teams.map((t) => t.playerIds.length)).toEqual([2, 2, 2]);
+    expect(r.metrics.balanceScore).toBeGreaterThanOrEqual(0);
+    expect(r.metrics.balanceScore).toBeLessThanOrEqual(100);
+  });
+
+  it('BALANCED e RANDOM diferem no arranjo (mesmo elenco e seed)', () => {
+    const players = Array.from({ length: 12 }, (_, i) => mk(i + 1, 4 + (i % 5)));
+    const b = drawTeams({ players, teamCount: 3, mode: 'BALANCED', seed: 777 });
+    const rnd = drawTeams({ players, teamCount: 3, mode: 'RANDOM', seed: 777 });
+    expect(b.teams).not.toEqual(rnd.teams);
+  });
+
+  it('redraw com vários fixos mantém todos e completa tamanhos', () => {
+    const players = Array.from({ length: 12 }, (_, i) => mk(i + 1, 5 + (i % 3)));
+    const r = redrawDrawTeams({
+      players,
+      teamCount: 3,
+      mode: 'BALANCED',
+      seed: 30,
+      pinnedByTeam: { 0: ['p1'], 1: ['p5'], 2: ['p9'] },
+    });
+    expect(r.teams[0].playerIds).toContain('p1');
+    expect(r.teams[1].playerIds).toContain('p5');
+    expect(r.teams[2].playerIds).toContain('p9');
+    expect(r.teams.map((t) => t.playerIds.length)).toEqual([4, 4, 4]);
+  });
+
+  it('swap com weights recalcula médias ponderadas', () => {
+    const weights = { rating: 1, tags: { forte: 1 } };
+    const players = [
+      { id: 'a', rating: 4, tags: ['forte'] },
+      { id: 'b', rating: 8 },
+      { id: 'c', rating: 7 },
+      { id: 'd', rating: 7 },
+    ];
+    const before = computeDrawBalanceMetrics(
+      [
+        ['a', 'b'],
+        ['c', 'd'],
+      ],
+      players,
+      weights,
+    );
+    const after = swapDrawPlayers({
+      players,
+      teams: [
+        { teamIndex: 0, playerIds: ['a', 'b'] },
+        { teamIndex: 1, playerIds: ['c', 'd'] },
+      ],
+      playerAId: 'a',
+      playerBId: 'c',
+      weights,
+    });
+    expect(after.metrics.teamAverages[0]).not.toBeCloseTo(before.teamAverages[0], 5);
+    expect(after.metrics.maxAverageDiff).not.toBe(before.maxAverageDiff);
+  });
+});
