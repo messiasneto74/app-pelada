@@ -56,6 +56,30 @@ export interface DrawTeamsResult {
   seed: number;
 }
 
+/** História 54 — troca entre dois jogadores de times diferentes + métricas. */
+export interface SwapDrawPlayersInput {
+  players: DrawPlayerInput[];
+  teams: DrawTeamSlot[];
+  playerAId: string;
+  playerBId: string;
+  goalkeepersMode?: DrawGoalkeeperMode;
+  weights?: DrawWeightInput;
+}
+
+export interface SwapDrawPlayersResult {
+  teams: DrawTeamSlot[];
+  metrics: DrawBalanceMetrics;
+}
+
+/**
+ * História 53 — sortear de novo mantendo jogadores fixos por time.
+ * Demais vagas preenchidas com a mesma lógica de `drawTeams` (BALANCED / RANDOM).
+ */
+export interface RedrawDrawTeamsInput extends DrawTeamsInput {
+  /** `teamIndex` → ids que permanecem nesse time; demais posições sorteadas de novo. */
+  pinnedByTeam?: Partial<Record<number, string[]>>;
+}
+
 export class DrawValidationError extends Error {
   constructor(message: string) {
     super(message);

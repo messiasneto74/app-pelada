@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawTeams } from './draw-teams.js';
+import { drawTeams, redrawDrawTeams, swapDrawPlayers } from './draw-teams.js';
 import { computeDrawBalanceMetrics } from './metrics.js';
 import { computePlayerDrawScore } from './player-draw-score.js';
 import { DrawValidationError } from './types.js';
@@ -187,5 +187,103 @@ describe('drawTeams (CORE-2) — pesos', () => {
       { tags: { veloz: 2 }, position: { Ataque: 1 } },
     );
     expect(m.teamAverages[0]).toBeGreaterThan(m.teamAverages[1]);
+  });
+});
+
+describe('redrawDrawTeams (CORE-3)', () => {
+  it('sem pins delega ao sorteio normal (mesmo resultado que drawTeams)', () => {
+    const players = [mk(1, 9), mk(2, 8), mk(3, 5), mk(4, 4), mk(5, 7, true), mk(6, 6, true)];
+    const base = { players, teamCount: 2, mode: 'BALANCED' as const, seed: 42, goalkeepersMode: 'ONE_PER_TEAM' as const };
+    expect(redrawDrawTeams(base).teams).toEqual(drawTeams(base).teams);
+  });
+
+  it('mantém jogador fixo no time após regerar', () => {
+    const players = [
+      mk(1, 9),
+      mk(2, 5),
+      mk(3, 5),
+      mk(4, 5),
+      mk(5, 6, true),
+      mk(6, 6, true),
+    ];
+    const result = redrawDrawTeams({
+      players,
+      teamCount: 2,
+      mode: 'BALANCED',
+      seed: 7,
+      goalkeepersMode: 'ONE_PER_TEAM',
+      pinnedByTeam: { 0: ['p1'] },
+    });
+    expect(result.teams.find((t) => t.teamIndex === 0)?.playerIds).toContain('p1');
+    expect(result.teams.flatMap((t) => t.playerIds).sort()).toEqual(
+      players.map((p) => p.id).sort(),
+    );
+  });
+
+  it('rejeita fixar o mesmo jogador em dois times', () => {
+    const players = [mk(1, 7), mk(2, 7), mk(3, 7), mk(4, 7)];
+    expect(() =>
+      redrawDrawTeams({
+        players,
+        teamCount: 2,
+        mode: 'BALANCED',
+        pinnedByTeam: { 0: ['p1'], 1: ['p1'] },
+      }),
+    ).toThrow(DrawValidationError);
+  });
+});
+
+describe('swapDrawPlayers (CORE-3)', () => {
+  it('troca entre times e recalcula métricas', () => {
+    const players = [mk(1, 8), mk(2, 6), mk(3, 7), mk(4, 5)];
+    const teams = [
+      { teamIndex: 0, playerIds: ['p1', 'p2'] },
+      { teamIndex: 1, playerIds: ['p3', 'p4'] },
+    ];
+    const m0 = computeDrawBalanceMetrics(
+      teams.map((t) => t.playerIds),
+      players,
+    );
+    const swapped = swapDrawPlayers({
+      players,
+      teams,
+      playerAId: 'p1',
+      playerBId: 'p3',
+    });
+    expect(swapped.teams[0].playerIds).toContain('p3');
+    expect(swapped.teams[1].playerIds).toContain('p1');
+    expect(swapped.metrics.maxAverageDiff).not.toBe(m0.maxAverageDiff);
+  });
+
+  it('modo um goleiro por time: GK só troca com GK', () => {
+    const players = [mk(1, 8, true), mk(2, 6), mk(3, 7, true), mk(4, 5)];
+    expect(() =>
+      swapDrawPlayers({
+        players,
+        teams: [
+          { teamIndex: 0, playerIds: ['p1', 'p2'] },
+          { teamIndex: 1, playerIds: ['p3', 'p4'] },
+        ],
+        playerAId: 'p1',
+        playerBId: 'p2',
+        goalkeepersMode: 'ONE_PER_TEAM',
+      }),
+    ).toThrow(DrawValidationError);
+  });
+
+  it('permite troca goleiro com goleiro', () => {
+    const players = [mk(1, 8, true), mk(2, 6), mk(3, 9, true), mk(4, 5)];
+    const r = swapDrawPlayers({
+      players,
+      teams: [
+        { teamIndex: 0, playerIds: ['p1', 'p2'] },
+        { teamIndex: 1, playerIds: ['p3', 'p4'] },
+      ],
+      playerAId: 'p1',
+      playerBId: 'p3',
+      goalkeepersMode: 'ONE_PER_TEAM',
+    });
+    expect(r.teams[0].playerIds).toContain('p3');
+    expect(r.teams[1].playerIds).toContain('p1');
   });
 });

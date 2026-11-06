@@ -4,13 +4,17 @@ import { createSeededRandom, randomSeed } from './rng.js';
 import type {
   DrawGoalkeeperMode,
   DrawPlayerInput,
+  RedrawDrawTeamsInput,
+  DrawTeamSlot,
   DrawTeamsInput,
   DrawTeamsResult,
   DrawWeightInput,
+  SwapDrawPlayersInput,
+  SwapDrawPlayersResult,
 } from './types.js';
 import { DrawValidationError } from './types.js';
 
-function resolveGkMode(
+export function resolveGkMode(
   mode: DrawGoalkeeperMode | undefined,
   players: DrawPlayerInput[],
   teamCount: number,
@@ -47,7 +51,8 @@ function validateWeights(weights: DrawWeightInput): void {
   }
 }
 
-function validateInput(input: DrawTeamsInput): void {
+/** Reexportado para `redrawDrawTeams` / API; retorna o modo GK efetivo. */
+export function validateDrawTeamsInput(input: DrawTeamsInput): DrawGoalkeeperMode {
   if (input.goalkeepersMode != null && input.goalkeepersMode !== 'ONE_PER_TEAM' && input.goalkeepersMode !== 'FIXED_OFF_LINE') {
     throw new DrawValidationError('goalkeepersMode deve ser ONE_PER_TEAM ou FIXED_OFF_LINE.');
   }
@@ -96,6 +101,7 @@ function validateInput(input: DrawTeamsInput): void {
       `Modo um goleiro por time: confirme pelo menos ${input.teamCount} goleiros.`,
     );
   }
+  return gkMode;
 }
 
 type WithTie = DrawPlayerInput & { tie: number };
@@ -128,18 +134,96 @@ function pickBalancedTeam(
   random: () => number,
   playersById: Map<string, DrawPlayerInput>,
   weights?: DrawWeightInput,
+  playerToAdd?: DrawPlayerInput,
+  gkMode?: DrawGoalkeeperMode,
+  targetSizes?: number[] | null,
+  relaxGkDuplicate?: boolean,
 ): number {
-  const smallest = Math.min(...teams.map((t) => t.length));
-  const candidates = teams
-    .map((t, i) => ({
-      i,
-      size: t.length,
-      sum: sumTeamScore(t, playersById, weights),
-      tie: random(),
-    }))
-    .filter((t) => t.size === smallest)
-    .sort((a, b) => a.sum - b.sum || a.tie - b.tie);
+  const hasCap = targetSizes != null;
+  const base = teams.map((t, i) => ({
+    i,
+    size: t.length,
+    sum: sumTeamScore(t, playersById, weights),
+    tie: random(),
+  }));
+
+  const allTeamsHaveGk = (): boolean =>
+    teams.every((t) => t.some((id) => playersById.get(id)?.isGoalkeeper));
+
+  const canPlace = (teamIdx: number): boolean => {
+    if (hasCap && targetSizes![teamIdx] != null && teams[teamIdx].length >= targetSizes![teamIdx]) {
+      return false;
+    }
+    if (!playerToAdd || gkMode !== 'ONE_PER_TEAM' || !playerToAdd.isGoalkeeper) {
+      return true;
+    }
+    const hasGk = teams[teamIdx].some((id) => playersById.get(id)?.isGoalkeeper);
+    if (!hasGk) {
+      return true;
+    }
+    // Segundo+ goleiro no mesmo time só após todos já terem um (goleiros excedentes).
+    return relaxGkDuplicate === true && allTeamsHaveGk();
+  };
+
+  const feasible = base.filter((t) => canPlace(t.i));
+  if (feasible.length === 0) {
+    throw new DrawValidationError(
+      'Não foi possível alocar jogador: verifique vagas e regras de goleiro.',
+    );
+  }
+  const smallest = Math.min(...feasible.map((t) => t.size));
+  let candidates = feasible.filter((t) => t.size === smallest);
+  candidates.sort((a, b) => a.sum - b.sum || a.tie - b.tie);
   return candidates[0].i;
+}
+
+function computeTargetSizes(playerCount: number, teamCount: number): number[] {
+  const base = Math.floor(playerCount / teamCount);
+  const extra = playerCount % teamCount;
+  return Array.from({ length: teamCount }, (_, i) => base + (i < extra ? 1 : 0));
+}
+
+/** Próximo time com vaga e regras de GK (regerar em modo aleatório). */
+function pickRandomSlotTeam(
+  teams: string[][],
+  random: () => number,
+  playersById: Map<string, DrawPlayerInput>,
+  targetSizes: number[],
+  playerToAdd: DrawPlayerInput,
+  gkMode: DrawGoalkeeperMode,
+): number {
+  const teamCount = teams.length;
+  const hasGk = (teamIdx: number): boolean =>
+    teams[teamIdx].some((id) => playersById.get(id)?.isGoalkeeper);
+  const allTeamsHaveGk = (): boolean =>
+    teams.every((t, i) => t.length > 0 && hasGk(i));
+
+  const canPlace = (teamIdx: number): boolean => {
+    if (teams[teamIdx].length >= targetSizes[teamIdx]) {
+      return false;
+    }
+    if (gkMode === 'FIXED_OFF_LINE' && playerToAdd.isGoalkeeper) {
+      return false;
+    }
+    if (gkMode !== 'ONE_PER_TEAM' || !playerToAdd.isGoalkeeper) {
+      return true;
+    }
+    if (!hasGk(teamIdx)) {
+      return true;
+    }
+    return allTeamsHaveGk();
+  };
+
+  const start = Math.floor(random() * teamCount);
+  for (let step = 0; step < teamCount; step++) {
+    const i = (start + step) % teamCount;
+    if (canPlace(i)) {
+      return i;
+    }
+  }
+  throw new DrawValidationError(
+    'Não foi possível alocar jogador no modo aleatório: vagas ou regras de goleiro.',
+  );
 }
 
 /**
@@ -169,7 +253,19 @@ function partitionBalancedOneGkPerTeam(
 
   const remainder = [...orderedLine, ...keepers.slice(teamCount)];
   for (const p of remainder) {
-    const idx = pickBalancedTeam(teams, random, playersById, weights);
+    const relax =
+      Boolean(p.isGoalkeeper) &&
+      teams.filter((t) => t.some((id) => playersById.get(id)?.isGoalkeeper)).length >= teamCount;
+    const idx = pickBalancedTeam(
+      teams,
+      random,
+      playersById,
+      weights,
+      p,
+      'ONE_PER_TEAM',
+      null,
+      relax,
+    );
     teams[idx].push(p.id);
   }
 
@@ -264,10 +360,194 @@ function partitionRandom(
     : partitionRandomOneGkPerTeam(players, teamCount, random);
 }
 
+/**
+ * História 53 — novo sorteio com jogadores fixos por time; demais posições sorteadas.
+ */
+export function redrawDrawTeams(input: RedrawDrawTeamsInput): DrawTeamsResult {
+  const gkMode = validateDrawTeamsInput(input);
+  const { teamCount, players, mode, weights, pinnedByTeam = {} } = input;
+  const playersById = new Map(players.map((p) => [p.id, p]));
+
+  const teams: string[][] = Array.from({ length: teamCount }, () => []);
+  const pinnedSet = new Set<string>();
+
+  for (let ti = 0; ti < teamCount; ti++) {
+    const raw = pinnedByTeam[ti] ?? [];
+    for (const id of raw) {
+      if (!id?.trim()) {
+        throw new DrawValidationError(`pinnedByTeam[${ti}] contém id vazio.`);
+      }
+      if (!playersById.has(id)) {
+        throw new DrawValidationError(`Jogador fixo desconhecido: ${id}`);
+      }
+      if (pinnedSet.has(id)) {
+        throw new DrawValidationError(`Jogador ${id} fixo em mais de um time.`);
+      }
+      pinnedSet.add(id);
+      teams[ti].push(id);
+    }
+  }
+
+  if (pinnedSet.size === 0) {
+    const { pinnedByTeam: _omitPins, ...rest } = input;
+    return drawTeams(rest as DrawTeamsInput);
+  }
+
+  const seed = input.seed ?? randomSeed();
+  const random = createSeededRandom(seed);
+
+  const targetSizes = computeTargetSizes(players.length, teamCount);
+  for (let i = 0; i < teamCount; i++) {
+    if (teams[i].length > targetSizes[i]) {
+      throw new DrawValidationError(
+        `Time ${i}: mais jogadores fixos (${teams[i].length}) que vagas (${targetSizes[i]}).`,
+      );
+    }
+  }
+
+  for (let i = 0; i < teamCount; i++) {
+    for (const id of teams[i]) {
+      const pl = playersById.get(id)!;
+      if (gkMode === 'FIXED_OFF_LINE' && pl.isGoalkeeper) {
+        throw new DrawValidationError(
+          `Modo goleiro fixo: jogador ${id} não pode ficar fixo nos times sorteados.`,
+        );
+      }
+    }
+  }
+
+  const pool = players.filter((p) => !pinnedSet.has(p.id));
+
+  let poolOrder: DrawPlayerInput[];
+  if (mode === 'RANDOM') {
+    const drawable =
+      gkMode === 'FIXED_OFF_LINE' ? pool.filter((p) => !p.isGoalkeeper) : pool;
+    poolOrder = [...drawable].sort(() => random() - 0.5);
+  } else if (gkMode === 'FIXED_OFF_LINE') {
+    const lineOnly = pool.filter((p) => !p.isGoalkeeper);
+    poolOrder = sortLineForBalance(lineOnly, random, playersById, weights);
+  } else {
+    const linePool = pool.filter((p) => !p.isGoalkeeper);
+    const gkPool = pool.filter((p) => p.isGoalkeeper).sort(() => random() - 0.5);
+    const orderedLine = sortLineForBalance(linePool, random, playersById, weights);
+    poolOrder = [...orderedLine, ...gkPool];
+  }
+
+  for (const p of poolOrder) {
+    if (mode === 'RANDOM') {
+      const idx = pickRandomSlotTeam(teams, random, playersById, targetSizes, p, gkMode);
+      teams[idx].push(p.id);
+    } else {
+      const relax =
+        Boolean(p.isGoalkeeper) &&
+        gkMode === 'ONE_PER_TEAM' &&
+        teams.every((t) => t.some((id) => playersById.get(id)?.isGoalkeeper));
+      const idx = pickBalancedTeam(
+        teams,
+        random,
+        playersById,
+        weights,
+        p,
+        gkMode,
+        targetSizes,
+        relax,
+      );
+      teams[idx].push(p.id);
+    }
+  }
+
+  for (let i = 0; i < teamCount; i++) {
+    if (teams[i].length !== targetSizes[i]) {
+      throw new DrawValidationError(
+        `Inconsistência ao regerar: time ${i} tem ${teams[i].length} jogadores, esperado ${targetSizes[i]}.`,
+      );
+    }
+  }
+
+  const metrics = computeDrawBalanceMetrics(teams, players, weights);
+  const outTeams: DrawTeamSlot[] = teams.map((playerIds, teamIndex) => ({
+    teamIndex,
+    playerIds,
+  }));
+
+  return { teams: outTeams, metrics, seed };
+}
+
+/** História 54 — troca entre dois jogadores + recálculo de métricas (protótipo: GK só com GK no modo por time). */
+export function swapDrawPlayers(input: SwapDrawPlayersInput): SwapDrawPlayersResult {
+  const { players, playerAId, playerBId, teams: teamSlots, weights } = input;
+  if (!playerAId?.trim() || !playerBId?.trim()) {
+    throw new DrawValidationError('Informe dois ids para a troca.');
+  }
+  if (playerAId === playerBId) {
+    throw new DrawValidationError('Os dois jogadores precisam ser diferentes.');
+  }
+
+  const playersById = new Map(players.map((p) => [p.id, p]));
+  const pa = playersById.get(playerAId);
+  const pb = playersById.get(playerBId);
+  if (!pa) {
+    throw new DrawValidationError(`Jogador A desconhecido: ${playerAId}`);
+  }
+  if (!pb) {
+    throw new DrawValidationError(`Jogador B desconhecido: ${playerBId}`);
+  }
+
+  validateWeights(weights ?? {});
+  const teamCount = teamSlots.length;
+  if (teamCount < 2) {
+    throw new DrawValidationError('Troca exige pelo menos dois times.');
+  }
+
+  const teams = teamSlots.map((t) => [...t.playerIds]);
+  let idxA = -1;
+  let idxB = -1;
+  let posA = -1;
+  let posB = -1;
+
+  for (let i = 0; i < teams.length; i++) {
+    const ia = teams[i].indexOf(playerAId);
+    const ib = teams[i].indexOf(playerBId);
+    if (ia >= 0) {
+      idxA = i;
+      posA = ia;
+    }
+    if (ib >= 0) {
+      idxB = i;
+      posB = ib;
+    }
+  }
+
+  if (idxA < 0) {
+    throw new DrawValidationError(`Jogador A não está em nenhum time: ${playerAId}`);
+  }
+  if (idxB < 0) {
+    throw new DrawValidationError(`Jogador B não está em nenhum time: ${playerBId}`);
+  }
+  if (idxA === idxB) {
+    throw new DrawValidationError('Troca exige jogadores de times diferentes.');
+  }
+
+  const gkMode = resolveGkMode(input.goalkeepersMode, players, teamCount);
+  if (gkMode === 'ONE_PER_TEAM' && Boolean(pa.isGoalkeeper) !== Boolean(pb.isGoalkeeper)) {
+    throw new DrawValidationError('Só é permitido trocar goleiro com goleiro.');
+  }
+
+  teams[idxA][posA] = playerBId;
+  teams[idxB][posB] = playerAId;
+
+  const metrics = computeDrawBalanceMetrics(teams, players, weights);
+  const outTeams: DrawTeamSlot[] = teams.map((playerIds, teamIndex) => ({
+    teamIndex,
+    playerIds,
+  }));
+
+  return { teams: outTeams, metrics };
+}
+
 /** Histórias 47–51, 55 — sorteio equilibrado ou aleatório + métricas. */
 export function drawTeams(input: DrawTeamsInput): DrawTeamsResult {
-  validateInput(input);
-  const gkMode = resolveGkMode(input.goalkeepersMode, input.players, input.teamCount);
+  const gkMode = validateDrawTeamsInput(input);
   const seed = input.seed ?? randomSeed();
   const random = createSeededRandom(seed);
   const teamIds =
@@ -292,9 +572,12 @@ export type {
   DrawGoalkeeperMode,
   DrawMode,
   DrawPlayerInput,
+  RedrawDrawTeamsInput,
   DrawTeamSlot,
   DrawTeamsInput,
   DrawTeamsResult,
   DrawWeightInput,
+  SwapDrawPlayersInput,
+  SwapDrawPlayersResult,
 } from './types.js';
 export { DrawValidationError } from './types.js';
