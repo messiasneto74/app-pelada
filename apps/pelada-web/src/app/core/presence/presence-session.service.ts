@@ -55,9 +55,7 @@ export class PresenceSessionService {
       if (activeSnap?.listClosed) {
         return activeId;
       }
-      if (activeSnap) {
-        return null;
-      }
+      return null;
     }
     if (typeof sessionStorage === 'undefined') {
       return null;

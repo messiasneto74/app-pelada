@@ -69,6 +69,22 @@ describe('presenceListClosedGuard (3.4-NAV)', () => {
     expect(router.createUrlTree).toHaveBeenCalledWith(['/partida/presenca']);
   });
 
+  it('redireciona se partida ativa sem snapshot (não usa outra fechada no storage)', () => {
+    session.save({
+      matchId: 'm-old',
+      listClosed: true,
+      statusByPlayerId: {},
+      guests: [],
+      extraPlayers: [],
+      queueOrder: [],
+      presenceMode: 'ORGANIZER_CLOSES',
+    });
+    session.setActiveMatchId('m-new');
+    runGuard();
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/partida/presenca']);
+    expect(session.getActiveMatchId()).toBe('m-new');
+  });
+
   it('redireciona se não houver partida ativa', () => {
     sessionStorage.clear();
     session.setActiveMatchId(null);
