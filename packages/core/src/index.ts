@@ -18,9 +18,12 @@ export {
   computeDrawBalanceMetrics,
   DrawValidationError,
   type DrawBalanceMetrics,
+  type DrawGoalkeeperMode,
   type DrawMode,
   type DrawPlayerInput,
   type DrawTeamSlot,
   type DrawTeamsInput,
   type DrawTeamsResult,
+  type DrawWeightInput,
 } from './draw/draw-teams.js';
+export { computePlayerDrawScore } from './draw/player-draw-score.js';
