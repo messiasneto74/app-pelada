@@ -140,7 +140,10 @@ export const routes: Routes = [
       {
         path: 'partida/sorteio',
         canActivate: [presenceListClosedGuard],
-        loadComponent: placeholder,
+        loadComponent: () =>
+          import('./features/partida/sorteio-partida.component').then(
+            (m) => m.SorteioPartidaComponent,
+          ),
         data: { title: 'Sorteio', eyebrow: 'Partida' },
       },
       {

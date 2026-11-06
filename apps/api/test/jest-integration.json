@@ -6,6 +6,14 @@
   "setupFiles": ["<rootDir>/setup-run-db-tests.ts"],
   "maxWorkers": 1,
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "<rootDir>/../tsconfig.spec.json"
+      }
+    ]
+  },
+  "moduleNameMapper": {
+    "^@pelada/core$": "<rootDir>/../../../packages/core/dist/index.js"
   }
 }
