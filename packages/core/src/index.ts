@@ -15,6 +15,8 @@ export {
 } from './format/suggest-format.js';
 export {
   drawTeams,
+  redrawDrawTeams,
+  swapDrawPlayers,
   computeDrawBalanceMetrics,
   DrawValidationError,
   type DrawBalanceMetrics,
@@ -25,5 +27,8 @@ export {
   type DrawTeamsInput,
   type DrawTeamsResult,
   type DrawWeightInput,
+  type RedrawDrawTeamsInput,
+  type SwapDrawPlayersInput,
+  type SwapDrawPlayersResult,
 } from './draw/draw-teams.js';
 export { computePlayerDrawScore } from './draw/player-draw-score.js';
