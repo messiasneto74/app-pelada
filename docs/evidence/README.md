@@ -33,3 +33,4 @@ O gate `npm audit --omit=dev --audit-level=high` falha no monorepo por **9 highs
 
 - **#33** L45-CORE / PR **#101** — decisão formal no corpo da [#33](https://github.com/messiasneto74/app-pelada/issues/33) § *Decisão mantenedor — gate npm audit*; correção rastreada na **#84**.
 - **#37** CORE-3 / PR **#106** — mesma linha no corpo da [#37](https://github.com/messiasneto74/app-pelada/issues/37) § *Decisão mantenedor — gate npm audit*; correção rastreada na **#84**.
+- **#38** CORE-TEST / PR **#107** — escopo só `packages/core`; decisão no corpo da [#38](https://github.com/messiasneto74/app-pelada/issues/38); correção rastreada na **#84**.
