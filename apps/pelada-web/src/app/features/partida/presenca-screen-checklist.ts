@@ -16,5 +16,10 @@ export const PRESENCA_SCREEN_CHECKLIST: PresencaScreenChecklistItem[] = [
     label: 'Modal sugestão de formato (hist. 45) antes de fechar se ≠ ideal',
     automated: true,
   },
+  {
+    id: 'nav-sorteio',
+    label: 'Fechar lista → navega para Sorteio (sub-aba Partida)',
+    automated: true,
+  },
   { id: '390', label: 'Layout 390×844 — screenshot no PR', automated: false },
 ];

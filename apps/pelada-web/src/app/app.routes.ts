@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './auth/auth.guard';
 import { phoneRequiredGuard } from './auth/phone-required.guard';
 import { peladaOnboardingGuard } from './core/pelada/pelada-onboarding.guard';
+import { presenceListClosedGuard } from './core/presence/presence-list-closed.guard';
 import { MainShellComponent } from './shell/main-shell.component';
 
 const placeholder = () =>
@@ -90,6 +91,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/partida-sorteio',
+    loadComponent: () =>
+      import('./features/dev/sorteio-nav-preview.component').then(
+        (m) => m.SorteioNavPreviewComponent,
+      ),
+  },
+  {
     path: 'onboarding/pelada',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>
@@ -131,6 +139,7 @@ export const routes: Routes = [
       },
       {
         path: 'partida/sorteio',
+        canActivate: [presenceListClosedGuard],
         loadComponent: placeholder,
         data: { title: 'Sorteio', eyebrow: 'Partida' },
       },

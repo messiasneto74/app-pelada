@@ -1,6 +1,7 @@
 import { Component, computed, inject, model, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import type { SuggestFormatResult } from '@pelada/core';
+import { PARTIDA_SORTEIO_PATH } from '../../core/presence/partida-sorteio-route';
 import type { MatchPresenceMode } from '../../core/match/create-match-form.logic';
 import type { InicioDashboardView } from '../../core/inicio/inicio-dashboard.model';
 import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
@@ -638,7 +639,7 @@ export class PresencaPartidaComponent implements OnInit {
   private finishCloseListAndDraw(): void {
     this.listClosed.set(true);
     this.persist();
-    void this.router.navigate(['/partida/sorteio']);
+    void this.router.navigate([PARTIDA_SORTEIO_PATH]);
   }
 
   reopenList(): void {
@@ -655,9 +656,11 @@ export class PresencaPartidaComponent implements OnInit {
     const match = dash.nextMatch;
     if (!match) {
       this.matchId.set(null);
+      this.session.setActiveMatchId(null);
       return;
     }
     this.matchId.set(match.matchId);
+    this.session.setActiveMatchId(match.matchId);
     this.capacity.set(match.capacity);
 
     const saved = this.session.load(match.matchId);
