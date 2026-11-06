@@ -29,4 +29,7 @@ O gate `npm audit --omit=dev --audit-level=high` falha no monorepo por **9 highs
 
 **Waiver registrado na issue #15:** [comentário MVP baseline](https://github.com/messiasneto74/app-pelada/issues/15#issuecomment-6479362114) — PRs de feature (ex. **#79**) referenciam até upgrade em `DEPLOY-1` / bump Angular.
 
-**Waiver por issue (core-only):** **#33** L45-CORE / PR **#101** — decisão formal no corpo da [#33](https://github.com/messiasneto74/app-pelada/issues/33) § *Decisão mantenedor — gate npm audit*; correção rastreada na **#84**.
+**Waiver por issue (core-only):**
+
+- **#33** L45-CORE / PR **#101** — decisão formal no corpo da [#33](https://github.com/messiasneto74/app-pelada/issues/33) § *Decisão mantenedor — gate npm audit*; correção rastreada na **#84**.
+- **#37** CORE-3 / PR **#106** — mesma linha no corpo da [#37](https://github.com/messiasneto74/app-pelada/issues/37) § *Decisão mantenedor — gate npm audit*; correção rastreada na **#84**.
