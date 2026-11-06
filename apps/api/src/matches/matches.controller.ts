@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Patch, Body, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUserPayload } from '../auth/auth-user';
@@ -7,7 +7,10 @@ import { GuestAttendanceRequestDto } from '../domain/dto/guest-attendance-reques
 import { PatchMatchRulesOverrideDto } from '../domain/dto/patch-match-rules-override.dto';
 import { SelfAttendanceDto } from '../domain/dto/self-attendance.dto';
 import { UpdateAttendanceDto } from '../domain/dto/update-attendance.dto';
+import { PostMatchDrawDto } from '../domain/dto/post-match-draw.dto';
+import { PatchDrawSwapDto } from '../domain/dto/patch-draw-swap.dto';
 import { MatchAttendanceService } from './match-attendance.service';
+import { MatchDrawService } from './match-draw.service';
 import { MatchesService } from './matches.service';
 
 @Controller()
@@ -15,6 +18,7 @@ export class MatchesController {
   constructor(
     private readonly matchesService: MatchesService,
     private readonly attendanceService: MatchAttendanceService,
+    private readonly drawService: MatchDrawService,
   ) {}
 
   @Post('peladas/:peladaId/matches')
@@ -143,5 +147,38 @@ export class MatchesController {
     @Param('matchId') matchId: string,
   ) {
     return this.attendanceService.reopenList(user, peladaId, matchId);
+  }
+
+  @Get('peladas/:peladaId/matches/:matchId/draw')
+  @UseGuards(JwtAuthGuard)
+  getDraw(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('matchId') matchId: string,
+  ) {
+    return this.drawService.getDraw(user, peladaId, matchId);
+  }
+
+  @Post('peladas/:peladaId/matches/:matchId/draw')
+  @HttpCode(201)
+  @UseGuards(JwtAuthGuard)
+  postDraw(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('matchId') matchId: string,
+    @Body() body: PostMatchDrawDto,
+  ) {
+    return this.drawService.postDraw(user, peladaId, matchId, body);
+  }
+
+  @Patch('peladas/:peladaId/matches/:matchId/draw/swap')
+  @UseGuards(JwtAuthGuard)
+  patchDrawSwap(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('matchId') matchId: string,
+    @Body() body: PatchDrawSwapDto,
+  ) {
+    return this.drawService.patchSwap(user, peladaId, matchId, body);
   }
 }

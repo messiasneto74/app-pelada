@@ -48,6 +48,7 @@ import {
 } from '../../core/roster/roster-list.logic';
 import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
 import type { RosterPlayer } from '../../core/roster/roster-player.model';
+import { PeladaMatchAttendanceService } from '../../core/match/pelada-match-attendance.service';
 import { PeladaAvatarComponent } from '../../ui/avatar.component';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaCardComponent } from '../../ui/card.component';
@@ -450,6 +451,7 @@ export class PresencaPartidaComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly rulesService = inject(PeladaRulesService);
   private readonly rulesApi = inject(PeladaRulesApiService);
+  private readonly attendanceApi = inject(PeladaMatchAttendanceService);
 
   readonly loading = signal(true);
   readonly rosterLoadFailed = signal(false);
@@ -639,12 +641,30 @@ export class PresencaPartidaComponent implements OnInit {
   private finishCloseListAndDraw(): void {
     this.listClosed.set(true);
     this.persist();
+    const pelada = this.peladaContext.getActivePelada();
+    const mid = this.matchId();
+    if (pelada && mid && this.isOrganizador()) {
+      this.attendanceApi.closeList(pelada.id, mid).subscribe({
+        error: () => {
+          /* lista fechada localmente; sincroniza ao voltar */
+        },
+      });
+    }
     void this.router.navigate([PARTIDA_SORTEIO_PATH]);
   }
 
   reopenList(): void {
     this.listClosed.set(false);
     this.persist();
+    const pelada = this.peladaContext.getActivePelada();
+    const mid = this.matchId();
+    if (pelada && mid && this.isOrganizador()) {
+      this.attendanceApi.reopenList(pelada.id, mid).subscribe({
+        error: () => {
+          /* mantém estado local */
+        },
+      });
+    }
   }
 
   private applyLoadedState(
