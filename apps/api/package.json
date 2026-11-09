@@ -14,7 +14,7 @@
     "start:prod": "node --env-file=../../.env dist/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "pretest": "npm run build -w @pelada/core",
-    "test": "node --env-file=../../.env ../../node_modules/jest/bin/jest.js && node --env-file=../../.env ../../node_modules/jest/bin/jest.js --config ./test/jest-e2e.json && node --env-file=../../.env ../../node_modules/jest/bin/jest.js --config ./test/jest-integration.json",
+    "test": "node --env-file=../../.env ../../node_modules/jest/bin/jest.js && node --env-file=../../.env ../../node_modules/jest/bin/jest.js --config ./test/jest-e2e.json && node ../../scripts/run-api-integration-jest.mjs",
     "test:watch": "node --env-file=../../.env ../../node_modules/jest/bin/jest.js --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",

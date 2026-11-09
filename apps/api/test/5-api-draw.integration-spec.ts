@@ -98,6 +98,14 @@ if (runHarness) {
       return { pelada, match, token, p1, p2, p3, p4, p5, p6 };
     }
 
+    it('GET /draw sem sorteio retorna 404', async () => {
+      const { pelada, match, token } = await seedDrawableMatch();
+      await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/draw`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404);
+    });
+
     it('POST /draw without token returns 401', async () => {
       const { pelada, match } = await seedDrawableMatch();
       await request(app.getHttpServer())

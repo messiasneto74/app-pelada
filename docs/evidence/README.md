@@ -13,6 +13,7 @@ Screenshots anexados nos PRs correspondentes; paths estáveis no repo para revis
 | #30 3.4 | [3-4-30-presenca-390.jpg](./3-4-30-presenca-390.jpg) | **390×844 px** (JPG; rota `/dev/presenca`, aba Confirmados) |
 | #32 L45 | [l45-32-presenca-format-modal-390.jpg](./l45-32-presenca-format-modal-390.jpg) | **390×844 px** (JPG; `/dev/presenca`, modal “Confirmados ≠ capacidade ideal” após *Fechar lista e sortear*) |
 | #34 3.4-NAV | [3-4-34-sorteio-nav-390.jpg](./3-4-34-sorteio-nav-390.jpg) | **390×844 px** (JPG; `/dev/partida-sorteio`, sub-aba Sorteio após fechar lista) |
+| #40 3.5 | [3-5-40-sorteio-390.jpg](./3-5-40-sorteio-390.jpg) | **390×844 px** (JPG; `/dev/sorteio-3-5`, card equilíbrio, times e drag-and-drop) |
 
 Validar dimensões antes do PR:
 
