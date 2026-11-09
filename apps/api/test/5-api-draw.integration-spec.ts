@@ -224,6 +224,53 @@ if (runHarness) {
         .expect(400);
     });
 
+    it('POST /draw com goalkeeperMode ROTATING (sem GK marcados)', async () => {
+      const sub = `draw-rot-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const pelada = await createPelada(prisma, { owner: org });
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: {
+          teamCount: 2,
+          playersPerTeam: 3,
+          goalkeeperMode: 'ROTATING',
+        },
+      });
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-12-02T19:00:00Z'),
+      });
+      const token = signTestJwt({
+        sub: `${sub}-org`,
+        email: org.email ?? 'o@y.z',
+      });
+      for (let i = 1; i <= 6; i++) {
+        const p = await prisma.player.create({
+          data: {
+            peladaId: pelada.id,
+            displayName: `Linha ${i}`,
+            rating: 5 + (i % 3),
+            isGoalkeeper: false,
+          },
+        });
+        await request(app.getHttpServer())
+          .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${p.id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ status: 'CONFIRMED' })
+          .expect(200);
+      }
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/close-list`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/draw`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ mode: 'BALANCED', seed: 7 })
+        .expect(201);
+    });
+
     it('jogador não-organizador recebe 403 no POST /draw', async () => {
       const { pelada, match, token } = await seedDrawableMatch();
       const other = await createUser(prisma, {

@@ -127,6 +127,7 @@ describe('PresencaPartidaComponent §3.4', () => {
         {
           provide: PeladaMatchAttendanceService,
           useValue: {
+            patchPlayer: () => of({ status: 'CONFIRMED' }),
             closeList: () => of({}),
             reopenList: () => of({}),
           },
@@ -348,6 +349,7 @@ describe('PresencaPartidaComponent §3.4', () => {
         {
           provide: PeladaMatchAttendanceService,
           useValue: {
+            patchPlayer: () => of({ status: 'CONFIRMED' }),
             closeList: () => of({}),
             reopenList: () => of({}),
           },

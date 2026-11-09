@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import type {
   AttendanceStatus,
-  GoalkeeperMode,
   Match,
   PeladaRules,
   Player,
@@ -17,16 +16,15 @@ import {
   DrawValidationError,
   redrawDrawTeams,
   swapDrawPlayers,
-  type DrawGoalkeeperMode,
   type DrawPlayerInput,
   type DrawTeamsResult,
-  type DrawWeightInput,
 } from '@pelada/core';
 import type { AuthUserPayload } from '../auth/auth-user';
 import type { PostMatchDrawDto } from '../domain/dto/post-match-draw.dto';
 import type { PatchDrawSwapDto } from '../domain/dto/patch-draw-swap.dto';
 import { MeService } from '../me/me.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { mapGoalkeeperMode, parseDrawWeights } from './match-draw-map.logic';
 import { mergeEffectiveMatchRules } from './match-rules.merge';
 import type { MatchRulesOverrideJson } from './match-rules.merge';
 
@@ -94,7 +92,7 @@ export class MatchDrawService {
       defaults,
       match.rulesOverride as MatchRulesOverrideJson | null,
     );
-    const weights = this.parseDrawWeights(effective.drawWeights);
+    const weights = parseDrawWeights(effective.drawWeights);
 
     const allIds = draw.teams.flatMap((t) => t.players.map((p) => p.playerId));
     const players = await this.prisma.player.findMany({
@@ -215,8 +213,8 @@ export class MatchDrawService {
         teams: slots,
         playerAId: dto.playerAId,
         playerBId: dto.playerBId,
-        goalkeepersMode: this.mapGoalkeeperMode(effective.goalkeeperMode),
-        weights: this.parseDrawWeights(effective.drawWeights),
+        goalkeepersMode: mapGoalkeeperMode(effective.goalkeeperMode),
+        weights: parseDrawWeights(effective.drawWeights),
       });
     } catch (e) {
       if (e instanceof DrawValidationError) {
@@ -255,31 +253,6 @@ export class MatchDrawService {
       out[idx] = v.map((id) => String(id).trim()).filter(Boolean);
     }
     return Object.keys(out).length ? out : undefined;
-  }
-
-  private mapGoalkeeperMode(mode: GoalkeeperMode): DrawGoalkeeperMode {
-    if (mode === 'FIXED_GLOBAL') {
-      return 'FIXED_OFF_LINE';
-    }
-    return 'ONE_PER_TEAM';
-  }
-
-  private parseDrawWeights(json: Record<string, unknown>): DrawWeightInput | undefined {
-    const w = json as Record<string, unknown>;
-    const rating = typeof w.rating === 'number' ? w.rating : undefined;
-    const attribute = typeof w.attribute === 'number' ? w.attribute : undefined;
-    const tags =
-      typeof w.tags === 'object' && w.tags && !Array.isArray(w.tags)
-        ? (w.tags as Record<string, number>)
-        : undefined;
-    const position =
-      typeof w.position === 'object' && w.position && !Array.isArray(w.position)
-        ? (w.position as Record<string, number>)
-        : undefined;
-    if (rating === undefined && attribute === undefined && !tags && !position) {
-      return undefined;
-    }
-    return { rating, attribute, tags, position };
   }
 
   private ratingToCore(player: Player): number {
@@ -337,8 +310,8 @@ export class MatchDrawService {
       players: corePlayers,
       teamCount: effective.teamCount,
       mode,
-      goalkeepersMode: this.mapGoalkeeperMode(effective.goalkeeperMode),
-      weights: this.parseDrawWeights(effective.drawWeights),
+      goalkeepersMode: mapGoalkeeperMode(effective.goalkeeperMode),
+      weights: parseDrawWeights(effective.drawWeights),
       ...(dto.seed !== undefined ? { seed: dto.seed } : {}),
     };
   }

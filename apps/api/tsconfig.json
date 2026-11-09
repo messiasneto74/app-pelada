@@ -13,10 +13,6 @@
     "target": "ES2023",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
-    "paths": {
-      "@pelada/core": ["../../packages/core/src/index.ts"]
-    },
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
