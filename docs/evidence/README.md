@@ -25,9 +25,9 @@ $i.Dispose()
 
 ## npm audit (baseline MVP)
 
-O gate `npm audit --omit=dev --audit-level=high` falha no monorepo por **9 highs** em dependências de **produção** (Angular 19.x, Prisma/deepmerge-ts, Multer/Nest) — **pré-existentes**, não introduzidos por issues de UI isoladas.
+Com **Angular 22** no `@pelada/web`, overrides de `multer@2.5.0` e `deepmerge-ts@8.0.2` na raiz, e **Node ≥22.22.3** conforme `engines`, o gate `npm audit --omit=dev --audit-level=high` pode passar sem waiver (rodar localmente e no CI).
 
-**Waiver registrado na issue #15:** [comentário MVP baseline](https://github.com/messiasneto74/app-pelada/issues/15#issuecomment-6479362114) — PRs de feature (ex. **#79**) referenciam até upgrade em `DEPLOY-1` / bump Angular.
+Histórico (antes do bump): baseline Angular 19 / waiver na issue **#15** — [comentário MVP baseline](https://github.com/messiasneto74/app-pelada/issues/15#issuecomment-6479362114).
 
 **Waiver por issue (core-only):**
 

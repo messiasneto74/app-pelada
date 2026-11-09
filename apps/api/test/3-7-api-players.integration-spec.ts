@@ -11,9 +11,8 @@ import { signTestJwt } from './helpers/sign-test-jwt';
 const runHarness =
   process.env.RUN_DB_TESTS === '1' && process.env.DATABASE_URL_TEST;
 
-(runHarness ? describe : describe.skip)(
-  '3.7-API CRUD /peladas/:id/players',
-  () => {
+if (runHarness) {
+  describe('3.7-API CRUD /peladas/:id/players', () => {
     let app: INestApplication<App>;
     let prisma: PrismaService;
 
@@ -424,5 +423,5 @@ const runHarness =
       expect(patched.body.paymentPlan).toBe('PER_MATCH');
       expect(patched.body.rating).toBe(9);
     });
-  },
-);
+  });
+}

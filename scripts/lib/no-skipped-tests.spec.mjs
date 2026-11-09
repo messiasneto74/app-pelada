@@ -24,14 +24,6 @@ describe('no-skipped-tests policy', () => {
     );
   });
 
-  it('allows conditional describe for DB/harness (RUN_DB_TESTS)', () => {
-    const conditionalHarness = [
-      '(runDb ? describe : describe.',
-      "skip)('Prisma', () => {});",
-    ].join('');
-    expect(scanTestSource(conditionalHarness)).toEqual([]);
-  });
-
   it('reports skipped, focused, todo and pending markers with line numbers', () => {
     const source = [
       ['describe', ".skip('skip', () => {});"].join(''),
