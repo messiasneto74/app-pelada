@@ -30,7 +30,12 @@ import {
   vacancyFillPercent,
   vacancySummary,
 } from '../../core/presence/presence-list.logic';
-import type { PlayerPresenceStatus, PresenceRow } from '../../core/presence/presence-attendance.model';
+import type {
+  PlayerPresenceStatus,
+  PresenceRow,
+} from '../../core/presence/presence-attendance.model';
+import type { Observable } from 'rxjs';
+import { forkJoin, of, switchMap } from 'rxjs';
 import { PresenceSessionService } from '../../core/presence/presence-session.service';
 import { evaluateFormatBeforeClose } from '../../core/presence/presence-format-suggest.logic';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
@@ -48,6 +53,7 @@ import {
 } from '../../core/roster/roster-list.logic';
 import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
 import type { RosterPlayer } from '../../core/roster/roster-player.model';
+import { PeladaMatchAttendanceService } from '../../core/match/pelada-match-attendance.service';
 import { PeladaAvatarComponent } from '../../ui/avatar.component';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaCardComponent } from '../../ui/card.component';
@@ -450,6 +456,7 @@ export class PresencaPartidaComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly rulesService = inject(PeladaRulesService);
   private readonly rulesApi = inject(PeladaRulesApiService);
+  private readonly attendanceApi = inject(PeladaMatchAttendanceService);
 
   readonly loading = signal(true);
   readonly rosterLoadFailed = signal(false);
@@ -636,15 +643,62 @@ export class PresencaPartidaComponent implements OnInit {
     this.finishCloseListAndDraw();
   }
 
+  private presenceStatusToApi(
+    status: PlayerPresenceStatus,
+  ): 'CONFIRMED' | 'PENDING' | 'QUEUE' {
+    switch (status) {
+      case 'confirmed':
+        return 'CONFIRMED';
+      case 'queue':
+        return 'QUEUE';
+      default:
+        return 'PENDING';
+    }
+  }
+
   private finishCloseListAndDraw(): void {
     this.listClosed.set(true);
     this.persist();
-    void this.router.navigate([PARTIDA_SORTEIO_PATH]);
+    const pelada = this.peladaContext.getActivePelada();
+    const mid = this.matchId();
+    const goSorteio = () => {
+      void this.router.navigate([PARTIDA_SORTEIO_PATH]);
+    };
+    if (!pelada || !mid || !this.isOrganizador()) {
+      goSorteio();
+      return;
+    }
+    const playerRows = this.rows().filter(
+      (r): r is Extract<PresenceRow, { kind: 'player' }> => r.kind === 'player',
+    );
+    const sync: Observable<unknown> =
+      playerRows.length > 0
+        ? forkJoin(
+            playerRows.map((r) =>
+              this.attendanceApi.patchPlayer(pelada.id, mid, r.player.id, {
+                status: this.presenceStatusToApi(r.status),
+              }),
+            ),
+          )
+        : of(undefined);
+    sync.pipe(switchMap(() => this.attendanceApi.closeList(pelada.id, mid))).subscribe({
+      next: () => goSorteio(),
+      error: () => goSorteio(),
+    });
   }
 
   reopenList(): void {
     this.listClosed.set(false);
     this.persist();
+    const pelada = this.peladaContext.getActivePelada();
+    const mid = this.matchId();
+    if (pelada && mid && this.isOrganizador()) {
+      this.attendanceApi.reopenList(pelada.id, mid).subscribe({
+        error: () => {
+          /* mantém estado local */
+        },
+      });
+    }
   }
 
   private applyLoadedState(

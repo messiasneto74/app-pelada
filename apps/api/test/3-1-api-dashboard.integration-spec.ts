@@ -13,9 +13,8 @@ import { signTestJwt } from './helpers/sign-test-jwt';
 const runHarness =
   process.env.RUN_DB_TESTS === '1' && process.env.DATABASE_URL_TEST;
 
-(runHarness ? describe : describe.skip)(
-  '3.1-API GET /peladas/:id/dashboard',
-  () => {
+if (runHarness) {
+  describe('3.1-API GET /peladas/:id/dashboard', () => {
     let app: INestApplication<App>;
     let prisma: PrismaService;
 
@@ -156,5 +155,5 @@ const runHarness =
       expect(res.body.cashMonth.receivedCents).toBe(5000);
       expect(res.body.cashMonth.expectedCents).toBe(8000);
     });
-  },
-);
+  });
+}

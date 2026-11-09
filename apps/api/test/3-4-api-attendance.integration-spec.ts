@@ -13,9 +13,8 @@ import { signTestJwt } from './helpers/sign-test-jwt';
 const runHarness =
   process.env.RUN_DB_TESTS === '1' && process.env.DATABASE_URL_TEST;
 
-(runHarness ? describe : describe.skip)(
-  '3.4-API match attendance',
-  () => {
+if (runHarness) {
+  describe('3.4-API match attendance', () => {
     let app: INestApplication<App>;
     let prisma: PrismaService;
 
@@ -33,11 +32,16 @@ const runHarness =
       await app.close();
     });
 
-    async function seedMatch(presenceMode: 'ORGANIZER_CLOSES' | 'SELF_CONFIRM' = 'ORGANIZER_CLOSES') {
+    async function seedMatch(
+      presenceMode: 'ORGANIZER_CLOSES' | 'SELF_CONFIRM' = 'ORGANIZER_CLOSES',
+    ) {
       const sub = `att-${Math.random().toString(36).slice(2, 8)}`;
       const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
       const pelada = await createPelada(prisma, { owner: org });
-      const token = signTestJwt({ sub: `${sub}-org`, email: org.email ?? 'o@y.z' });
+      const token = signTestJwt({
+        sub: `${sub}-org`,
+        email: org.email ?? 'o@y.z',
+      });
       const match = await createMatch(prisma, {
         pelada,
         scheduledAt: new Date('2030-10-01T19:00:00Z'),
@@ -46,8 +50,14 @@ const runHarness =
         where: { id: match.id },
         data: { presenceMode },
       });
-      const p1 = await createPlayer(prisma, { peladaId: pelada.id, displayName: 'Ana' });
-      const p2 = await createPlayer(prisma, { peladaId: pelada.id, displayName: 'Bruno' });
+      const p1 = await createPlayer(prisma, {
+        peladaId: pelada.id,
+        displayName: 'Ana',
+      });
+      const p2 = await createPlayer(prisma, {
+        peladaId: pelada.id,
+        displayName: 'Bruno',
+      });
       await prisma.peladaRules.update({
         where: { peladaId: pelada.id },
         data: { capacity: 1 },
@@ -187,7 +197,9 @@ const runHarness =
         .set('Authorization', `Bearer ${token}`)
         .send({ displayName: 'Visitante' })
         .expect(201);
-      const guest = guestRes.body.entries.find((e: { isGuest: boolean }) => e.isGuest);
+      const guest = guestRes.body.entries.find(
+        (e: { isGuest: boolean }) => e.isGuest,
+      );
       expect(guest).toBeDefined();
 
       const approved = await request(app.getHttpServer())
@@ -218,10 +230,12 @@ const runHarness =
         .expect(400);
 
       await request(app.getHttpServer())
-        .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/reopen-list`)
+        .post(
+          `/peladas/${pelada.id}/matches/${match.id}/attendance/reopen-list`,
+        )
         .set('Authorization', `Bearer ${token}`)
         .expect(201)
         .expect((res) => expect(res.body.listClosed).toBe(false));
     });
-  },
-);
+  });
+}

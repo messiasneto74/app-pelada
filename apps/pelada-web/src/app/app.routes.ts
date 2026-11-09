@@ -98,6 +98,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/sorteio-3-5',
+    loadComponent: () =>
+      import('./features/dev/sorteio-3-5-preview.component').then(
+        (m) => m.Sorteio35PreviewComponent,
+      ),
+  },
+  {
     path: 'onboarding/pelada',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>
@@ -140,7 +147,10 @@ export const routes: Routes = [
       {
         path: 'partida/sorteio',
         canActivate: [presenceListClosedGuard],
-        loadComponent: placeholder,
+        loadComponent: () =>
+          import('./features/partida/sorteio-partida.component').then(
+            (m) => m.SorteioPartidaComponent,
+          ),
         data: { title: 'Sorteio', eyebrow: 'Partida' },
       },
       {

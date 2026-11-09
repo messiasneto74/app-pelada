@@ -2,10 +2,22 @@
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": ".",
   "testEnvironment": "node",
-  "testRegex": "(\\.integration-spec\\.ts$|sign-test-jwt\\.spec\\.ts$)",
-  "setupFiles": ["<rootDir>/setup-run-db-tests.ts"],
+  "testMatch": [
+    "<rootDir>/**/*.integration-spec.ts",
+    "<rootDir>/../src/**/*.integration.spec.ts",
+    "<rootDir>/sign-test-jwt.spec.ts"
+  ],
+  "setupFiles": ["<rootDir>/setup-integration-db-harness.ts"],
   "maxWorkers": 1,
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "<rootDir>/../tsconfig.spec.json"
+      }
+    ]
+  },
+  "moduleNameMapper": {
+    "^@pelada/core$": "<rootDir>/../../../packages/core/dist/index.js"
   }
 }

@@ -13,6 +13,8 @@ import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.servic
 import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
 import { DEFAULT_PELADA_RULES } from '../../core/pelada/pelada-rules.model';
 import { PresencaPartidaComponent } from './presenca-partida.component';
+import { PeladaMatchAttendanceService } from '../../core/match/pelada-match-attendance.service';
+import { of } from 'rxjs';
 
 const players: RosterPlayer[] = [
   {
@@ -120,6 +122,14 @@ describe('PresencaPartidaComponent §3.4', () => {
               },
             }),
             mapFromApi: (d: unknown) => d,
+          },
+        },
+        {
+          provide: PeladaMatchAttendanceService,
+          useValue: {
+            patchPlayer: () => of({ status: 'CONFIRMED' }),
+            closeList: () => of({}),
+            reopenList: () => of({}),
           },
         },
         PresenceSessionService,
@@ -334,6 +344,14 @@ describe('PresencaPartidaComponent §3.4', () => {
               subscribe: (handlers: { error?: () => void }) => handlers.error?.(),
             }),
             mapFromApi: (d: unknown) => d,
+          },
+        },
+        {
+          provide: PeladaMatchAttendanceService,
+          useValue: {
+            patchPlayer: () => of({ status: 'CONFIRMED' }),
+            closeList: () => of({}),
+            reopenList: () => of({}),
           },
         },
         PresenceSessionService,

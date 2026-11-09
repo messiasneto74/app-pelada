@@ -11,9 +11,8 @@ import { signTestJwt } from './helpers/sign-test-jwt';
 const runHarness =
   process.env.RUN_DB_TESTS === '1' && process.env.DATABASE_URL_TEST;
 
-(runHarness ? describe : describe.skip)(
-  '3.3-API POST /peladas/:id/matches',
-  () => {
+if (runHarness) {
+  describe('3.3-API POST /peladas/:id/matches', () => {
     let app: INestApplication<App>;
     let prisma: PrismaService;
 
@@ -123,5 +122,5 @@ const runHarness =
       expect(rulesView.body.effectiveRules.playersPerTeam).toBe(6);
       expect(rulesView.body.defaultRules.playersPerTeam).toBe(8);
     });
-  },
-);
+  });
+}

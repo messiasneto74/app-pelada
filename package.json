@@ -40,7 +40,11 @@
     "smoke:keycloak": "node scripts/keycloak-smoke.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.22.3"
+  },
+  "overrides": {
+    "multer": "2.5.0",
+    "deepmerge-ts": "8.0.2"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.0",
