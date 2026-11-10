@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -20,7 +21,10 @@ import type { AuthUserPayload } from '../auth/auth-user';
 import { CreatePlayerDto } from '../domain/dto/create-player.dto';
 import { PatchPeladaRulesDto } from '../domain/dto/patch-pelada-rules.dto';
 import { PatchPlayerDto } from '../domain/dto/patch-player.dto';
+import { CreatePaymentLedgerDto } from '../domain/dto/create-payment-ledger.dto';
+import { PaymentLedgerQueryDto } from '../domain/dto/payment-ledger-query.dto';
 import { CreatePeladaDto } from './dto/create-pelada.dto';
+import { PeladaPaymentsService } from './pelada-payments.service';
 import { PeladaPlayersService } from './pelada-players.service';
 import { PeladasService } from './peladas.service';
 
@@ -32,6 +36,7 @@ export class PeladasController {
   constructor(
     private readonly peladasService: PeladasService,
     private readonly peladaPlayersService: PeladaPlayersService,
+    private readonly peladaPaymentsService: PeladaPaymentsService,
   ) {}
 
   @Post('peladas')
@@ -68,6 +73,38 @@ export class PeladasController {
     @Body() body: PatchPeladaRulesDto,
   ) {
     return this.peladasService.patchPeladaRules(user, peladaId, body);
+  }
+
+  @Get('peladas/:peladaId/payments/ledger')
+  @UseGuards(JwtAuthGuard)
+  getPaymentLedger(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Query() query: PaymentLedgerQueryDto,
+  ) {
+    return this.peladaPaymentsService.getLedger(user, peladaId, query);
+  }
+
+  @Post('peladas/:peladaId/payments/ledger')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard)
+  createPaymentLedgerEntry(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Body() body: CreatePaymentLedgerDto,
+  ) {
+    return this.peladaPaymentsService.createLedgerEntry(user, peladaId, body);
+  }
+
+  @Post('peladas/:peladaId/payments/:ledgerId/mark-paid')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  markPaymentPaid(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('ledgerId') ledgerId: string,
+  ) {
+    return this.peladaPaymentsService.markPaid(user, peladaId, ledgerId);
   }
 
   @Get('peladas/:peladaId/dashboard')
