@@ -35,8 +35,12 @@ jobs:
       - name: npm ci
         run: npm ci
 
-      - name: Playwright Chromium
-        run: npx playwright install chromium --with-deps
+      - name: Chrome (Playwright)
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Playwright driver
+        run: npx playwright install chromium
 
       - name: Stack Docker (Postgres + Keycloak + API)
         run: docker compose up -d --build
@@ -64,6 +68,8 @@ jobs:
           exit 1
 
       - name: npm run test:e2e:playwright
+        env:
+          PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: npm run test:e2e:playwright
 
       - name: Upload Playwright report on failure
