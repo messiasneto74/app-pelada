@@ -181,4 +181,29 @@ describe('SorteioPartidaComponent §3.5', () => {
     expect(text).toContain('Time B');
     expect(matchDrawSpy.getDraw).toHaveBeenCalledWith('pel-1', 'm1');
   });
+
+  it('abre modal de compartilhar com texto sem notas (§3.5-SHARE)', () => {
+    const buttons = fixture.nativeElement.querySelectorAll(
+      'button',
+    ) as NodeListOf<HTMLButtonElement>;
+    const shareBtn = Array.from(buttons).find((b) =>
+      b.textContent?.includes('Compartilhar'),
+    );
+    expect(shareBtn).toBeTruthy();
+    (shareBtn as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]');
+    expect(dialog).toBeTruthy();
+    const textarea = fixture.nativeElement.querySelector('#share-preview-text') as
+      | HTMLTextAreaElement
+      | null;
+    expect(textarea?.value).toContain('Ana');
+    const checkbox = fixture.nativeElement.querySelector(
+      'input[type="checkbox"]',
+    ) as HTMLInputElement;
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(textarea?.value).not.toContain('nota');
+  });
 });

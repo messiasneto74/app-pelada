@@ -1,9 +1,6 @@
 import type { MatchDrawDetailDto } from '../../core/match/match-draw-api.model';
 import type { RosterPlayer } from '../../core/roster/roster-player.model';
-import {
-  formatRosterRating,
-  rosterPositionLabel,
-} from '../../core/roster/roster-list.logic';
+export { buildDrawShareText } from './sorteio-share.logic';
 
 export type SorteioTeamView = {
   teamId: string;
@@ -58,28 +55,4 @@ export function mapDrawToSorteioTeams(
         players,
       };
     });
-}
-
-export function buildDrawShareText(
-  draw: MatchDrawDetailDto,
-  rosterById: ReadonlyMap<string, RosterPlayer>,
-  options?: { hideRatings?: boolean },
-): string {
-  const hide = options?.hideRatings ?? false;
-  const lines: string[] = ['Times sorteados', ''];
-  for (const team of [...draw.teams].sort((a, b) => a.sortOrder - b.sortOrder)) {
-    lines.push(`${team.name}`);
-    for (const pid of team.playerIds) {
-      const p = rosterById.get(pid) ?? placeholderRosterPlayer(pid);
-      const pos = rosterPositionLabel(p);
-      const rating =
-        hide || p.rating === null
-          ? ''
-          : ` · nota ${formatRosterRating(p.rating)}`;
-      lines.push(`  · ${p.displayName} (${pos})${rating}`);
-    }
-    lines.push('');
-  }
-  lines.push(draw.metrics.summaryText.trim());
-  return lines.join('\n').trim();
 }

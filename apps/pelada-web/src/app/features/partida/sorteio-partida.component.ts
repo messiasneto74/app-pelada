@@ -24,7 +24,13 @@ import { PeladaMatchAttendanceService } from '../../core/match/pelada-match-atte
 import { MatchDrawService } from '../../core/match/match-draw.service';
 import type { MatchDrawDetailDto } from '../../core/match/match-draw-api.model';
 import {
+  buildDrawShareImageBlob,
   buildDrawShareText,
+  canNativeShareFiles,
+  tryCopyShareText,
+  triggerBlobDownload,
+} from './sorteio-share.logic';
+import {
   mapDrawToSorteioTeams,
   type SorteioTeamView,
 } from './sorteio-view.logic';
@@ -159,16 +165,12 @@ type TeamListState = { sortOrder: number; players: RosterPlayer[] };
                 Sortear de novo (aleatório)
               </button>
             }
-            <label class="share-toggle pelada-muted">
-              <input type="checkbox" [checked]="hideRatingsForShare()" (change)="toggleHideNotes($event)" />
-              Ocultar notas ao compartilhar
-            </label>
             <button
               type="button"
               peladaButton
               variant="secondary"
               [peladaButtonBlock]="true"
-              (click)="shareDraw()"
+              (click)="openShareModal()"
             >
               Compartilhar
             </button>
@@ -196,6 +198,90 @@ type TeamListState = { sortOrder: number; players: RosterPlayer[] };
             }
           </pelada-card>
         }
+      }
+
+      @if (shareModalOpen()) {
+        <div
+          class="share-modal-backdrop"
+          role="presentation"
+          (click)="closeShareModal()"
+        >
+          <div
+            class="share-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="share-modal-title"
+            (click)="$event.stopPropagation()"
+            (keydown.escape)="closeShareModal()"
+          >
+            <h2 id="share-modal-title" class="share-modal__title">
+              Compartilhar times
+            </h2>
+            <p class="share-modal__lead pelada-muted">
+              Texto para WhatsApp ou imagem com os times (história 61).
+            </p>
+            <label class="share-toggle pelada-muted">
+              <input
+                type="checkbox"
+                [checked]="hideRatingsForShare()"
+                (change)="toggleHideNotes($event)"
+              />
+              Ocultar notas ao compartilhar
+            </label>
+            <label for="share-preview-text" class="visually-hidden"
+              >Prévia do texto</label
+            >
+            <textarea
+              id="share-preview-text"
+              class="share-modal__textarea"
+              readonly
+              [value]="sharePreviewText()"
+            ></textarea>
+            @if (shareHint()) {
+              <p class="share-hint" role="status">{{ shareHint() }}</p>
+            }
+            <div class="share-modal__actions">
+              <button
+                type="button"
+                peladaButton
+                variant="lime"
+                [peladaButtonBlock]="true"
+                (click)="copyShareText()"
+              >
+                Copiar texto
+              </button>
+              <button
+                type="button"
+                peladaButton
+                variant="secondary"
+                [peladaButtonBlock]="true"
+                (click)="downloadShareImage()"
+              >
+                Salvar imagem
+              </button>
+              @if (nativeShareFiles()) {
+                <button
+                  type="button"
+                  peladaButton
+                  variant="secondary"
+                  [peladaButtonBlock]="true"
+                  (click)="nativeShareDraw()"
+                >
+                  Compartilhar…
+                </button>
+              }
+              <button
+                type="button"
+                peladaButton
+                variant="secondary"
+                [peladaButtonBlock]="true"
+                (click)="closeShareModal()"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
       }
     </section>
   `,
@@ -304,6 +390,60 @@ type TeamListState = { sortOrder: number; players: RosterPlayer[] };
         font-size: 0.875rem;
         margin-bottom: var(--pelada-space-3);
       }
+      .share-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: var(--pelada-space-4);
+        background: rgba(0, 0, 0, 0.45);
+      }
+      .share-modal {
+        width: min(100%, 390px);
+        max-height: min(88vh, 720px);
+        overflow-y: auto;
+        padding: var(--pelada-space-4);
+        border-radius: var(--pelada-radius-lg) var(--pelada-radius-lg) 0 0;
+        background: var(--pelada-paper);
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+      }
+      .share-modal__title {
+        margin: 0 0 var(--pelada-space-2);
+        font-size: 1.125rem;
+      }
+      .share-modal__lead {
+        margin: 0 0 var(--pelada-space-3);
+        font-size: 0.875rem;
+      }
+      .share-modal__textarea {
+        width: 100%;
+        min-height: 160px;
+        margin: var(--pelada-space-2) 0 var(--pelada-space-3);
+        padding: var(--pelada-space-2);
+        border: 1px solid var(--pelada-line);
+        border-radius: var(--pelada-radius-md);
+        font-family: inherit;
+        font-size: 0.8125rem;
+        resize: vertical;
+      }
+      .share-modal__actions {
+        display: flex;
+        flex-direction: column;
+        gap: var(--pelada-space-2);
+      }
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
     `,
   ],
 })
@@ -330,6 +470,20 @@ export class SorteioPartidaComponent implements OnInit {
   readonly teamsState = signal<TeamListState[]>([]);
   readonly hideRatingsForShare = signal(false);
   readonly shareHint = signal<string | null>(null);
+  readonly shareModalOpen = signal(false);
+  readonly nativeShareFiles = signal(false);
+  readonly shareImageBusy = signal(false);
+
+  readonly sharePreviewText = computed(() => {
+    const d = this.draw();
+    const map = this.rosterById();
+    if (!d || map.size === 0) {
+      return '';
+    }
+    return buildDrawShareText(d, map, {
+      hideRatings: this.hideRatingsForShare(),
+    });
+  });
 
   readonly headerTitle = computed(() => {
     const pelada = this.peladaContext.getActivePelada();
@@ -544,26 +698,82 @@ export class SorteioPartidaComponent implements OnInit {
     this.hideRatingsForShare.set(!!t?.checked);
   }
 
-  shareDraw(): void {
+  openShareModal(): void {
     const d = this.draw();
     const map = this.rosterById();
     if (!d || map.size === 0) {
       return;
     }
-    const text = buildDrawShareText(d, map, {
-      hideRatings: this.hideRatingsForShare(),
-    });
-    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
-      this.shareHint.set('Copie manualmente o texto dos times na tela.');
+    this.shareHint.set(null);
+    this.nativeShareFiles.set(canNativeShareFiles());
+    this.shareModalOpen.set(true);
+  }
+
+  closeShareModal(): void {
+    this.shareModalOpen.set(false);
+    this.shareHint.set(null);
+  }
+
+  copyShareText(): void {
+    const text = this.sharePreviewText();
+    if (!text) {
       return;
     }
-    void navigator.clipboard.writeText(text).then(
-      () => {
+    void tryCopyShareText(text).then((r) => {
+      if (r === 'copied') {
         this.shareHint.set('Texto copiado. Cole no WhatsApp ou onde quiser.');
         window.setTimeout(() => this.shareHint.set(null), 4000);
-      },
-      () => this.shareHint.set('Não foi possível copiar. Tente de novo.'),
-    );
+      } else if (r === 'unavailable') {
+        this.shareHint.set('Selecione o texto na caixa acima e copie manualmente.');
+      } else {
+        this.shareHint.set('Não foi possível copiar. Selecione o texto e tente de novo.');
+      }
+    });
+  }
+
+  async downloadShareImage(): Promise<void> {
+    const d = this.draw();
+    const map = this.rosterById();
+    if (!d || map.size === 0 || this.shareImageBusy()) {
+      return;
+    }
+    this.shareImageBusy.set(true);
+    try {
+      const blob = await buildDrawShareImageBlob(d, map, {
+        hideRatings: this.hideRatingsForShare(),
+      });
+      triggerBlobDownload(blob, 'times-sorteados.png');
+      this.shareHint.set('Imagem salva. Envie no grupo.');
+      window.setTimeout(() => this.shareHint.set(null), 4000);
+    } catch {
+      this.shareHint.set('Não foi possível gerar a imagem.');
+    } finally {
+      this.shareImageBusy.set(false);
+    }
+  }
+
+  async nativeShareDraw(): Promise<void> {
+    const d = this.draw();
+    const map = this.rosterById();
+    if (!d || map.size === 0 || !navigator.share) {
+      return;
+    }
+    const text = this.sharePreviewText();
+    try {
+      const blob = await buildDrawShareImageBlob(d, map, {
+        hideRatings: this.hideRatingsForShare(),
+      });
+      const file = new File([blob], 'times-sorteados.png', { type: 'image/png' });
+      const payload: ShareData = { title: 'Times sorteados', text, files: [file] };
+      if (navigator.canShare?.(payload)) {
+        await navigator.share(payload);
+        this.closeShareModal();
+      } else {
+        await navigator.share({ title: 'Times sorteados', text });
+      }
+    } catch {
+      this.shareHint.set('Compartilhamento cancelado ou indisponível.');
+    }
   }
 }
 
