@@ -7,6 +7,7 @@ import type {
   PaymentLedgerResponse,
 } from '../../core/payments/payment-ledger-api.model';
 import { PeladaPaymentsService } from '../../core/payments/pelada-payments.service';
+import { PeladaDashboardRefreshService } from '../../core/inicio/pelada-dashboard-refresh.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import { paymentPlanLabel } from '../../core/roster/player-profile.logic';
@@ -247,6 +248,7 @@ export class CaixaPeladaComponent {
   private readonly peladaContext = inject(PeladaContextService);
   private readonly orgContext = inject(PeladaOrganizadorContextService);
   private readonly paymentsApi = inject(PeladaPaymentsService);
+  private readonly dashboardRefresh = inject(PeladaDashboardRefreshService);
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -311,6 +313,7 @@ export class CaixaPeladaComponent {
     this.paymentsApi.markPaid(pelada.id, entry.id).subscribe({
       next: () => {
         this.busyId.set(null);
+        this.dashboardRefresh.notifyCashSummaryChanged();
         this.loadLedger(pelada.id, this.groupBy());
       },
       error: (err: HttpErrorResponse) => {
