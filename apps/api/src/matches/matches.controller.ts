@@ -220,6 +220,7 @@ export class MatchesController {
   }
 
   @Post('peladas/:peladaId/matches/:matchId/field-session/end-round')
+  @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   postFieldSessionEndRound(
     @CurrentUser() user: AuthUserPayload,
@@ -230,6 +231,7 @@ export class MatchesController {
   }
 
   @Post('peladas/:peladaId/matches/:matchId/field-session/finish')
+  @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   postFieldSessionFinish(
     @CurrentUser() user: AuthUserPayload,
