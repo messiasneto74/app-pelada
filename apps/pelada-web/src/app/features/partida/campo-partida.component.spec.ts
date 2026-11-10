@@ -129,6 +129,17 @@ describe('CampoPartidaComponent §3.6', () => {
     expect(fieldSpy.getSession).toHaveBeenCalledWith('pel-1', 'm1');
   });
 
+  it('reatualiza sessão ao voltar do background (visibility)', fakeAsync(() => {
+    fieldSpy.getSession.calls.reset();
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+    tick();
+    expect(fieldSpy.getSession).toHaveBeenCalledWith('pel-1', 'm1');
+  }));
+
   it('oferece iniciar quando GET sessão 404', fakeAsync(() => {
     fieldSpy.getSession.and.returnValue(
       throwError(() => new HttpErrorResponse({ status: 404 })),

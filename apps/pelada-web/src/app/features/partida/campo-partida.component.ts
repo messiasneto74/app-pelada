@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   Component,
@@ -19,6 +19,10 @@ import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import { PARTIDA_PRESENCA_PATH } from '../../core/presence/partida-sorteio-route';
 import { PresenceSessionService } from '../../core/presence/presence-session.service';
+import {
+  catchUpTickMsOnPageVisible,
+  shouldResyncFieldSessionOnVisible,
+} from './campo-timer-visibility.logic';
 import {
   awayTeamName,
   displayElapsedMs,
@@ -325,6 +329,7 @@ export class CampoPartidaComponent implements OnInit {
   private readonly fieldApi = inject(MatchFieldSessionService);
   private readonly drawApi = inject(MatchDrawService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly document = inject(DOCUMENT);
 
   readonly loading = signal(true);
   readonly busy = signal(false);
@@ -395,6 +400,16 @@ export class CampoPartidaComponent implements OnInit {
     interval(1000)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.tickMs.set(Date.now()));
+
+    const onVisibility = () => {
+      if (this.document.visibilityState === 'visible') {
+        this.onPageBecameVisible();
+      }
+    };
+    this.document.addEventListener('visibilitychange', onVisibility);
+    this.destroyRef.onDestroy(() =>
+      this.document.removeEventListener('visibilitychange', onVisibility),
+    );
 
     const pelada = this.peladaContext.getActivePelada();
     if (!pelada) {
@@ -477,6 +492,28 @@ export class CampoPartidaComponent implements OnInit {
   private applySessionFromApi(session: MatchFieldSessionDto): void {
     this.fieldSession.set(session);
     this.sessionElapsedAnchorMs.set(Date.now());
+  }
+
+  private onPageBecameVisible(): void {
+    const now = Date.now();
+    this.tickMs.set(catchUpTickMsOnPageVisible(now));
+    if (shouldResyncFieldSessionOnVisible(this.fieldSession())) {
+      this.resyncFieldSessionQuietly();
+    }
+  }
+
+  private resyncFieldSessionQuietly(): void {
+    const pelada = this.peladaContext.getActivePelada();
+    const matchId = this.matchId();
+    if (!pelada || !matchId) {
+      return;
+    }
+    this.fieldApi.getSession(pelada.id, matchId).subscribe({
+      next: (s) => this.applySessionFromApi(s),
+      error: () => {
+        /* mantém estado local; próximo tick já corrigiu o relógio */
+      },
+    });
   }
 
   private loadFieldSession(): void {
