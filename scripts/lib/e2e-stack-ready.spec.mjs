@@ -13,6 +13,21 @@ describe('e2e-stack-ready', () => {
     await expect(fetchHealth('http://x/health', fetchFn)).rejects.toThrow('503');
   });
 
+  it('runE2eStackReady logs and returns urls', async () => {
+    const logs = [];
+    const { runE2eStackReady } = await import('./e2e-stack-ready.mjs');
+    const fetchFn = vi.fn().mockResolvedValue({ ok: true });
+    const urls = await runE2eStackReady({
+      fetchFn,
+      checkWeb: true,
+      maxAttempts: 1,
+      delayMs: 0,
+      log: (m) => logs.push(m),
+    });
+    expect(urls.apiUrl).toContain('3000');
+    expect(logs.some((l) => l.includes('OK stack E2E'))).toBe(true);
+  });
+
   it('waitForE2eStack succeeds when all targets respond', async () => {
     const fetchFn = vi.fn().mockResolvedValue({ ok: true });
     const result = await waitForE2eStack({

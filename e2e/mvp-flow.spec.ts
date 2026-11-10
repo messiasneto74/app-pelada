@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginAsDevOrganizer, readAccessToken } from './helpers/auth';
 import { readActivePeladaId, seedRosterPlayers } from './helpers/api';
+import { tomorrowLocalDateInput } from './helpers/local-date';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -38,9 +39,7 @@ test.describe('E2E fluxo MVP §D', () => {
     await expect(page.getByText('12 jogadores no elenco')).toBeVisible();
 
     await page.goto('/inicio/criar-partida');
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const dateStr = tomorrow.toISOString().slice(0, 10);
+    const dateStr = tomorrowLocalDateInput();
     await page.locator('#match-date').fill(dateStr);
     await page.locator('#match-time').fill('19:30');
     await page.locator('#match-location').fill('Society E2E');
