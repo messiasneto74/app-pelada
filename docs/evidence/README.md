@@ -16,6 +16,7 @@ Screenshots anexados nos PRs correspondentes; paths estáveis no repo para revis
 | #40 3.5 | [3-5-40-sorteio-390.jpg](./3-5-40-sorteio-390.jpg) | **390×844 px** (JPG; `/dev/sorteio-3-5`, card equilíbrio, times e drag-and-drop) |
 | #41 3.5-SHARE | [3-5-share-41-modal-390.jpg](./3-5-share-41-modal-390.jpg) | **390×844 px** (JPG; `/dev/sorteio-3-5-share`, modal compartilhar + “Ocultar notas”) |
 | #43 3.6 | [3-6-43-campo-390.jpg](./3-6-43-campo-390.jpg) | **390×844 px** (JPG; `/dev/campo-3-6`, placar, cronômetro, descanso) |
+| #46 3.9 | [3-9-46-caixa-390.jpg](./3-9-46-caixa-390.jpg) | **390×844 px** (JPG; `/dev/caixa-3-9`, resumo, segmentos, chips pago/devendo) |
 
 Validar dimensões antes do PR:
 

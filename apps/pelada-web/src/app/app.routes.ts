@@ -119,6 +119,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/caixa-3-9',
+    loadComponent: () =>
+      import('./features/dev/caixa-3-9-preview.component').then(
+        (m) => m.Caixa39PreviewComponent,
+      ),
+  },
+  {
     path: 'onboarding/pelada',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>
@@ -192,7 +199,10 @@ export const routes: Routes = [
       },
       {
         path: 'caixa',
-        loadComponent: placeholder,
+        loadComponent: () =>
+          import('./features/caixa/caixa-pelada.component').then(
+            (m) => m.CaixaPeladaComponent,
+          ),
         data: { title: 'Caixa', eyebrow: 'Pagamentos' },
       },
       { path: '', pathMatch: 'full', redirectTo: 'inicio' },
