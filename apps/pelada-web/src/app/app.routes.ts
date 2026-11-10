@@ -105,6 +105,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/sorteio-3-5-share',
+    loadComponent: () =>
+      import('./features/dev/sorteio-3-5-share-preview.component').then(
+        (m) => m.Sorteio35SharePreviewComponent,
+      ),
+  },
+  {
     path: 'onboarding/pelada',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>
