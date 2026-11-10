@@ -98,7 +98,7 @@ import { formatMoneyBrl } from '../../core/inicio/inicio-dashboard.model';
                         [class.status-chip--paid]="entry.status === 'PAID'"
                         [class.status-chip--pending]="entry.status === 'PENDING'"
                       >
-                        {{ statusLabel(entry) }}
+                        {{ statusLabel(entry.status) }}
                       </span>
                       <span class="plan-chip pelada-muted">
                         {{ planLabel(entry.playerPaymentPlan) }}

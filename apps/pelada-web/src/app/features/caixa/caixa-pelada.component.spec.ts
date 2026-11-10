@@ -20,7 +20,7 @@ const ledger: PaymentLedgerResponse = {
     {
       key: 'p1',
       label: 'Ana',
-      receivedCents: 0,
+      receivedCents: 2000,
       expectedCents: 2000,
       entries: [
         {
@@ -30,6 +30,17 @@ const ledger: PaymentLedgerResponse = {
           playerPaymentPlan: 'PER_MATCH',
           matchId: 'm1',
           matchScheduledAt: '2026-11-05T22:00:00.000Z',
+          amountCents: 2000,
+          status: 'PAID',
+          paidAt: '2026-11-06T00:00:00.000Z',
+        },
+        {
+          id: 'led-2',
+          playerId: 'p2',
+          playerName: 'Bruno',
+          playerPaymentPlan: 'MONTHLY',
+          matchId: null,
+          matchScheduledAt: null,
           amountCents: 2000,
           status: 'PENDING',
           paidAt: null,
@@ -82,22 +93,23 @@ describe('CaixaPeladaComponent §3.9', () => {
     fixture.detectChanges();
   });
 
-  it('mostra resumo e chip Devendo', () => {
+  it('mostra resumo e chips Pago / Devendo', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Recebido no período');
+    expect(text).toContain('Pago');
     expect(text).toContain('Devendo');
     expect(text).toContain('Por jogador');
     expect(paymentsSpy.getLedger).toHaveBeenCalledWith('pel-1', 'player');
   });
 
   it('markPaid chama API e recarrega', () => {
-    const btn: HTMLButtonElement | null = fixture.nativeElement.querySelector(
-      '.mark-btn',
-    );
-    expect(btn).toBeTruthy();
-    btn!.click();
+    const pendingBtn = [...fixture.nativeElement.querySelectorAll('.mark-btn')].find(
+      (b: Element) => !(b as HTMLButtonElement).disabled,
+    ) as HTMLButtonElement | undefined;
+    expect(pendingBtn).toBeTruthy();
+    pendingBtn!.click();
     fixture.detectChanges();
-    expect(paymentsSpy.markPaid).toHaveBeenCalledWith('pel-1', 'led-1');
+    expect(paymentsSpy.markPaid).toHaveBeenCalledWith('pel-1', 'led-2');
     expect(paymentsSpy.getLedger).toHaveBeenCalledTimes(2);
   });
 });
