@@ -116,9 +116,6 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
                   <li>{{ t.name }}</li>
                 }
               </ul>
-              @if (nextRestHint()) {
-                <p class="pelada-muted rest-hint">{{ nextRestHint() }}</p>
-              }
             </pelada-card>
           }
 
@@ -337,6 +334,8 @@ export class CampoPartidaComponent implements OnInit {
   readonly fieldSession = signal<MatchFieldSessionDto | null>(null);
   readonly actionError = signal<string | null>(null);
   private readonly tickMs = signal(Date.now());
+  /** Instante em que `fieldSession` foi recebido da API (anchor do cronômetro). */
+  private readonly sessionElapsedAnchorMs = signal(Date.now());
 
   readonly headerTitle = computed(() => {
     const pelada = this.peladaContext.getActivePelada();
@@ -353,7 +352,9 @@ export class CampoPartidaComponent implements OnInit {
     if (!s) {
       return '00:00';
     }
-    return formatTimerLabel(displayElapsedMs(s, this.tickMs()));
+    return formatTimerLabel(
+      displayElapsedMs(s, this.tickMs(), this.sessionElapsedAnchorMs()),
+    );
   });
 
   readonly timerPercent = computed(() => {
@@ -361,17 +362,12 @@ export class CampoPartidaComponent implements OnInit {
     if (!s) {
       return 0;
     }
-    const ms = displayElapsedMs(s, this.tickMs());
+    const ms = displayElapsedMs(
+      s,
+      this.tickMs(),
+      this.sessionElapsedAnchorMs(),
+    );
     return Math.min(100, Math.round((ms / DEFAULT_ROUND_MS) * 100));
-  });
-
-  readonly nextRestHint = computed(() => {
-    const s = this.fieldSession();
-    if (!s || s.restingTeams.length === 0) {
-      return null;
-    }
-    const first = s.restingTeams[0]?.name;
-    return first ? `Próximo a entrar: ${first}` : null;
   });
 
   readonly gkHint = computed(() => {
@@ -407,17 +403,21 @@ export class CampoPartidaComponent implements OnInit {
     }
     this.orgContext.refreshMembership(pelada.id);
     this.dashboardService.loadDashboard(pelada, (dash) => {
-      const match = dash.nextMatch;
-      if (!match) {
+      const matchId =
+        dash.nextMatch?.matchId ??
+        this.session.resolveMatchIdWithClosedList() ??
+        this.session.getActiveMatchId();
+      if (!matchId) {
         this.matchId.set(null);
         this.loading.set(false);
         return;
       }
-      this.matchId.set(match.matchId);
-      const snap = this.session.load(match.matchId);
-      this.listClosed.set(snap?.listClosed ?? false);
+      this.matchId.set(matchId);
+      this.session.setActiveMatchId(matchId);
+      const snap = this.session.load(matchId);
+      this.listClosed.set(snap?.listClosed ?? true);
 
-      this.drawApi.getDraw(pelada.id, match.matchId).subscribe({
+      this.drawApi.getDraw(pelada.id, matchId).subscribe({
         next: () => {
           this.hasDraw.set(true);
           this.loadFieldSession();
@@ -474,6 +474,11 @@ export class CampoPartidaComponent implements OnInit {
     );
   }
 
+  private applySessionFromApi(session: MatchFieldSessionDto): void {
+    this.fieldSession.set(session);
+    this.sessionElapsedAnchorMs.set(Date.now());
+  }
+
   private loadFieldSession(): void {
     const pelada = this.peladaContext.getActivePelada();
     const matchId = this.matchId();
@@ -483,7 +488,7 @@ export class CampoPartidaComponent implements OnInit {
     }
     this.fieldApi.getSession(pelada.id, matchId).subscribe({
       next: (s) => {
-        this.fieldSession.set(s);
+        this.applySessionFromApi(s);
         this.loading.set(false);
       },
       error: (err: HttpErrorResponse) => {
@@ -510,7 +515,7 @@ export class CampoPartidaComponent implements OnInit {
     this.actionError.set(null);
     call(pelada.id, matchId).subscribe({
       next: (s) => {
-        this.fieldSession.set(s);
+        this.applySessionFromApi(s);
         this.busy.set(false);
       },
       error: (err: HttpErrorResponse) => {

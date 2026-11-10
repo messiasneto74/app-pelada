@@ -23,22 +23,19 @@ export function formatTimerLabel(totalMs: number): string {
   return `${mm}:${ss}`;
 }
 
-/** Espelha a API: elapsedMs + delta desde timerRunningSince. */
+/**
+ * A API já devolve `elapsedMs` com snapshot (ver `MatchFieldSessionService.toDto`).
+ * O client só soma o tempo desde `anchorMs` (momento em que o DTO foi recebido).
+ */
 export function displayElapsedMs(
-  session: Pick<
-    MatchFieldSessionDto,
-  'elapsedMs' | 'timerRunning' | 'timerRunningSince'
-  >,
-  nowMs: number = Date.now(),
+  session: Pick<MatchFieldSessionDto, 'elapsedMs' | 'timerRunning'>,
+  nowMs: number,
+  anchorMs: number,
 ): number {
-  if (!session.timerRunning || !session.timerRunningSince) {
+  if (!session.timerRunning) {
     return session.elapsedMs;
   }
-  const since = Date.parse(session.timerRunningSince);
-  if (Number.isNaN(since)) {
-    return session.elapsedMs;
-  }
-  return session.elapsedMs + Math.max(0, nowMs - since);
+  return session.elapsedMs + Math.max(0, nowMs - anchorMs);
 }
 
 export function homeTeamName(session: MatchFieldSessionDto): string {
