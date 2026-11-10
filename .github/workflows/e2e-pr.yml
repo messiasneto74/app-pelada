@@ -39,9 +39,6 @@ jobs:
         id: chrome
         uses: browser-actions/setup-chrome@v1
 
-      - name: Playwright driver
-        run: npx playwright install chromium
-
       - name: Stack Docker (Postgres + Keycloak + API)
         run: docker compose up -d --build
 
