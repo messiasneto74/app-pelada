@@ -112,6 +112,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'dev/campo-3-6',
+    loadComponent: () =>
+      import('./features/dev/campo-3-6-preview.component').then(
+        (m) => m.Campo36PreviewComponent,
+      ),
+  },
+  {
     path: 'onboarding/pelada',
     canActivate: [authGuard, phoneRequiredGuard],
     loadComponent: () =>
@@ -162,7 +169,11 @@ export const routes: Routes = [
       },
       {
         path: 'partida/campo',
-        loadComponent: placeholder,
+        canActivate: [presenceListClosedGuard],
+        loadComponent: () =>
+          import('./features/partida/campo-partida.component').then(
+            (m) => m.CampoPartidaComponent,
+          ),
         data: { title: 'Em campo', eyebrow: 'Partida' },
       },
       {
