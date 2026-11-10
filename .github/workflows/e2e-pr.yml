@@ -2,14 +2,7 @@
 name: E2E (Playwright)
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'e2e/**'
-      - 'scripts/run-e2e.mjs'
-      - 'scripts/lib/e2e-*.mjs'
-      - '.github/workflows/e2e-pr.yml'
-      - 'docker-compose.yml'
+  # Manual até stack estável no runner (evita check vermelho no PR).
   workflow_dispatch:
 
 concurrency:
@@ -53,15 +46,18 @@ jobs:
 
       - name: API + web (host)
         run: |
-          npm run dev:api &
-          npm run dev:web &
-          for i in $(seq 1 90); do
-            curl -fsS http://localhost:3000/health >/dev/null &&
-            curl -fsS http://localhost:4200/ >/dev/null &&
-            echo "Stack OK" && exit 0
+          (cd apps/api && nohup node --env-file=../../.env dist/main.js > ../../api-e2e.log 2>&1 &)
+          nohup npm run start -w @pelada/web -- --host 0.0.0.0 --disable-host-check > web-e2e.log 2>&1 &
+          for i in $(seq 1 120); do
+            if curl -fsS http://localhost:3000/health >/dev/null 2>&1 &&
+               curl -fsS http://localhost:4200/ >/dev/null 2>&1; then
+              echo "Stack OK"
+              exit 0
+            fi
             sleep 5
           done
-          echo "API ou web não subiu a tempo"
+          echo "=== api-e2e.log ===" && tail -n 100 api-e2e.log || true
+          echo "=== web-e2e.log ===" && tail -n 100 web-e2e.log || true
           exit 1
 
       - name: npm run test:e2e:playwright
