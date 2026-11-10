@@ -23,6 +23,12 @@ import {
   paymentStatusChipLabel,
   peladaPaymentModelLabel,
 } from './caixa-view.logic';
+import {
+  ZAP_CHARGE_BUTTON_LABEL,
+  ZAP_CHARGE_BUTTON_TITLE,
+  showZapChargeButton,
+  zapChargeButtonDisabled,
+} from './caixa-zap-charge.policy';
 import { formatMoneyBrl } from '../../core/inicio/inicio-dashboard.model';
 
 @Component({
@@ -125,16 +131,17 @@ import { formatMoneyBrl } from '../../core/inicio/inicio-dashboard.model';
           }
         }
 
-        @if (isOrganizador()) {
+        @if (showZapCharge()) {
           <button
             type="button"
+            class="zap-charge-btn"
             peladaButton
             variant="secondary"
             [peladaButtonBlock]="true"
-            disabled
-            title="Cobrança Zap fica para issue 3.9-ZAP"
+            [disabled]="zapChargeDisabled()"
+            [title]="zapChargeTitle"
           >
-            Cobrança Zap (em breve)
+            {{ zapChargeLabel }}
           </button>
         }
       }
@@ -270,6 +277,13 @@ export class CaixaPeladaComponent {
     const pelada = this.peladaContext.getActivePelada();
     return pelada ? this.orgContext.isOrganizador(pelada.id) : false;
   });
+
+  readonly showZapCharge = computed(() =>
+    showZapChargeButton(this.isOrganizador()),
+  );
+  readonly zapChargeDisabled = zapChargeButtonDisabled;
+  readonly zapChargeLabel = ZAP_CHARGE_BUTTON_LABEL;
+  readonly zapChargeTitle = ZAP_CHARGE_BUTTON_TITLE;
 
   readonly cashDisplay = computed(() => {
     const l = this.ledger();
