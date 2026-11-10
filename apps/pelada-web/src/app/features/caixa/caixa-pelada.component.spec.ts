@@ -4,6 +4,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
+import { PeladaDashboardRefreshService } from '../../core/inicio/pelada-dashboard-refresh.service';
 import { PeladaPaymentsService } from '../../core/payments/pelada-payments.service';
 import type { PaymentLedgerResponse } from '../../core/payments/payment-ledger-api.model';
 import { CaixaPeladaComponent } from './caixa-pelada.component';
@@ -53,11 +54,15 @@ const ledger: PaymentLedgerResponse = {
 describe('CaixaPeladaComponent §3.9', () => {
   let fixture: ComponentFixture<CaixaPeladaComponent>;
   let paymentsSpy: jasmine.SpyObj<PeladaPaymentsService>;
+  let dashboardRefreshSpy: jasmine.SpyObj<PeladaDashboardRefreshService>;
 
   beforeEach(async () => {
     paymentsSpy = jasmine.createSpyObj('PeladaPaymentsService', [
       'getLedger',
       'markPaid',
+    ]);
+    dashboardRefreshSpy = jasmine.createSpyObj('PeladaDashboardRefreshService', [
+      'notifyCashSummaryChanged',
     ]);
     paymentsSpy.getLedger.and.returnValue(of(ledger));
     paymentsSpy.markPaid.and.returnValue(
@@ -71,6 +76,7 @@ describe('CaixaPeladaComponent §3.9', () => {
         provideHttpClientTesting(),
         { provide: OAuthService, useValue: { getIdentityClaims: () => ({ sub: 'test' }) } },
         { provide: PeladaPaymentsService, useValue: paymentsSpy },
+        { provide: PeladaDashboardRefreshService, useValue: dashboardRefreshSpy },
         {
           provide: PeladaOrganizadorContextService,
           useValue: {
@@ -110,6 +116,7 @@ describe('CaixaPeladaComponent §3.9', () => {
     pendingBtn!.click();
     fixture.detectChanges();
     expect(paymentsSpy.markPaid).toHaveBeenCalledWith('pel-1', 'led-2');
+    expect(dashboardRefreshSpy.notifyCashSummaryChanged).toHaveBeenCalled();
     expect(paymentsSpy.getLedger).toHaveBeenCalledTimes(2);
   });
 });

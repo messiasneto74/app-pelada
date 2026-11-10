@@ -1,5 +1,6 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { PeladaDashboardRefreshService } from '../../core/inicio/pelada-dashboard-refresh.service';
 import {
   INICIO_SHORTCUTS,
   type InicioDashboardView,
@@ -160,9 +161,10 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
     `,
   ],
 })
-export class InicioComponent implements OnInit {
+export class InicioComponent {
   private readonly peladaContext = inject(PeladaContextService);
   private readonly dashboardService = inject(PeladaDashboardService);
+  private readonly dashboardRefresh = inject(PeladaDashboardRefreshService);
   private readonly router = inject(Router);
 
   readonly shortcuts = INICIO_SHORTCUTS;
@@ -170,15 +172,20 @@ export class InicioComponent implements OnInit {
   readonly loading = signal(true);
   readonly resolveInicioEmptyStates = resolveInicioEmptyStates;
 
-  ngOnInit(): void {
-    const pelada = this.peladaContext.getActivePelada();
-    if (!pelada) {
-      void this.router.navigate(['/onboarding/pelada']);
-      return;
-    }
-    this.dashboardService.loadDashboard(pelada, (view) => {
-      this.dashboard.set(view);
-      this.loading.set(false);
+  constructor() {
+    effect(() => {
+      const pelada = this.peladaContext.getActivePelada();
+      this.dashboardRefresh.refreshToken();
+      if (!pelada) {
+        this.loading.set(false);
+        void this.router.navigate(['/onboarding/pelada']);
+        return;
+      }
+      this.loading.set(true);
+      this.dashboardService.loadDashboard(pelada, (view) => {
+        this.dashboard.set(view);
+        this.loading.set(false);
+      });
     });
   }
 }

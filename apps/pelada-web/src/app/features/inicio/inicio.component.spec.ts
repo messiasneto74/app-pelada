@@ -5,6 +5,7 @@ import {
   INICIO_SHORTCUTS,
   type InicioDashboardView,
 } from '../../core/inicio/inicio-dashboard.model';
+import { PeladaDashboardRefreshService } from '../../core/inicio/pelada-dashboard-refresh.service';
 import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { InicioComponent } from './inicio.component';
@@ -104,6 +105,50 @@ describe('InicioComponent', () => {
   it('mostra resumo do caixa em %', () => {
     expect(fixture.nativeElement.textContent).toContain('67% do total');
     expect(fixture.nativeElement.textContent).toContain('Caixa do mês');
+  });
+
+});
+
+describe('InicioComponent §3.1-SYNC', () => {
+  let loadDashboard: jasmine.Spy;
+  let fixture: ComponentFixture<InicioComponent>;
+
+  beforeEach(async () => {
+    loadDashboard = jasmine.createSpy('loadDashboard').and.callFake(
+      (_pelada: unknown, onResult: (view: InicioDashboardView) => void) => {
+        onResult(mockView);
+      },
+    );
+
+    await TestBed.configureTestingModule({
+      imports: [InicioComponent],
+      providers: [
+        provideRouter([{ path: 'inicio', component: InicioComponent }]),
+        {
+          provide: OAuthService,
+          useValue: { getIdentityClaims: () => ({ sub: 'user-inicio' }) },
+        },
+        { provide: PeladaDashboardService, useValue: { loadDashboard } },
+      ],
+    }).compileComponents();
+
+    TestBed.inject(PeladaContextService).setActivePelada({
+      id: 'p1',
+      name: 'Pelada Teste',
+      defaultWeekday: null,
+      defaultLocation: '',
+      photoPreviewUrl: null,
+    });
+
+    fixture = TestBed.createComponent(InicioComponent);
+    fixture.detectChanges();
+    loadDashboard.calls.reset();
+  });
+
+  it('recarrega dashboard ao notifyCashSummaryChanged', () => {
+    TestBed.inject(PeladaDashboardRefreshService).notifyCashSummaryChanged();
+    fixture.detectChanges();
+    expect(loadDashboard).toHaveBeenCalledTimes(1);
   });
 });
 
