@@ -39,29 +39,29 @@ jobs:
         id: chrome
         uses: browser-actions/setup-chrome@v1
 
-      - name: Stack Docker (Postgres + Keycloak + API)
-        run: docker compose up -d --build
+      - name: Postgres + Keycloak (Docker)
+        run: docker compose up -d postgres-app postgres-keycloak keycloak
 
       - name: Migrations Postgres app
         run: npm run db:migrate
 
-      - name: Aguardar IdP + API
+      - name: Aguardar Keycloak + build API/web
         run: |
           npm run smoke:keycloak
-          npm run smoke:stack
-
-      - name: Build core + dev:web (background)
-        run: |
           npm run build:core
+          npm run build:api
+
+      - name: API + web (host)
+        run: |
+          npm run dev:api &
           npm run dev:web &
-          for i in $(seq 1 60); do
-            if curl -fsS http://localhost:4200/ >/dev/null; then
-              echo "Web OK"
-              exit 0
-            fi
+          for i in $(seq 1 90); do
+            curl -fsS http://localhost:3000/health >/dev/null &&
+            curl -fsS http://localhost:4200/ >/dev/null &&
+            echo "Stack OK" && exit 0
             sleep 5
           done
-          echo "Web não subiu a tempo"
+          echo "API ou web não subiu a tempo"
           exit 1
 
       - name: npm run test:e2e:playwright
