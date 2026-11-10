@@ -10,7 +10,10 @@ import { UpdateAttendanceDto } from '../domain/dto/update-attendance.dto';
 import { PostMatchDrawDto } from '../domain/dto/post-match-draw.dto';
 import { PatchDrawSwapDto } from '../domain/dto/patch-draw-swap.dto';
 import { MatchAttendanceService } from './match-attendance.service';
+import { PatchMatchFieldSessionDto } from '../domain/dto/patch-match-field-session.dto';
+import { PostMatchFieldSessionDto } from '../domain/dto/post-match-field-session.dto';
 import { MatchDrawService } from './match-draw.service';
+import { MatchFieldSessionService } from './match-field-session.service';
 import { MatchesService } from './matches.service';
 
 @Controller()
@@ -19,6 +22,7 @@ export class MatchesController {
     private readonly matchesService: MatchesService,
     private readonly attendanceService: MatchAttendanceService,
     private readonly drawService: MatchDrawService,
+    private readonly fieldSessionService: MatchFieldSessionService,
   ) {}
 
   @Post('peladas/:peladaId/matches')
@@ -180,5 +184,60 @@ export class MatchesController {
     @Body() body: PatchDrawSwapDto,
   ) {
     return this.drawService.patchSwap(user, peladaId, matchId, body);
+  }
+
+  @Get('peladas/:peladaId/matches/:matchId/field-session')
+  @UseGuards(JwtAuthGuard)
+  getFieldSession(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('matchId') matchId: string,
+  ) {
+    return this.fieldSessionService.getSession(user, peladaId, matchId);
+  }
+
+  @Post('peladas/:peladaId/matches/:matchId/field-session')
+  @HttpCode(201)
+  @UseGuards(JwtAuthGuard)
+  postFieldSession(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('matchId') matchId: string,
+    @Body() body: PostMatchFieldSessionDto,
+  ) {
+    return this.fieldSessionService.startSession(user, peladaId, matchId, body);
+  }
+
+  @Patch('peladas/:peladaId/matches/:matchId/field-session')
+  @UseGuards(JwtAuthGuard)
+  patchFieldSession(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('matchId') matchId: string,
+    @Body() body: PatchMatchFieldSessionDto,
+  ) {
+    return this.fieldSessionService.patchSession(user, peladaId, matchId, body);
+  }
+
+  @Post('peladas/:peladaId/matches/:matchId/field-session/end-round')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  postFieldSessionEndRound(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('matchId') matchId: string,
+  ) {
+    return this.fieldSessionService.endRound(user, peladaId, matchId);
+  }
+
+  @Post('peladas/:peladaId/matches/:matchId/field-session/finish')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  postFieldSessionFinish(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('matchId') matchId: string,
+  ) {
+    return this.fieldSessionService.finishSession(user, peladaId, matchId);
   }
 }
