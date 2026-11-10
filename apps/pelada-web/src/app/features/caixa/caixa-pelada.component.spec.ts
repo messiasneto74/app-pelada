@@ -108,6 +108,15 @@ describe('CaixaPeladaComponent §3.9', () => {
     expect(paymentsSpy.getLedger).toHaveBeenCalledWith('pel-1', 'player');
   });
 
+  it('§3.9-ZAP: organizador vê Cobrança Zap desabilitada', () => {
+    const btn = fixture.nativeElement.querySelector(
+      '.zap-charge-btn',
+    ) as HTMLButtonElement | null;
+    expect(btn).withContext('botão Zap visível para adm').toBeTruthy();
+    expect(btn!.disabled).toBe(true);
+    expect(btn!.textContent).toContain('Cobrança Zap');
+  });
+
   it('markPaid chama API e recarrega', () => {
     const pendingBtn = [...fixture.nativeElement.querySelectorAll('.mark-btn')].find(
       (b: Element) => !(b as HTMLButtonElement).disabled,
@@ -118,5 +127,55 @@ describe('CaixaPeladaComponent §3.9', () => {
     expect(paymentsSpy.markPaid).toHaveBeenCalledWith('pel-1', 'led-2');
     expect(dashboardRefreshSpy.notifyCashSummaryChanged).toHaveBeenCalled();
     expect(paymentsSpy.getLedger).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('CaixaPeladaComponent §3.9-ZAP (não organizador)', () => {
+  let fixture: ComponentFixture<CaixaPeladaComponent>;
+
+  beforeEach(async () => {
+    const paymentsSpy = jasmine.createSpyObj('PeladaPaymentsService', [
+      'getLedger',
+      'markPaid',
+    ]);
+    paymentsSpy.getLedger.and.returnValue(of(ledger));
+
+    await TestBed.configureTestingModule({
+      imports: [CaixaPeladaComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: OAuthService, useValue: { getIdentityClaims: () => ({ sub: 'test' }) } },
+        { provide: PeladaPaymentsService, useValue: paymentsSpy },
+        {
+          provide: PeladaDashboardRefreshService,
+          useValue: jasmine.createSpyObj('PeladaDashboardRefreshService', [
+            'notifyCashSummaryChanged',
+          ]),
+        },
+        {
+          provide: PeladaOrganizadorContextService,
+          useValue: {
+            isOrganizador: () => false,
+            refreshMembership: jasmine.createSpy('refreshMembership'),
+          },
+        },
+      ],
+    }).compileComponents();
+
+    TestBed.inject(PeladaContextService).setActivePelada({
+      id: 'pel-1',
+      name: 'Pelada Caixa',
+      defaultWeekday: null,
+      defaultLocation: '',
+      photoPreviewUrl: null,
+    });
+
+    fixture = TestBed.createComponent(CaixaPeladaComponent);
+    fixture.detectChanges();
+  });
+
+  it('não mostra botão Cobrança Zap', () => {
+    expect(fixture.nativeElement.querySelector('.zap-charge-btn')).toBeNull();
   });
 });

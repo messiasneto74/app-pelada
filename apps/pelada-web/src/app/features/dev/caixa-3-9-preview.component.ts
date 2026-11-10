@@ -6,6 +6,10 @@ import { PeladaCardComponent } from '../../ui/card.component';
 import { PeladaProgressComponent } from '../../ui/progress.component';
 import { PeladaSegmentComponent } from '../../ui/segment.component';
 import { ScreenHeaderComponent } from '../../ui/screen-header.component';
+import {
+  ZAP_CHARGE_BUTTON_LABEL,
+  zapChargeButtonDisabled,
+} from '../caixa/caixa-zap-charge.policy';
 
 /** Prévia §3.9 — evidência 390px (issue #46), rota `/dev/caixa-3-9`. */
 @Component({
@@ -72,8 +76,15 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         </ul>
       </pelada-card>
 
-      <button type="button" peladaButton variant="secondary" [peladaButtonBlock]="true" disabled>
-        Cobrança Zap (em breve)
+      <button
+        type="button"
+        class="zap-charge-btn"
+        peladaButton
+        variant="secondary"
+        [peladaButtonBlock]="true"
+        [disabled]="zapDisabled()"
+      >
+        {{ zapLabel }}
       </button>
 
       <a routerLink="/caixa" class="pelada-muted dev-link">Abrir /caixa (API)</a>
@@ -175,4 +186,6 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
 export class Caixa39PreviewComponent {
   readonly formatMoney = formatMoneyBrl;
   readonly segment = model('player');
+  readonly zapLabel = ZAP_CHARGE_BUTTON_LABEL;
+  readonly zapDisabled = zapChargeButtonDisabled;
 }
