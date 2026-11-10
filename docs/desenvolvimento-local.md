@@ -204,6 +204,18 @@ Até F0-4/5 prontos: `DEV_AUTH_BYPASS=true` só na API local (ver `.env.example`
 
 Rodar **local** com stack Docker + Playwright; **não** depende de VPS no início.
 
+Pré-requisitos: Postgres + Keycloak + API (`npm.cmd run stack:up` ou `db:up` + `keycloak:up` + `dev:api`) e web (`npm.cmd run dev:web`).
+
+```powershell
+Set-Location D:\desenvolvimento\app-futebol
+npm.cmd run test:e2e:install
+npm.cmd run test:e2e
+```
+
+Variáveis opcionais: `PELADA_WEB_URL`, `PELADA_API_URL`, `E2E_KC_USER`, `E2E_KC_PASSWORD` (padrão `dev` / `dev-pelada-local` — ver [credenciais-dev-local.md](credenciais-dev-local.md)).
+
+O fluxo MVP (`e2e/mvp-flow.spec.ts`) cadastra elenco via API (UI de adicionar jogador ainda é hint na #25) e exercita o restante no browser.
+
 ## PowerShell
 
 Se `npm install` falhar com `PSSecurityException`:
