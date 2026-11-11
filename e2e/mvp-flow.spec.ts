@@ -48,6 +48,9 @@ test.describe('E2E fluxo MVP §D', () => {
         await page.waitForTimeout(400);
       }
     }
+    await expect(page.getByRole('tab', { name: /Pendentes \(0\)/ })).toBeVisible({
+      timeout: 15_000,
+    });
     await page.getByRole('tab', { name: /Confirmados/ }).click({ force: true });
     await expect(page.getByRole('tab', { name: /Confirmados \(12\)/ })).toBeVisible({
       timeout: 30_000,
@@ -77,9 +80,8 @@ test.describe('E2E fluxo MVP §D', () => {
     if (await drawError.isVisible()) {
       throw new Error(`Sorteio falhou: ${(await drawError.textContent()) ?? ''}`);
     }
-    const jogador1 = page.getByText('E2E Jogador 1', { exact: true });
-    await jogador1.scrollIntoViewIfNeeded();
-    await expect(jogador1).toBeVisible({ timeout: 30_000 });
+    const jogador1 = page.locator('.player-pill__name').filter({ hasText: /^E2E Jogador 1$/ });
+    await expect(jogador1).toHaveCount(1, { timeout: 30_000 });
 
     await page.goto('/partida/campo');
     await expect(
