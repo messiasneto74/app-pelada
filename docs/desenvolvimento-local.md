@@ -214,7 +214,7 @@ npm.cmd run test:e2e
 
 Variáveis opcionais: `PELADA_WEB_URL`, `PELADA_API_URL`, `E2E_KC_USER`, `E2E_KC_PASSWORD` (padrão `dev` / `dev-pelada-local` — ver [credenciais-dev-local.md](credenciais-dev-local.md)).
 
-O fluxo MVP (`e2e/mvp-flow.spec.ts`) cadastra elenco via API (UI de adicionar jogador ainda é hint na #25) e exercita o restante no browser.
+O fluxo MVP (`e2e/mvp-flow.spec.ts`) cadastra elenco via API (UI de adicionar jogador ainda é hint na #25). Presença, fechamento da lista, sorteio e campo são na UI; após confirmar na tela, um sync opcional na API alinha attendance antes do `close-list` (evita `forkJoin` pendente no CI).
 
 ## PowerShell
 

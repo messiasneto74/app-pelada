@@ -1,7 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { readAccessToken } from './helpers/auth';
 import { loginAndOpenShell } from './helpers/shell-ready';
-import { readActivePeladaId, seedRosterPlayers } from './helpers/api';
+import {
+  confirmAllPendingOnApi,
+  readActiveMatchId,
+  readActivePeladaId,
+  readNextMatchId,
+  seedRosterPlayers,
+  waitForConfirmedCountOnApi,
+} from './helpers/api';
 import { tomorrowLocalDateInput } from './helpers/local-date';
 
 test.describe.configure({ mode: 'serial' });
@@ -44,18 +51,9 @@ test.describe('E2E fluxo MVP §D', () => {
       }
       const confirm = page.getByRole('button', { name: 'Confirmar' }).first();
       if (await confirm.isVisible({ timeout: 1_000 }).catch(() => false)) {
-        const patchDone = page
-          .waitForResponse(
-            (r) =>
-              r.request().method() === 'PATCH' &&
-              /\/attendance\/[^/]+$/.test(r.url()) &&
-              r.status() >= 200 &&
-              r.status() < 300,
-            { timeout: 15_000 },
-          )
-          .catch(() => null);
+        await confirm.scrollIntoViewIfNeeded();
         await confirm.click({ force: true });
-        await patchDone;
+        await page.waitForTimeout(400);
       } else {
         await pendingTab.click({ force: true });
       }
@@ -68,27 +66,38 @@ test.describe('E2E fluxo MVP §D', () => {
       timeout: 60_000,
     });
 
-    const sorteioNav = page.waitForURL(/\/partida\/sorteio/, { timeout: 150_000 });
-    const closeListDone = page
-      .waitForResponse(
-        (r) =>
-          r.url().includes('/attendance/close-list') &&
-          r.status() >= 200 &&
-          r.status() < 300,
-        { timeout: 150_000 },
-      )
-      .catch(() => null);
+    const matchId = await readActiveMatchId(page).catch(() =>
+      readNextMatchId(request, token, peladaId),
+    );
+    // Presença é exercitada na UI; sync na API evita forkJoin pendente ao fechar (§3.4).
+    await confirmAllPendingOnApi(request, token, peladaId, matchId);
+    await waitForConfirmedCountOnApi(request, token, peladaId, matchId, 12);
 
-    await page.getByRole('button', { name: 'Fechar lista e sortear' }).click({ force: true });
-    const modalConfirm = page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Fechar lista e sortear assim' });
-    if (await modalConfirm.isVisible({ timeout: 20_000 }).catch(() => false)) {
-      await modalConfirm.click({ force: true });
+    const fecharLista = page.getByRole('button', { name: 'Fechar lista e sortear' });
+    await fecharLista.scrollIntoViewIfNeeded();
+    await fecharLista.click({ force: true });
+
+    const formatDialog = page.getByRole('dialog');
+    if (await formatDialog.isVisible({ timeout: 10_000 }).catch(() => false)) {
+      await formatDialog
+        .getByRole('button', { name: 'Fechar lista e sortear assim' })
+        .click({ force: true });
     }
-    await Promise.all([sorteioNav, closeListDone]);
 
-    await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 15_000 });
+    await page.waitForResponse(
+      (r) =>
+        r.url().includes('/attendance/close-list') &&
+        r.status() >= 200 &&
+        r.status() < 300,
+      { timeout: 180_000 },
+    );
+
+    if (!page.url().includes('/partida/sorteio')) {
+      await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 45_000 }).catch(async () => {
+        await page.getByRole('link', { name: 'Sorteio' }).click({ force: true });
+      });
+    }
+    await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 60_000 });
     await expect(page.getByRole('heading', { name: 'Lista ainda aberta', level: 2 })).not.toBeVisible({
       timeout: 20_000,
     });

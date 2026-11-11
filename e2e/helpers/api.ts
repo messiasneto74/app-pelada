@@ -54,6 +54,7 @@ export async function readNextMatchId(
 type AttendanceListDto = {
   listClosed: boolean;
   entries: { playerId: string; status: string }[];
+  counts?: { confirmed: number; pending: number };
 };
 
 export async function fetchAttendance(
@@ -100,6 +101,28 @@ export async function confirmAllPendingOnApi(
       );
     }
   }
+}
+
+export async function waitForConfirmedCountOnApi(
+  request: APIRequestContext,
+  token: string,
+  peladaId: string,
+  matchId: string,
+  minConfirmed: number,
+  timeoutMs = 60_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const list = await fetchAttendance(request, token, peladaId, matchId);
+    const confirmed =
+      list.counts?.confirmed ??
+      list.entries.filter((e) => e.status === 'CONFIRMED').length;
+    if (confirmed >= minConfirmed) {
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  throw new Error(`timeout aguardando ${minConfirmed} confirmados na API`);
 }
 
 export async function closeListOnApi(
