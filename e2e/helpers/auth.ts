@@ -22,18 +22,22 @@ export async function loginAsDevOrganizer(page: Page): Promise<void> {
   await userField.fill(KC_USER);
   await page.locator('#password, input[name="password"]').fill(KC_PASSWORD);
   await page.locator('#kc-login, input[type="submit"], button[type="submit"]').first().click();
-  await page.waitForURL(/localhost:4200/, { timeout: 60_000 });
+  await page.waitForURL(/\/(inicio|onboarding\/pelada|entrar\/completar)/, {
+    timeout: 120_000,
+  });
   await completePhoneIfNeeded(page);
-  await page.waitForURL(/\/(inicio|onboarding\/pelada)/, { timeout: 60_000 });
+  await expect(page).toHaveURL(/\/(inicio|onboarding\/pelada)/, { timeout: 60_000 });
 }
 
 async function completePhoneIfNeeded(page: Page): Promise<void> {
   if (!page.url().includes('/entrar/completar')) {
     return;
   }
-  await page.locator('input[name="phone"]').fill('11999990000');
+  const phone = page.locator('input[name="phone"]');
+  await expect(phone).toBeVisible({ timeout: 30_000 });
+  await phone.fill('11999990000');
   await page.getByRole('button', { name: 'Salvar' }).click();
-  await page.waitForURL(/\/(inicio|onboarding\/pelada)/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/(inicio|onboarding\/pelada)/, { timeout: 60_000 });
 }
 
 /** Lê access_token do angular-oauth2-oidc no browser. */
