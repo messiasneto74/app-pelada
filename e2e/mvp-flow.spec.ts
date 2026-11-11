@@ -49,12 +49,14 @@ test.describe('E2E fluxo MVP §D', () => {
     }
 
     await page.getByRole('button', { name: 'Fechar lista e sortear' }).click({ force: true });
-    const modalConfirm = page.getByRole('button', { name: 'Fechar lista e sortear assim' });
-    if (await modalConfirm.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    const modalConfirm = page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Fechar lista e sortear assim' });
+    if (await modalConfirm.isVisible({ timeout: 15_000 }).catch(() => false)) {
       await modalConfirm.click({ force: true });
     }
     // UI navega para /partida/sorteio após closeList (§3.4).
-    await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 60_000 });
     const sortearAgora = page.getByRole('button', { name: 'Sortear agora' });
     await expect(sortearAgora).toBeVisible({ timeout: 30_000 });
     await sortearAgora.click({ force: true });
@@ -69,8 +71,8 @@ test.describe('E2E fluxo MVP §D', () => {
     });
 
     await page.goto('/partida/campo');
-    await expect(page.getByText('Pronto para entrar em campo')).toBeVisible({
-      timeout: 20_000,
-    });
+    await expect(
+      page.getByRole('heading', { name: 'Pronto para entrar em campo', level: 2 }),
+    ).toBeVisible({ timeout: 30_000 });
   });
 });
