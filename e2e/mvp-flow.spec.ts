@@ -35,18 +35,23 @@ test.describe('E2E fluxo MVP §D', () => {
     await expect(page).toHaveURL(/\/partida\/presenca/);
 
     await page.getByRole('tab', { name: /Pendentes/ }).click({ force: true });
-    for (let guard = 0; guard < 40; guard += 1) {
+    for (let guard = 0; guard < 50; guard += 1) {
+      await page.getByRole('tab', { name: /Pendentes/ }).click({ force: true });
       const pendingTab = page.getByRole('tab', { name: /Pendentes/ });
       const tabLabel = (await pendingTab.textContent()) ?? '';
       if (/Pendentes \(0\)/.test(tabLabel)) {
         break;
       }
       const confirm = page.getByRole('button', { name: 'Confirmar' }).first();
-      if (await confirm.isVisible({ timeout: 500 }).catch(() => false)) {
+      if (await confirm.isVisible({ timeout: 1_000 }).catch(() => false)) {
         await confirm.click({ force: true });
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(400);
       }
     }
+    await page.getByRole('tab', { name: /Confirmados/ }).click({ force: true });
+    await expect(page.getByRole('tab', { name: /Confirmados \(12\)/ })).toBeVisible({
+      timeout: 30_000,
+    });
 
     await page.getByRole('button', { name: 'Fechar lista e sortear' }).click({ force: true });
     const modalConfirm = page
