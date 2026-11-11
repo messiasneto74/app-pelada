@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const webUrl = process.env.PELADA_WEB_URL ?? 'http://localhost:4200';
+const chromePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim();
 
 export default defineConfig({
   testDir: '.',
@@ -17,6 +18,7 @@ export default defineConfig({
     baseURL: webUrl,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+  ...(chromePath ? { launchOptions: { executablePath: chromePath } } : {}),
     ...devices['Pixel 5'],
   },
   globalSetup: './global-setup.ts',
