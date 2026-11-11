@@ -53,9 +53,8 @@ test.describe('E2E fluxo MVP §D', () => {
     if (await modalConfirm.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await modalConfirm.click({ force: true });
     }
-    await expect(page.getByText('Lista fechada')).toBeVisible({ timeout: 15_000 });
-
-    await page.goto('/partida/sorteio');
+    // UI navega para /partida/sorteio após closeList (§3.4).
+    await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 30_000 });
     const sortearAgora = page.getByRole('button', { name: 'Sortear agora' });
     await expect(sortearAgora).toBeVisible({ timeout: 30_000 });
     await sortearAgora.click({ force: true });
