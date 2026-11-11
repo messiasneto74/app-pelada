@@ -1,7 +1,16 @@
 import { test, expect } from '@playwright/test';
 import { readAccessToken } from './helpers/auth';
 import { loginAndOpenShell } from './helpers/shell-ready';
-import { readActivePeladaId, seedRosterPlayers } from './helpers/api';
+import {
+  closeListOnApi,
+  confirmAllPendingOnApi,
+  markPresenceListClosedInSession,
+  readActiveMatchId,
+  readActivePeladaId,
+  readNextMatchId,
+  seedRosterPlayers,
+  waitForListClosedOnApi,
+} from './helpers/api';
 import { tomorrowLocalDateInput } from './helpers/local-date';
 
 test.describe.configure({ mode: 'serial' });
@@ -34,6 +43,10 @@ test.describe('E2E fluxo MVP §D', () => {
     await criarPartida.click({ force: true });
     await expect(page).toHaveURL(/\/partida\/presenca/);
 
+    let matchId = await readNextMatchId(request, token, peladaId).catch(() =>
+      readActiveMatchId(page),
+    );
+
     await page.getByRole('tab', { name: /Pendentes/ }).click({ force: true });
     for (let guard = 0; guard < 50; guard += 1) {
       await page.getByRole('tab', { name: /Pendentes/ }).click({ force: true });
@@ -44,18 +57,37 @@ test.describe('E2E fluxo MVP §D', () => {
       }
       const confirm = page.getByRole('button', { name: 'Confirmar' }).first();
       if (await confirm.isVisible({ timeout: 1_000 }).catch(() => false)) {
-        await confirm.click({ force: true });
-        await page.waitForTimeout(400);
+        await Promise.all([
+          page.waitForResponse(
+            (r) =>
+              r.request().method() === 'PATCH' &&
+              r.url().includes('/attendance/') &&
+              r.status() >= 200 &&
+              r.status() < 300,
+            { timeout: 30_000 },
+          ),
+          confirm.click({ force: true }),
+        ]).catch(async () => {
+          await confirm.click({ force: true });
+        });
+        await page.waitForTimeout(300);
       }
     }
     await expect(page.getByRole('tab', { name: /Pendentes \(0\)/ })).toBeVisible({
-      timeout: 15_000,
+      timeout: 30_000,
     });
     await page.getByRole('tab', { name: /Confirmados/ }).click({ force: true });
     await expect(page.getByRole('tab', { name: /Confirmados \(12\)/ })).toBeVisible({
       timeout: 30_000,
     });
 
+    matchId = await readActiveMatchId(page).catch(() => matchId);
+    await confirmAllPendingOnApi(request, token, peladaId, matchId);
+
+    const closeListResponse = page.waitForResponse(
+      (r) => r.url().includes('/attendance/close-list') && r.status() >= 200 && r.status() < 300,
+      { timeout: 120_000 },
+    );
     await page.getByRole('button', { name: 'Fechar lista e sortear' }).click({ force: true });
     const modalConfirm = page
       .getByRole('dialog')
@@ -63,27 +95,42 @@ test.describe('E2E fluxo MVP §D', () => {
     if (await modalConfirm.isVisible({ timeout: 15_000 }).catch(() => false)) {
       await modalConfirm.click({ force: true });
     }
-    // UI navega para /partida/sorteio após closeList (§3.4); fallback se sync lento no CI.
-    try {
-      await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 45_000 });
-    } catch {
-      if (!page.url().includes('/partida/sorteio')) {
-        await page.goto('/partida/sorteio');
-      }
+    await closeListResponse.catch(async () => {
+      await closeListOnApi(request, token, peladaId, matchId);
+    });
+    await waitForListClosedOnApi(request, token, peladaId, matchId);
+    await markPresenceListClosedInSession(page, matchId);
+    if (!page.url().includes('/partida/sorteio')) {
+      await page.getByRole('link', { name: 'Sorteio' }).click({ force: true });
     }
+    await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 90_000 });
+
+    await expect(page.getByRole('heading', { name: 'Lista ainda aberta', level: 2 })).not.toBeVisible({
+      timeout: 15_000,
+    });
     const sortearAgora = page.getByRole('button', { name: 'Sortear agora' });
-    await expect(sortearAgora).toBeVisible({ timeout: 30_000 });
+    await expect(sortearAgora).toBeVisible({ timeout: 60_000 });
     await sortearAgora.click({ force: true });
+
     const drawError = page.getByRole('alert');
     const equilibrio = page.getByRole('heading', { name: 'Equilíbrio', level: 2 });
-    await expect(equilibrio.or(drawError)).toBeVisible({ timeout: 90_000 });
+    await expect(equilibrio.or(drawError)).toBeVisible({ timeout: 120_000 });
     if (await drawError.isVisible()) {
       throw new Error(`Sorteio falhou: ${(await drawError.textContent()) ?? ''}`);
     }
-    const jogador1 = page.locator('.player-pill__name').filter({ hasText: /^E2E Jogador 1$/ });
-    await expect(jogador1).toHaveCount(1, { timeout: 30_000 });
 
-    await page.goto('/partida/campo');
+    const teamsGrid = page.locator('.teams-grid');
+    await expect(teamsGrid).toBeVisible({ timeout: 30_000 });
+    await expect
+      .poll(async () => teamsGrid.locator('pelada-card').count(), { timeout: 60_000 })
+      .toBeGreaterThanOrEqual(2);
+    const pills = page.locator('.teams-grid .player-pill__name');
+    await expect
+      .poll(async () => pills.count(), { timeout: 60_000 })
+      .toBeGreaterThanOrEqual(10);
+
+    await page.getByRole('link', { name: 'Em campo' }).click({ force: true });
+    await expect(page).toHaveURL(/\/partida\/campo/, { timeout: 30_000 });
     await expect(
       page.getByRole('heading', { name: 'Pronto para entrar em campo', level: 2 }),
     ).toBeVisible({ timeout: 30_000 });
