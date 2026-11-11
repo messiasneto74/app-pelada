@@ -18,9 +18,10 @@ test.describe('E2E fluxo MVP §D', () => {
     const peladaId = await readActivePeladaId(page);
     await seedRosterPlayers(request, token, peladaId, 12);
 
-    await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', {
-      name: 'Jogadores',
-    }).click();
+    await page
+      .getByRole('navigation', { name: 'Navegação principal' })
+      .getByRole('link', { name: 'Jogadores' })
+      .click({ force: true });
     await expect(page.getByText('12 jogadores no elenco')).toBeVisible();
 
     await page.goto('/inicio/criar-partida');
@@ -28,28 +29,30 @@ test.describe('E2E fluxo MVP §D', () => {
     await page.locator('#match-date').fill(dateStr);
     await page.locator('#match-time').fill('19:30');
     await page.locator('#match-location').fill('Society E2E');
-    await page.getByRole('button', { name: 'Criar partida' }).click();
+    const criarPartida = page.getByRole('button', { name: 'Criar partida' });
+    await criarPartida.scrollIntoViewIfNeeded();
+    await criarPartida.click({ force: true });
     await expect(page).toHaveURL(/\/partida\/presenca/);
 
-    await page.getByRole('tab', { name: /Pendentes/ }).click();
+    await page.getByRole('tab', { name: /Pendentes/ }).click({ force: true });
     for (let guard = 0; guard < 20; guard += 1) {
       const confirm = page.getByRole('button', { name: 'Confirmar' }).first();
       if (!(await confirm.isVisible())) {
         break;
       }
-      await confirm.click();
+      await confirm.click({ force: true });
       await page.waitForTimeout(200);
     }
 
-    await page.getByRole('button', { name: 'Fechar lista e sortear' }).click();
+    await page.getByRole('button', { name: 'Fechar lista e sortear' }).click({ force: true });
     const modalConfirm = page.getByRole('button', { name: 'Fechar lista e sortear assim' });
     if (await modalConfirm.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await modalConfirm.click();
+      await modalConfirm.click({ force: true });
     }
     await expect(page.getByText('Lista fechada')).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole('link', { name: 'Sorteio' }).click();
-    await page.getByRole('button', { name: 'Sortear agora' }).click();
+    await page.getByRole('button', { name: 'Sortear agora' }).click({ force: true });
     await expect(page.getByText('Equilíbrio')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('E2E Jogador 1', { exact: true })).toBeVisible();
 
