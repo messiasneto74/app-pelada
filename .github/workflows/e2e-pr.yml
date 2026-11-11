@@ -2,7 +2,8 @@
 name: E2E (Playwright)
 
 on:
-  # Manual até stack estável no runner (evita check vermelho no PR).
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
