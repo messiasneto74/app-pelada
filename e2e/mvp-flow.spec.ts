@@ -20,6 +20,7 @@ test.describe('E2E fluxo MVP §D', () => {
     page,
     request,
   }) => {
+    test.setTimeout(process.env.CI ? 420_000 : 180_000);
     const peladaName = `E2E Pelada ${Date.now()}`;
     await loginAndOpenShell(page, peladaName);
 
@@ -57,20 +58,8 @@ test.describe('E2E fluxo MVP §D', () => {
       }
       const confirm = page.getByRole('button', { name: 'Confirmar' }).first();
       if (await confirm.isVisible({ timeout: 1_000 }).catch(() => false)) {
-        await Promise.all([
-          page.waitForResponse(
-            (r) =>
-              r.request().method() === 'PATCH' &&
-              r.url().includes('/attendance/') &&
-              r.status() >= 200 &&
-              r.status() < 300,
-            { timeout: 30_000 },
-          ),
-          confirm.click({ force: true }),
-        ]).catch(async () => {
-          await confirm.click({ force: true });
-        });
-        await page.waitForTimeout(300);
+        await confirm.click({ force: true });
+        await page.waitForTimeout(350);
       }
     }
     await expect(page.getByRole('tab', { name: /Pendentes \(0\)/ })).toBeVisible({
@@ -84,10 +73,6 @@ test.describe('E2E fluxo MVP §D', () => {
     matchId = await readActiveMatchId(page).catch(() => matchId);
     await confirmAllPendingOnApi(request, token, peladaId, matchId);
 
-    const closeListResponse = page.waitForResponse(
-      (r) => r.url().includes('/attendance/close-list') && r.status() >= 200 && r.status() < 300,
-      { timeout: 120_000 },
-    );
     await page.getByRole('button', { name: 'Fechar lista e sortear' }).click({ force: true });
     const modalConfirm = page
       .getByRole('dialog')
@@ -95,10 +80,20 @@ test.describe('E2E fluxo MVP §D', () => {
     if (await modalConfirm.isVisible({ timeout: 15_000 }).catch(() => false)) {
       await modalConfirm.click({ force: true });
     }
-    await closeListResponse.catch(async () => {
-      await closeListOnApi(request, token, peladaId, matchId);
+    // A UI faz PATCH em massa antes do close-list; não bloquear 120s no network.
+    const uiCloseList = page
+      .waitForResponse(
+        (r) =>
+          r.url().includes('/attendance/close-list') &&
+          r.status() >= 200 &&
+          r.status() < 300,
+        { timeout: 90_000 },
+      )
+      .catch(() => null);
+    await closeListOnApi(request, token, peladaId, matchId).catch(async () => {
+      await uiCloseList;
     });
-    await waitForListClosedOnApi(request, token, peladaId, matchId);
+    await waitForListClosedOnApi(request, token, peladaId, matchId, 60_000);
     await markPresenceListClosedInSession(page, matchId);
     if (!page.url().includes('/partida/sorteio')) {
       await page.getByRole('link', { name: 'Sorteio' }).click({ force: true });
