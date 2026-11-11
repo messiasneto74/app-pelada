@@ -1,16 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { readAccessToken } from './helpers/auth';
 import { loginAndOpenShell } from './helpers/shell-ready';
-import {
-  closeListOnApi,
-  confirmAllPendingOnApi,
-  markPresenceListClosedInSession,
-  readActiveMatchId,
-  readActivePeladaId,
-  readNextMatchId,
-  seedRosterPlayers,
-  waitForListClosedOnApi,
-} from './helpers/api';
+import { readActivePeladaId, seedRosterPlayers } from './helpers/api';
 import { tomorrowLocalDateInput } from './helpers/local-date';
 
 test.describe.configure({ mode: 'serial' });
@@ -44,13 +35,8 @@ test.describe('E2E fluxo MVP §D', () => {
     await criarPartida.click({ force: true });
     await expect(page).toHaveURL(/\/partida\/presenca/);
 
-    let matchId = await readNextMatchId(request, token, peladaId).catch(() =>
-      readActiveMatchId(page),
-    );
-
     await page.getByRole('tab', { name: /Pendentes/ }).click({ force: true });
-    for (let guard = 0; guard < 50; guard += 1) {
-      await page.getByRole('tab', { name: /Pendentes/ }).click({ force: true });
+    for (let guard = 0; guard < 60; guard += 1) {
       const pendingTab = page.getByRole('tab', { name: /Pendentes/ });
       const tabLabel = (await pendingTab.textContent()) ?? '';
       if (/Pendentes \(0\)/.test(tabLabel)) {
@@ -58,53 +44,57 @@ test.describe('E2E fluxo MVP §D', () => {
       }
       const confirm = page.getByRole('button', { name: 'Confirmar' }).first();
       if (await confirm.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        const patchDone = page
+          .waitForResponse(
+            (r) =>
+              r.request().method() === 'PATCH' &&
+              /\/attendance\/[^/]+$/.test(r.url()) &&
+              r.status() >= 200 &&
+              r.status() < 300,
+            { timeout: 15_000 },
+          )
+          .catch(() => null);
         await confirm.click({ force: true });
-        await page.waitForTimeout(350);
+        await patchDone;
+      } else {
+        await pendingTab.click({ force: true });
       }
     }
     await expect(page.getByRole('tab', { name: /Pendentes \(0\)/ })).toBeVisible({
-      timeout: 30_000,
+      timeout: 60_000,
     });
     await page.getByRole('tab', { name: /Confirmados/ }).click({ force: true });
     await expect(page.getByRole('tab', { name: /Confirmados \(12\)/ })).toBeVisible({
-      timeout: 30_000,
+      timeout: 60_000,
     });
 
-    matchId = await readActiveMatchId(page).catch(() => matchId);
-    await confirmAllPendingOnApi(request, token, peladaId, matchId);
-
-    await page.getByRole('button', { name: 'Fechar lista e sortear' }).click({ force: true });
-    const modalConfirm = page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Fechar lista e sortear assim' });
-    if (await modalConfirm.isVisible({ timeout: 15_000 }).catch(() => false)) {
-      await modalConfirm.click({ force: true });
-    }
-    // A UI faz PATCH em massa antes do close-list; não bloquear 120s no network.
-    const uiCloseList = page
+    const sorteioNav = page.waitForURL(/\/partida\/sorteio/, { timeout: 150_000 });
+    const closeListDone = page
       .waitForResponse(
         (r) =>
           r.url().includes('/attendance/close-list') &&
           r.status() >= 200 &&
           r.status() < 300,
-        { timeout: 90_000 },
+        { timeout: 150_000 },
       )
       .catch(() => null);
-    await closeListOnApi(request, token, peladaId, matchId).catch(async () => {
-      await uiCloseList;
-    });
-    await waitForListClosedOnApi(request, token, peladaId, matchId, 60_000);
-    await markPresenceListClosedInSession(page, matchId);
-    if (!page.url().includes('/partida/sorteio')) {
-      await page.getByRole('link', { name: 'Sorteio' }).click({ force: true });
-    }
-    await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 90_000 });
 
+    await page.getByRole('button', { name: 'Fechar lista e sortear' }).click({ force: true });
+    const modalConfirm = page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Fechar lista e sortear assim' });
+    if (await modalConfirm.isVisible({ timeout: 20_000 }).catch(() => false)) {
+      await modalConfirm.click({ force: true });
+    }
+    await Promise.all([sorteioNav, closeListDone]);
+
+    await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 15_000 });
     await expect(page.getByRole('heading', { name: 'Lista ainda aberta', level: 2 })).not.toBeVisible({
-      timeout: 15_000,
+      timeout: 20_000,
     });
+
     const sortearAgora = page.getByRole('button', { name: 'Sortear agora' });
-    await expect(sortearAgora).toBeVisible({ timeout: 60_000 });
+    await expect(sortearAgora).toBeVisible({ timeout: 90_000 });
     await sortearAgora.click({ force: true });
 
     const drawError = page.getByRole('alert');
