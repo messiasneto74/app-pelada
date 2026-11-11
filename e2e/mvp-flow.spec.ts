@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { loginAsDevOrganizer, readAccessToken } from './helpers/auth';
+import { readAccessToken } from './helpers/auth';
+import { loginAndOpenShell } from './helpers/shell-ready';
 import { readActivePeladaId, seedRosterPlayers } from './helpers/api';
 import { tomorrowLocalDateInput } from './helpers/local-date';
 
@@ -11,23 +12,7 @@ test.describe('E2E fluxo MVP §D', () => {
     request,
   }) => {
     const peladaName = `E2E Pelada ${Date.now()}`;
-    await loginAsDevOrganizer(page);
-
-    if (page.url().includes('/onboarding/pelada')) {
-      await page.locator('#pelada-nome').fill(peladaName);
-      await page.getByRole('button', { name: 'Continuar para regras' }).click();
-      await expect(page).toHaveURL(/\/inicio\/regras/);
-    } else {
-      await page.goto('/onboarding/pelada');
-      await page.locator('#pelada-nome').fill(peladaName);
-      await page.getByRole('button', { name: 'Continuar para regras' }).click();
-      await expect(page).toHaveURL(/\/inicio\/regras/);
-    }
-
-    await page.getByRole('button', { name: 'Salvar como padrão' }).click();
-    await expect(page.getByText('Regras salvas como padrão do grupo.')).toBeVisible({
-      timeout: 15_000,
-    });
+    await loginAndOpenShell(page, peladaName);
 
     const token = await readAccessToken(page);
     const peladaId = await readActivePeladaId(page);
@@ -46,7 +31,7 @@ test.describe('E2E fluxo MVP §D', () => {
     await page.getByRole('button', { name: 'Criar partida' }).click();
     await expect(page).toHaveURL(/\/partida\/presenca/);
 
-    await page.getByRole('button', { name: /Pendentes/ }).click();
+    await page.getByRole('tab', { name: /Pendentes/ }).click();
     for (let guard = 0; guard < 20; guard += 1) {
       const confirm = page.getByRole('button', { name: 'Confirmar' }).first();
       if (!(await confirm.isVisible())) {
@@ -66,7 +51,7 @@ test.describe('E2E fluxo MVP §D', () => {
     await page.getByRole('link', { name: 'Sorteio' }).click();
     await page.getByRole('button', { name: 'Sortear agora' }).click();
     await expect(page.getByText('Equilíbrio')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText('E2E Jogador 1')).toBeVisible();
+    await expect(page.getByText('E2E Jogador 1', { exact: true })).toBeVisible();
 
     await page.getByRole('link', { name: 'Em campo' }).click();
     await expect(page.getByText('Pronto para entrar em campo')).toBeVisible({

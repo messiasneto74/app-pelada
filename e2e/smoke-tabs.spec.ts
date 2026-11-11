@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { loginAsDevOrganizer } from './helpers/auth';
+import { loginAndOpenShell } from './helpers/shell-ready';
 
 test.describe('E2E smoke — 4 abas', () => {
   test.beforeEach(async ({ page }) => {
-    await loginAsDevOrganizer(page);
+    await loginAndOpenShell(page);
   });
 
   test('navega Início, Partida, Jogadores e Caixa', async ({ page }) => {
