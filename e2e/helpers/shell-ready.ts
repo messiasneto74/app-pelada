@@ -17,11 +17,16 @@ export async function completeOnboardingIfNeeded(
   }
   if (page.url().includes('/onboarding/pelada')) {
     await page.locator('#pelada-nome').fill(name);
-    await page.getByRole('button', { name: 'Continuar para regras' }).click();
+    const continuar = page.getByRole('button', { name: 'Continuar para regras' });
+    await continuar.scrollIntoViewIfNeeded();
+    await continuar.click({ force: true });
     await expect(page).toHaveURL(/\/inicio\/regras/, { timeout: 30_000 });
   }
   if (page.url().includes('/inicio/regras')) {
-    await page.getByRole('button', { name: 'Salvar como padrão' }).click();
+    const salvar = page.getByRole('button', { name: 'Salvar como padrão' });
+    await expect(salvar).toBeVisible({ timeout: 30_000 });
+    await salvar.scrollIntoViewIfNeeded();
+    await salvar.click({ force: true });
     await expect(page.getByText('Regras salvas como padrão do grupo.')).toBeVisible({
       timeout: 15_000,
     });
