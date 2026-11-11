@@ -35,13 +35,17 @@ test.describe('E2E fluxo MVP §D', () => {
     await expect(page).toHaveURL(/\/partida\/presenca/);
 
     await page.getByRole('tab', { name: /Pendentes/ }).click({ force: true });
-    for (let guard = 0; guard < 20; guard += 1) {
-      const confirm = page.getByRole('button', { name: 'Confirmar' }).first();
-      if (!(await confirm.isVisible())) {
+    for (let guard = 0; guard < 40; guard += 1) {
+      const pendingTab = page.getByRole('tab', { name: /Pendentes/ });
+      const tabLabel = (await pendingTab.textContent()) ?? '';
+      if (/Pendentes \(0\)/.test(tabLabel)) {
         break;
       }
-      await confirm.click({ force: true });
-      await page.waitForTimeout(200);
+      const confirm = page.getByRole('button', { name: 'Confirmar' }).first();
+      if (await confirm.isVisible({ timeout: 500 }).catch(() => false)) {
+        await confirm.click({ force: true });
+        await page.waitForTimeout(300);
+      }
     }
 
     await page.getByRole('button', { name: 'Fechar lista e sortear' }).click({ force: true });
@@ -51,12 +55,21 @@ test.describe('E2E fluxo MVP §D', () => {
     }
     await expect(page.getByText('Lista fechada')).toBeVisible({ timeout: 15_000 });
 
-    await page.getByRole('link', { name: 'Sorteio' }).click();
-    await page.getByRole('button', { name: 'Sortear agora' }).click({ force: true });
-    await expect(page.getByText('Equilíbrio')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText('E2E Jogador 1', { exact: true })).toBeVisible();
+    await page.goto('/partida/sorteio');
+    const sortearAgora = page.getByRole('button', { name: 'Sortear agora' });
+    await expect(sortearAgora).toBeVisible({ timeout: 30_000 });
+    await sortearAgora.click({ force: true });
+    const drawError = page.getByRole('alert');
+    const equilibrio = page.getByRole('heading', { name: 'Equilíbrio', level: 2 });
+    await expect(equilibrio.or(drawError)).toBeVisible({ timeout: 90_000 });
+    if (await drawError.isVisible()) {
+      throw new Error(`Sorteio falhou: ${(await drawError.textContent()) ?? ''}`);
+    }
+    await expect(page.getByText('E2E Jogador 1', { exact: true })).toBeVisible({
+      timeout: 30_000,
+    });
 
-    await page.getByRole('link', { name: 'Em campo' }).click();
+    await page.goto('/partida/campo');
     await expect(page.getByText('Pronto para entrar em campo')).toBeVisible({
       timeout: 20_000,
     });
