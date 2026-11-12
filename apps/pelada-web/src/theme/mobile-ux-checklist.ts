@@ -41,4 +41,14 @@ export const MOBILE_UX_CHECKLIST: MobileUxChecklistItem[] = [
     label: 'Testar em DevTools 390×844 ou dispositivo real',
     automated: false,
   },
+  {
+    id: 'a11y-contrast-t1',
+    label: 'Pares de cor T1 passam WCAG AA (resenha-a11y.spec)',
+    automated: true,
+  },
+  {
+    id: 'a11y-form-focus',
+    label: 'Tab em inputs/switch com anel de foco visível (manual)',
+    automated: false,
+  },
 ];
