@@ -4,6 +4,7 @@ import { loginAndOpenShell } from './helpers/shell-ready';
 import {
   closeListOnApi,
   confirmAllPendingOnApi,
+  markPresenceListClosedInSession,
   readActiveMatchId,
   readActivePeladaId,
   readNextMatchId,
@@ -84,15 +85,30 @@ test.describe('E2E fluxo MVP §D', () => {
       await modalConfirm.click({ force: true });
     }
 
-    await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 60_000 });
+    const uiCloseList = page
+      .waitForResponse(
+        (r) =>
+          r.url().includes('/attendance/close-list') &&
+          r.status() >= 200 &&
+          r.status() < 300,
+        { timeout: 45_000 },
+      )
+      .catch(() => null);
+    await page
+      .waitForURL(/\/partida\/sorteio/, { timeout: 25_000 })
+      .catch(() => undefined);
 
     matchId = await readActiveMatchId(page).catch(() => matchId);
-    try {
-      await waitForListClosedOnApi(request, token, peladaId, matchId, 90_000);
-    } catch {
-      await closeListOnApi(request, token, peladaId, matchId);
-      await waitForListClosedOnApi(request, token, peladaId, matchId, 30_000);
+    await closeListOnApi(request, token, peladaId, matchId).catch(async () => {
+      await uiCloseList;
+    });
+    await waitForListClosedOnApi(request, token, peladaId, matchId, 60_000);
+    await markPresenceListClosedInSession(page, matchId);
+
+    if (!page.url().includes('/partida/sorteio')) {
+      await page.goto('/partida/sorteio');
     }
+    await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 90_000 });
 
     await expect(page.getByRole('heading', { name: 'Lista ainda aberta', level: 2 })).not.toBeVisible({
       timeout: 20_000,

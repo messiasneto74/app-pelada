@@ -798,7 +798,7 @@ export class PresencaPartidaComponent implements OnInit {
   }
 
   private persist(extraPlayersOverride?: RosterPlayer[]): void {
-    const matchId = this.matchId();
+    const matchId = this.matchId() ?? this.session.getActiveMatchId();
     if (!matchId) {
       return;
     }
