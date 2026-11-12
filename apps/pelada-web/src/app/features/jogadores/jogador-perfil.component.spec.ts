@@ -33,6 +33,7 @@ const profile: PeladaPlayerProfileDto = {
   tags: ['corredor'],
   isFixedList: false,
   userId: null,
+  photoUrl: null,
   paymentPlan: 'PER_MATCH',
   attributes: { tecnica: 7, forca: 6, chute: 8, passe: 5, defesa: 4, velocidade: 9 },
 };

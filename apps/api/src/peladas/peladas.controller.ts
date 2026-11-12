@@ -26,6 +26,7 @@ import { PaymentLedgerQueryDto } from '../domain/dto/payment-ledger-query.dto';
 import { CreatePeladaDto } from './dto/create-pelada.dto';
 import { PeladaPaymentsService } from './pelada-payments.service';
 import { PeladaPlayersService } from './pelada-players.service';
+import { MultipartPlayerPatchInterceptor } from './multipart-player-patch.interceptor';
 import { PeladasService } from './peladas.service';
 
 const photoUpload = memoryStorage();
@@ -157,13 +158,27 @@ export class PeladasController {
 
   @Patch('peladas/:peladaId/players/:playerId')
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('photo', {
+      storage: photoUpload,
+      limits: { fileSize: maxPhotoBytes },
+    }),
+    MultipartPlayerPatchInterceptor,
+  )
   patchPeladaPlayer(
     @CurrentUser() user: AuthUserPayload,
     @Param('peladaId') peladaId: string,
     @Param('playerId') playerId: string,
+    @UploadedFile() photo: Express.Multer.File | undefined,
     @Body() body: PatchPlayerDto,
   ) {
-    return this.peladaPlayersService.patchPlayer(user, peladaId, playerId, body);
+    return this.peladaPlayersService.patchPlayer(
+      user,
+      peladaId,
+      playerId,
+      body,
+      photo,
+    );
   }
 
   @Delete('peladas/:peladaId/players/:playerId')

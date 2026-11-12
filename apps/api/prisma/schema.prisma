@@ -111,6 +111,7 @@ model Player {
   tags         String[]    @default([])
   paymentPlan  PaymentPlan @default(PER_MATCH) @map("payment_plan")
   isFixedList  Boolean     @default(false) @map("is_fixed_list")
+  photoUrl     String?     @map("photo_url")
   createdAt    DateTime    @default(now()) @map("created_at")
   updatedAt    DateTime    @updatedAt @map("updated_at")
 

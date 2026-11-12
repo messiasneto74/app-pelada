@@ -33,11 +33,22 @@ export class PhotoStorageService {
     peladaId: string,
     file: Express.Multer.File,
   ): Promise<string> {
+    return this.savePhoto(`pelada-${peladaId}`, file);
+  }
+
+  async savePlayerPhoto(
+    playerId: string,
+    file: Express.Multer.File,
+  ): Promise<string> {
+    return this.savePhoto(`player-${playerId}`, file);
+  }
+
+  private async savePhoto(prefix: string, file: Express.Multer.File): Promise<string> {
     this.assertValidUpload(file);
     const dir = this.resolveUploadDir();
     await mkdir(dir, { recursive: true });
     const ext = EXT_BY_MIME[file.mimetype] ?? 'bin';
-    const filename = `${peladaId}-${randomUUID()}.${ext}`;
+    const filename = `${prefix}-${randomUUID()}.${ext}`;
     const absolute = join(dir, filename);
     await writeFile(absolute, file.buffer);
     return this.publicUrl(filename);

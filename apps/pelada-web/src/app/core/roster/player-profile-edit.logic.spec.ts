@@ -15,6 +15,7 @@ const profile: PeladaPlayerProfileDto = {
   tags: ['passe', 'visão'],
   isFixedList: false,
   userId: 'u1',
+  photoUrl: null,
   paymentPlan: 'MONTHLY',
   attributes: {
     tecnica: 8,

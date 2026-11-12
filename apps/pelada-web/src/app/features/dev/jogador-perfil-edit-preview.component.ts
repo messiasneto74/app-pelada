@@ -29,6 +29,7 @@ const previewProfile: PeladaPlayerProfileDto = {
   tags: ['reflexo', 'chuta bem'],
   isFixedList: true,
   userId: null,
+  photoUrl: null,
   paymentPlan: 'MONTHLY',
   attributes: {
     tecnica: 6,

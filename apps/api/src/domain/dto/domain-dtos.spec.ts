@@ -35,6 +35,16 @@ describe('T5 domain DTOs', () => {
     expect((await validate(dto)).length).toBe(0);
   });
 
+  it('PatchPlayerDto interpreta booleans de multipart (false não vira true)', async () => {
+    const dto = plainToInstance(PatchPlayerDto, {
+      isFixedList: 'false',
+      isGoalkeeper: 'false',
+    });
+    expect(dto.isFixedList).toBe(false);
+    expect(dto.isGoalkeeper).toBe(false);
+    expect((await validate(dto)).length).toBe(0);
+  });
+
   it('CreateMatchDto converte scheduledAt', async () => {
     const dto = plainToInstance(CreateMatchDto, {
       scheduledAt: '2026-11-01T19:00:00.000Z',

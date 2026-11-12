@@ -8,6 +8,7 @@ import { CreatePlayerDto } from '../domain/dto/create-player.dto';
 import { PatchPlayerDto } from '../domain/dto/patch-player.dto';
 import { MeService } from '../me/me.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PhotoStorageService } from '../storage/photo-storage.service';
 import {
   type PeladaRosterDto,
   canPatchPlayerProfile,
@@ -23,6 +24,7 @@ export class PeladaPlayersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly meService: MeService,
+    private readonly photoStorage: PhotoStorageService,
   ) {}
 
   async listPlayers(
@@ -96,6 +98,7 @@ export class PeladaPlayersService {
     peladaId: string,
     playerId: string,
     dto: PatchPlayerDto,
+    photo?: Express.Multer.File,
   ) {
     const user = await this.meService.getOrCreateUser(auth);
     await this.assertMember(peladaId, user.id);
@@ -148,6 +151,12 @@ export class PeladaPlayersService {
           })
         : undefined;
 
+    let photoUrl: string | undefined;
+    if (photo) {
+      this.photoStorage.assertValidUpload(photo);
+      photoUrl = await this.photoStorage.savePlayerPhoto(playerId, photo);
+    }
+
     const player = await this.prisma.player.update({
       where: { id: playerId },
       data: {
@@ -166,6 +175,7 @@ export class PeladaPlayersService {
           paymentPlan: patchDto.paymentPlan,
         }),
         ...(attributes !== undefined && { attributes }),
+        ...(photoUrl !== undefined && { photoUrl }),
         isFixedList,
       },
     });

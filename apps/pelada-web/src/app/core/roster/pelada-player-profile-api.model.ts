@@ -10,6 +10,7 @@ export type PeladaPlayerProfileDto = {
   tags: string[];
   isFixedList: boolean;
   userId: string | null;
+  photoUrl: string | null;
   paymentPlan: PlayerPaymentPlan;
   attributes: Record<string, number>;
 };
