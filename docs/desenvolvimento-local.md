@@ -214,7 +214,7 @@ npm.cmd run test:e2e
 
 Variáveis opcionais: `PELADA_WEB_URL`, `PELADA_API_URL`, `E2E_KC_USER`, `E2E_KC_PASSWORD` (padrão `dev` / `dev-pelada-local` — ver [credenciais-dev-local.md](credenciais-dev-local.md)).
 
-O fluxo MVP (`e2e/mvp-flow.spec.ts`) cadastra elenco via API (UI de adicionar jogador ainda é hint na #25). Presença, sorteio e campo são na UI; após confirmar na tela, sync na API alinha attendance. O botão **Fechar lista** é clicado na UI; se o `forkJoin` de PATCH do browser não emitir `close-list` a tempo no CI, o teste confirma `LIST_CLOSED` via `POST …/close-list` (mesmo contrato que a tela) e segue para Sorteio.
+O fluxo MVP (`e2e/mvp-flow.spec.ts`) cadastra elenco via API (UI de adicionar jogador ainda é hint na #25). Presença, sorteio e campo são na UI. Fechar lista navega para Sorteio logo após persistir `listClosed` (§3.4); a API sincroniza em segundo plano. O teste ainda pode `POST …/close-list` se o servidor não refletir `LIST_CLOSED` antes do draw.
 
 ## PowerShell
 

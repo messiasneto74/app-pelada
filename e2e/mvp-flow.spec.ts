@@ -4,7 +4,6 @@ import { loginAndOpenShell } from './helpers/shell-ready';
 import {
   closeListOnApi,
   confirmAllPendingOnApi,
-  markPresenceListClosedInSession,
   readActiveMatchId,
   readActivePeladaId,
   readNextMatchId,
@@ -85,32 +84,21 @@ test.describe('E2E fluxo MVP §D', () => {
       await modalConfirm.click({ force: true });
     }
 
-    // UI dispara PATCH em massa antes do close-list; no CI o forkJoin pode não emitir a tempo.
-    const uiCloseList = page
-      .waitForResponse(
-        (r) =>
-          r.url().includes('/attendance/close-list') &&
-          r.status() >= 200 &&
-          r.status() < 300,
-        { timeout: 45_000 },
-      )
-      .catch(() => null);
+    await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 60_000 });
+
     matchId = await readActiveMatchId(page).catch(() => matchId);
-    await closeListOnApi(request, token, peladaId, matchId).catch(async () => {
-      await uiCloseList;
-    });
-    await waitForListClosedOnApi(request, token, peladaId, matchId, 60_000);
-    await markPresenceListClosedInSession(page, matchId);
-    if (!page.url().includes('/partida/sorteio')) {
-      await page.getByRole('link', { name: 'Sorteio' }).click({ force: true });
+    try {
+      await waitForListClosedOnApi(request, token, peladaId, matchId, 90_000);
+    } catch {
+      await closeListOnApi(request, token, peladaId, matchId);
+      await waitForListClosedOnApi(request, token, peladaId, matchId, 30_000);
     }
-    await expect(page).toHaveURL(/\/partida\/sorteio/, { timeout: 90_000 });
+
     await expect(page.getByRole('heading', { name: 'Lista ainda aberta', level: 2 })).not.toBeVisible({
       timeout: 20_000,
     });
-
     const sortearAgora = page.getByRole('button', { name: 'Sortear agora' });
-    await expect(sortearAgora).toBeVisible({ timeout: 60_000 });
+    await expect(sortearAgora).toBeVisible({ timeout: 90_000 });
     await sortearAgora.click({ force: true });
 
     const drawError = page.getByRole('alert');

@@ -168,13 +168,22 @@ export async function markPresenceListClosedInSession(
 ): Promise<void> {
   await page.evaluate((mid) => {
     const prefix = 'pelada:presence:';
-    const raw = sessionStorage.getItem(prefix + mid);
-    if (!raw) {
-      return;
-    }
-    const snap = JSON.parse(raw) as { listClosed?: boolean };
+    sessionStorage.setItem(`${prefix}@active-match-id`, mid);
+    const key = prefix + mid;
+    const raw = sessionStorage.getItem(key);
+    const snap = raw
+      ? (JSON.parse(raw) as Record<string, unknown>)
+      : {
+          matchId: mid,
+          statusByPlayerId: {},
+          guests: [],
+          extraPlayers: [],
+          queueOrder: [],
+          presenceMode: 'ORGANIZER_CLOSES',
+        };
     snap.listClosed = true;
-    sessionStorage.setItem(prefix + mid, JSON.stringify(snap));
+    snap.matchId = mid;
+    sessionStorage.setItem(key, JSON.stringify(snap));
   }, matchId);
 }
 

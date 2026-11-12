@@ -664,8 +664,8 @@ export class PresencaPartidaComponent implements OnInit {
     const goSorteio = () => {
       void this.router.navigate([PARTIDA_SORTEIO_PATH]);
     };
+    goSorteio();
     if (!pelada || !mid || !this.isOrganizador()) {
-      goSorteio();
       return;
     }
     const playerRows = this.rows().filter(
@@ -682,8 +682,9 @@ export class PresencaPartidaComponent implements OnInit {
           )
         : of(undefined);
     sync.pipe(switchMap(() => this.attendanceApi.closeList(pelada.id, mid))).subscribe({
-      next: () => goSorteio(),
-      error: () => goSorteio(),
+      error: () => {
+        /* §3.4: já na tela Sorteio; sorteio pode reenviar close-list se draw falhar */
+      },
     });
   }
 
