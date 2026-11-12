@@ -43,12 +43,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     error: string;
     message: string | string[];
   } {
-    if (
-      exception &&
-      typeof exception === 'object' &&
-      'code' in exception &&
-      (exception as { code: string }).code === 'LIMIT_FILE_SIZE'
-    ) {
+    if (this.isUploadTooLarge(exception)) {
       return {
         statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
         error: 'Payload Too Large',
@@ -88,5 +83,38 @@ export class AllExceptionsFilter implements ExceptionFilter {
           ? exception.message
           : 'Unexpected error',
     };
+  }
+
+  private isUploadTooLarge(exception: unknown): boolean {
+    if (!exception || typeof exception !== 'object') {
+      return false;
+    }
+    const record = exception as Record<string, unknown>;
+    if (record.code === 'LIMIT_FILE_SIZE') {
+      return true;
+    }
+    if (record.name === 'MulterError' && record.code === 'LIMIT_FILE_SIZE') {
+      return true;
+    }
+    if (exception instanceof HttpException) {
+      const status = exception.getStatus();
+      const payload = exception.getResponse();
+      const payloadMessage =
+        typeof payload === 'string'
+          ? payload
+          : typeof payload === 'object' && payload !== null && 'message' in payload
+            ? String((payload as { message: unknown }).message)
+            : '';
+      const text = `${exception.message} ${payloadMessage}`;
+      if (
+        status === HttpStatus.PAYLOAD_TOO_LARGE &&
+        text.includes('File too large')
+      ) {
+        return true;
+      }
+    }
+    return (
+      typeof record.message === 'string' && record.message === 'File too large'
+    );
   }
 }
