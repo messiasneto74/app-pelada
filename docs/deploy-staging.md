@@ -20,6 +20,7 @@ Arquitetura base: [deploy-opcao-a.md](deploy-opcao-a.md).
 | `KEYCLOAK_JWKS_URI` | API dentro do Docker (URL interna ou pública — ver F0-7) |
 | `CORS_ORIGIN` | API — origem exata do Angular (`https://app…`) |
 | `PUBLIC_UPLOAD_BASE_URL` | API no Compose — URL pública das fotos (`https://api…/uploads`; repassada em `docker-compose.yml`) |
+| `KEYCLOAK_PUBLIC_HOSTNAME`, `KC_PROXY_HEADERS` | Container Keycloak — hostname público e headers `X-Forwarded-*` atrás do TLS |
 | `DATABASE_URL`, `POSTGRES_*`, `KEYCLOAK_ADMIN_*` | Compose no servidor |
 
 Modelo: copie [.env.staging.example](../.env.staging.example) → `.env` na VPS e preencha. **Nunca** commitar `.env` real.
@@ -33,10 +34,12 @@ Substitua `https://app.staging.seudominio.com` pela URL real do Angular:
 | Campo | Valor staging |
 |-------|----------------|
 | Valid redirect URIs | `https://app.staging.seudominio.com/*` |
-| Valid post logout redirect URIs | `https://app.staging.seudominio.com/` |
+| Valid post logout redirect URIs | `https://app.staging.seudominio.com/entrar` (ou `…/*`) |
 | Web origins | `https://app.staging.seudominio.com` |
 
-Sem **Web origins** (e CORS do IdP), o fluxo OIDC/PKCE no browser falha mesmo com redirect URIs corretas. O logout depende do **post logout redirect** acima.
+O Angular define `redirectUri` = `{origem}/entrar` (`auth.config.ts`) e o `angular-oauth2-oidc` usa `redirectUri` como fallback de **post logout** quando `postLogoutRedirectUri` não está setado — o logout envia `post_logout_redirect_uri` = `…/entrar`. Cadastre essa URI (ou wildcard `/*`) em **Valid post logout redirect URIs**.
+
+Sem **Web origins** (e CORS do IdP), o fluxo OIDC/PKCE no browser falha mesmo com redirect URIs corretas.
 
 API: `KEYCLOAK_ISSUER` e `KEYCLOAK_JWKS_URI` no `.env` devem usar o host público do Keycloak (`https://auth…`), como em `.env.staging.example`.
 
@@ -49,10 +52,25 @@ cp .env.staging.example .env   # editar senhas e hosts
 docker compose up -d --build   # = npm run stack:up
 ```
 
-Reverse proxy (Caddy / Traefik / Cloudflare Tunnel) encaminha:
+Reverse proxy (Caddy / Traefik / Cloudflare Tunnel) encaminha TLS e headers `X-Forwarded-Proto` / `X-Forwarded-Host`:
 
 - `api.staging…` → `localhost:3000` (container `api`)
 - `auth.staging…` → Keycloak `8080`
+
+### Keycloak atrás do reverse proxy (HTTPS público)
+
+Com `STAGING_KEYCLOAK_URL` / `KEYCLOAK_ISSUER` em **HTTPS** e o Keycloak ouvindo em HTTP na rede Docker, o realm precisa conhecer o **host público** e confiar nos headers do proxy — senão o documento OIDC expõe `issuer`/`authorization_endpoint` em `http://…:8080` e o Angular (`requireHttps: true` no build staging) falha no login.
+
+No `.env` da VPS (ver [.env.staging.example](../.env.staging.example)):
+
+| Variável | Exemplo |
+|----------|---------|
+| `KEYCLOAK_PUBLIC_HOSTNAME` | `auth.staging.seudominio.com` (host **sem** `https://`) |
+| `KC_PROXY_HEADERS` | `xforwarded` |
+
+O `docker-compose.yml` repassa essas variáveis ao serviço `keycloak` (`KC_HOSTNAME`, `KC_PROXY_HEADERS`). Referência: [Keycloak — hostname e reverse proxy](https://www.keycloak.org/server/hostname#_using_a_reverse_proxy).
+
+O smoke `npm run smoke:staging` já compara o `issuer` do `.well-known/openid-configuration` com `KEYCLOAK_ISSUER` — se o hostname/proxy estiver errado, o passo Keycloak falha antes do login manual.
 
 ## 3. Build do Angular (staging)
 
@@ -83,7 +101,7 @@ Verifica:
 2. Validação de `PUBLIC_UPLOAD_BASE_URL` (HTTPS, sem `localhost`, quando a API é pública)
 3. OpenID metadata do realm (`KEYCLOAK_ISSUER`)
 
-Login completo no staging (Google e-mail no IdP, se habilitado) fica como smoke manual após configurar redirect, post-logout e web origins.
+Smoke manual após o passo 3 acima: login OIDC e **logout** no browser (valida redirect/post-logout `…/entrar` e web origins).
 
 Equivalente local da stack: `npm.cmd run smoke:stack` e `npm.cmd run smoke:keycloak`.
 
@@ -105,3 +123,5 @@ Issue **DEPLOY-1** não exige pipeline de deploy automático — apenas document
 - [ ] `.env.staging.example` revisado
 - [ ] `npm run build:web:staging` com URLs reais de staging
 - [ ] `npm run smoke:staging` verde contra o ambiente publicado
+- [ ] Keycloak: `KEYCLOAK_PUBLIC_HOSTNAME` + `KC_PROXY_HEADERS`; client com post-logout `…/entrar`
+- [ ] Login + logout OIDC no app staging (smoke manual)

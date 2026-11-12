@@ -47,4 +47,10 @@ describe('staging-public-upload-env', () => {
     const yml = readFileSync(resolve(repoRoot, 'docker-compose.yml'), 'utf8');
     expect(yml).toMatch(/PUBLIC_UPLOAD_BASE_URL:\s*\$\{PUBLIC_UPLOAD_BASE_URL/);
   });
+
+  it('docker-compose repassa hostname e proxy headers ao Keycloak', () => {
+    const yml = readFileSync(resolve(repoRoot, 'docker-compose.yml'), 'utf8');
+    expect(yml).toMatch(/KC_HOSTNAME:\s*\$\{KEYCLOAK_PUBLIC_HOSTNAME/);
+    expect(yml).toMatch(/KC_PROXY_HEADERS:\s*\$\{KC_PROXY_HEADERS/);
+  });
 });
