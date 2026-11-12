@@ -32,7 +32,7 @@ app-futebol/
   apps/pelada-web/     # @pelada/web — Angular
   apps/api/            # @pelada/api — Nest (Prisma na F0-2)
   packages/core/       # @pelada/core — sorteio (Vitest)
-  apps/pelada-mobile/  # Capacitor — após STORE-1
+  apps/pelada-mobile/  # @pelada/mobile — Capacitor (STORE-1)
 ```
 
 Primeira vez:
@@ -215,6 +215,18 @@ npm.cmd run test:e2e
 Variáveis opcionais: `PELADA_WEB_URL`, `PELADA_API_URL`, `E2E_KC_USER`, `E2E_KC_PASSWORD` (padrão `dev` / `dev-pelada-local` — ver [credenciais-dev-local.md](credenciais-dev-local.md)).
 
 O fluxo MVP (`e2e/mvp-flow.spec.ts`) cadastra elenco via API (UI de adicionar jogador ainda é hint na #25). Presença, sorteio e campo são na UI. Fechar lista navega para Sorteio logo após persistir `listClosed` (§3.4); a API sincroniza em segundo plano. O teste ainda pode `POST …/close-list` se o servidor não refletir `LIST_CLOSED` antes do draw.
+
+## Mobile Capacitor (STORE-1)
+
+```powershell
+Set-Location D:\desenvolvimento\app-futebol
+npm.cmd run build:mobile
+npm.cmd run cap:open:android   # Android Studio
+```
+
+Staging: `npm.cmd run build:mobile:staging` antes de empacotar contra API/Keycloak públicos.
+
+Detalhes Play / App Store: [publicacao-lojas-play-app-store.md](publicacao-lojas-play-app-store.md) · [apps/pelada-mobile/README.md](../apps/pelada-mobile/README.md).
 
 ## PowerShell
 

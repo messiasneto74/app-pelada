@@ -27,3 +27,12 @@ prototipo/test-results/
 prototipo/playwright-report/
 e2e/test-results/
 e2e/playwright-report/
+
+# Capacitor / Android (STORE-1)
+apps/pelada-mobile/android/.gradle/
+apps/pelada-mobile/android/app/build/
+apps/pelada-mobile/android/build/
+apps/pelada-mobile/android/local.properties
+apps/pelada-mobile/android/.idea/
+apps/pelada-mobile/ios/App/Pods/
+apps/pelada-mobile/ios/DerivedData/
