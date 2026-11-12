@@ -111,6 +111,8 @@ services:
       KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:-http://localhost:8080/realms/pelada}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/pelada/protocol/openid-connect/certs
       DEV_AUTH_BYPASS: ${DEV_AUTH_BYPASS:-false}
+      PUBLIC_UPLOAD_BASE_URL: ${PUBLIC_UPLOAD_BASE_URL:-http://localhost:3000/uploads}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
 
 volumes:
   pelada_pg_app:

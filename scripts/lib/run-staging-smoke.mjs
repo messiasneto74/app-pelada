@@ -1,5 +1,6 @@
 import { waitForApiHealth } from './stack-health.mjs';
 import { waitForKeycloakMetadata } from './keycloak-metadata.mjs';
+import { assertPublicUploadBaseUrlForStaging } from './staging-public-upload-env.mjs';
 
 /**
  * Smoke pós-deploy staging (DEPLOY-1): API /health + metadata OIDC do Keycloak.
@@ -30,6 +31,16 @@ export async function runStagingSmoke(deps = {}) {
   if (!issuer.includes('/realms/')) {
     error('Defina KEYCLOAK_ISSUER ou STAGING_KEYCLOAK_URL + KEYCLOAK_REALM');
     onFatal();
+    return false;
+  }
+
+  if (
+    !assertPublicUploadBaseUrlForStaging({
+      apiBase,
+      error,
+      onFatal,
+    })
+  ) {
     return false;
   }
 

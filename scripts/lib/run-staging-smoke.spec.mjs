@@ -16,6 +16,9 @@ describe('run-staging-smoke', () => {
   });
 
   it('conclui quando API e Keycloak respondem', async () => {
+    const prev = process.env.PUBLIC_UPLOAD_BASE_URL;
+    process.env.PUBLIC_UPLOAD_BASE_URL = 'https://api.test/uploads';
+    try {
     const ok = await runStagingSmoke({
       apiBase: 'https://api.test',
       issuer: 'https://auth.test/realms/pelada',
@@ -26,5 +29,9 @@ describe('run-staging-smoke', () => {
       onFatal: () => {},
     });
     expect(ok).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env.PUBLIC_UPLOAD_BASE_URL;
+      else process.env.PUBLIC_UPLOAD_BASE_URL = prev;
+    }
   });
 });

@@ -19,11 +19,26 @@ Arquitetura base: [deploy-opcao-a.md](deploy-opcao-a.md).
 | `KEYCLOAK_ISSUER` | API (validação JWT) + smoke |
 | `KEYCLOAK_JWKS_URI` | API dentro do Docker (URL interna ou pública — ver F0-7) |
 | `CORS_ORIGIN` | API — origem exata do Angular (`https://app…`) |
+| `PUBLIC_UPLOAD_BASE_URL` | API no Compose — URL pública das fotos (`https://api…/uploads`; repassada em `docker-compose.yml`) |
 | `DATABASE_URL`, `POSTGRES_*`, `KEYCLOAK_ADMIN_*` | Compose no servidor |
 
 Modelo: copie [.env.staging.example](../.env.staging.example) → `.env` na VPS e preencha. **Nunca** commitar `.env` real.
 
-Keycloak: redirect URIs do client `pelada-web` = `https://app.staging.seudominio.com/*`.
+### Keycloak — client `pelada-web` (staging)
+
+O import local [`infra/keycloak/import/pelada-realm.json`](../infra/keycloak/import/pelada-realm.json) traz apenas **localhost** em `redirectUris` e `webOrigins`. No servidor de staging, ajuste o client no **admin do Keycloak** (ou um realm de staging separado) **antes** de testar login no browser — alinhado a [ambiente-dev-auth.md](ambiente-dev-auth.md).
+
+Substitua `https://app.staging.seudominio.com` pela URL real do Angular:
+
+| Campo | Valor staging |
+|-------|----------------|
+| Valid redirect URIs | `https://app.staging.seudominio.com/*` |
+| Valid post logout redirect URIs | `https://app.staging.seudominio.com/` |
+| Web origins | `https://app.staging.seudominio.com` |
+
+Sem **Web origins** (e CORS do IdP), o fluxo OIDC/PKCE no browser falha mesmo com redirect URIs corretas. O logout depende do **post logout redirect** acima.
+
+API: `KEYCLOAK_ISSUER` e `KEYCLOAK_JWKS_URI` no `.env` devem usar o host público do Keycloak (`https://auth…`), como em `.env.staging.example`.
 
 ## 2. Subir stack na VPS
 
@@ -65,7 +80,10 @@ npm.cmd run smoke:staging
 Verifica:
 
 1. `GET {API}/health`
-2. OpenID metadata do realm (`KEYCLOAK_ISSUER`)
+2. Validação de `PUBLIC_UPLOAD_BASE_URL` (HTTPS, sem `localhost`, quando a API é pública)
+3. OpenID metadata do realm (`KEYCLOAK_ISSUER`)
+
+Login completo no staging (Google e-mail no IdP, se habilitado) fica como smoke manual após configurar redirect, post-logout e web origins.
 
 Equivalente local da stack: `npm.cmd run smoke:stack` e `npm.cmd run smoke:keycloak`.
 
