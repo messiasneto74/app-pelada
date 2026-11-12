@@ -9,6 +9,7 @@ App de pelada (organização de partidas, presença, sorteio). Monorepo npm:
 | Pacote | Caminho | Stack |
 |--------|---------|--------|
 | Web | `apps/pelada-web` | Angular 19 |
+| Mobile | `apps/pelada-mobile` | Capacitor 7 (STORE-1) |
 | API | `apps/api` | NestJS 11 + Prisma + PostgreSQL |
 | Core | `packages/core` | TypeScript + Vitest (motor de sorteio) |
 | Protótipo | `prototipo/` | HTML/JS referência UI Resenha (não é produção) |
@@ -33,6 +34,7 @@ npm run stack:up:staging   # igual + overlay Keycloak hostname/proxy (DEPLOY-1)
 npm run smoke:stack
 npm run smoke:staging   # pós-deploy DEPLOY-1 (URLs em .env.staging.example)
 npm run build:web:staging
+npm run build:mobile   # web + cap sync (Android/iOS)
 npm run db:migrate
 npm run keycloak:up
 npm run keycloak:reset  # volume IdP + credenciais do .env
