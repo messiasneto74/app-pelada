@@ -26,6 +26,7 @@ import { PaymentLedgerQueryDto } from '../domain/dto/payment-ledger-query.dto';
 import { CreatePeladaDto } from './dto/create-pelada.dto';
 import { PeladaPaymentsService } from './pelada-payments.service';
 import { PeladaPlayersService } from './pelada-players.service';
+import { PatchPlayerBodyPipe } from './patch-player-body.pipe';
 import { PeladasService } from './peladas.service';
 
 const photoUpload = memoryStorage();
@@ -168,7 +169,7 @@ export class PeladasController {
     @Param('peladaId') peladaId: string,
     @Param('playerId') playerId: string,
     @UploadedFile() photo: Express.Multer.File | undefined,
-    @Body() body: PatchPlayerDto,
+    @Body(PatchPlayerBodyPipe) body: PatchPlayerDto,
   ) {
     return this.peladaPlayersService.patchPlayer(
       user,

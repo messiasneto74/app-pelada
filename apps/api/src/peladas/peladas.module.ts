@@ -5,11 +5,17 @@ import { StorageModule } from '../storage/storage.module';
 import { PeladaPaymentsService } from './pelada-payments.service';
 import { PeladaPlayersService } from './pelada-players.service';
 import { PeladasController } from './peladas.controller';
+import { PatchPlayerBodyPipe } from './patch-player-body.pipe';
 import { PeladasService } from './peladas.service';
 
 @Module({
   imports: [AuthModule, MeModule, StorageModule],
   controllers: [PeladasController],
-  providers: [PeladasService, PeladaPlayersService, PeladaPaymentsService],
+  providers: [
+    PeladasService,
+    PeladaPlayersService,
+    PeladaPaymentsService,
+    PatchPlayerBodyPipe,
+  ],
 })
 export class PeladasModule {}

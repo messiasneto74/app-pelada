@@ -120,6 +120,40 @@ if (runHarness) {
       expect(patched.body.photoUrl).toMatch(/\/uploads\/.+\.jpg$/);
     });
 
+    it('PATCH multipart attributes[chute]=9 com foto persiste nota do atributo', async () => {
+      const token = signTestJwt({
+        sub: 'st-attr',
+        email: 'attr@pelada.test',
+      });
+
+      const peladaRes = await request(app.getHttpServer())
+        .post('/peladas')
+        .set('Authorization', `Bearer ${token}`)
+        .field('name', 'Attr foto')
+        .expect(201);
+
+      const peladaId = peladaRes.body.id as string;
+
+      const created = await request(app.getHttpServer())
+        .post(`/peladas/${peladaId}/players`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ displayName: 'Attr Player' })
+        .expect(201);
+
+      const patched = await request(app.getHttpServer())
+        .patch(`/peladas/${peladaId}/players/${created.body.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .field('attributes[chute]', '9')
+        .attach('photo', Buffer.from('attr-jpeg'), {
+          filename: 'attr.jpg',
+          contentType: 'image/jpeg',
+        })
+        .expect(200);
+
+      expect(patched.body.attributes.chute).toBe(9);
+      expect(patched.body.photoUrl).toMatch(/\/uploads\/.+\.jpg$/);
+    });
+
     it('PATCH player com foto: 200, arquivo no disco e GET /uploads/*', async () => {
       const token = signTestJwt({ sub: 'st-player', email: 'pl@pelada.test' });
 
