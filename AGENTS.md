@@ -34,6 +34,8 @@ npm run db:migrate
 npm run keycloak:up
 npm run keycloak:reset  # volume IdP + credenciais do .env
 npm run smoke:keycloak
+npm run test:e2e          # Playwright (E2E-1) — stack + dev:web rodando
+npm run test:e2e:install  # Chromium do Playwright
 ```
 
 No Windows PowerShell, use `npm.cmd` se scripts estiverem bloqueados.
