@@ -24,7 +24,9 @@ gh secret set CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK --repo messiasneto74/app-pela
 gh secret set CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK_KEY --repo messiasneto74/app-pelada
 ```
 
-O job **`Cursor Automation — revisar PR`** em `pr-tests.yml` faz `POST` no webhook **depois** de `test:all + R-07` (sucesso ou falha).
+O job **`Cursor Automation — revisar PR`** em `pr-tests.yml` faz `POST` no webhook só se **`test:all + R-07` falhar**.
+
+Se `test:all` passar, o webhook sai de `e2e-pr.yml` **depois** de `test:e2e` verde e de confirmar `test:all + R-07` no mesmo SHA (evita reprovar com E2E ainda rodando).
 
 ## O que aparece no GitHub
 
