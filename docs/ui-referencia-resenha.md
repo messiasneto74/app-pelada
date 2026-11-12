@@ -16,17 +16,20 @@ O **produto** continua definido pela [especificação das telas](../App%20de%20P
 
 Extraídos de `prototipo/styles.css` (`:root`):
 
-| Token | Valor | Uso |
-|-------|-------|-----|
-| `--bg` | `#f5f6f3` | fundo da área de trabalho |
-| `--paper` | `#ffffff` | cards, sidebar |
-| `--ink` | `#202c27` | texto principal |
-| `--muted` | `#7b847e` | legendas |
-| `--green` | `#173d32` | marca, hero, `theme-color` |
-| `--lime` | `#dcf58a` | CTA primário, destaques |
-| `--line` | `#e7eae4` | bordas |
-| `--accent` | `#6b8a45` | links, foco secundário |
-| `--red` | `#b94848` | estados de erro / alerta |
+| Token | Valor (protótipo) | Valor no Angular (`resenha-tokens`) | Uso |
+|-------|-------------------|-------------------------------------|-----|
+| `--bg` | `#f5f6f3` | idem | fundo da área de trabalho |
+| `--paper` | `#ffffff` | idem | cards, sidebar |
+| `--ink` | `#202c27` | idem | texto principal |
+| `--muted` | `#7b847e` | `#656f69` (AA) | legendas |
+| `--green` | `#173d32` | idem | marca, hero, `theme-color` |
+| `--lime` | `#dcf58a` | idem | CTA primário, destaques |
+| `--line` | `#e7eae4` | idem | bordas |
+| `--accent` | `#6b8a45` | `#587338` (AA) | links, borda de foco em campos |
+| `--red` | `#b94848` | idem | estados de erro / alerta |
+| `--focus` | — | `#456b3a` | anel `:focus-visible` (AA) |
+
+Contraste e checklist de formulários: [a11y-t1.md](a11y-t1.md).
 
 **Tipografia:** títulos **Barlow Condensed** (600–800); corpo **DM Sans** (400–700). Fallback: `system-ui`. No Angular, carregar as mesmas famílias Google Fonts ou self-host.
 
