@@ -16,8 +16,10 @@ export function readCapacitorWebDirFromConfig(configPath = resolve(repoRoot, 'ap
   return match[1];
 }
 
-export function assertCapacitorWebDirMatchesAngular() {
-  const got = readCapacitorWebDirFromConfig();
+export function assertCapacitorWebDirMatchesAngular(
+  configPath = resolve(repoRoot, 'apps/pelada-mobile/capacitor.config.ts'),
+) {
+  const got = readCapacitorWebDirFromConfig(configPath);
   if (got !== CAPACITOR_WEB_DIR) {
     throw new Error(`webDir Capacitor deve ser ${CAPACITOR_WEB_DIR}, recebido ${got}`);
   }
