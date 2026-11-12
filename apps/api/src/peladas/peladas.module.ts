@@ -5,7 +5,7 @@ import { StorageModule } from '../storage/storage.module';
 import { PeladaPaymentsService } from './pelada-payments.service';
 import { PeladaPlayersService } from './pelada-players.service';
 import { PeladasController } from './peladas.controller';
-import { PatchPlayerBodyPipe } from './patch-player-body.pipe';
+import { MultipartPlayerPatchInterceptor } from './multipart-player-patch.interceptor';
 import { PeladasService } from './peladas.service';
 
 @Module({
@@ -15,7 +15,7 @@ import { PeladasService } from './peladas.service';
     PeladasService,
     PeladaPlayersService,
     PeladaPaymentsService,
-    PatchPlayerBodyPipe,
+    MultipartPlayerPatchInterceptor,
   ],
 })
 export class PeladasModule {}
