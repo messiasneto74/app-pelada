@@ -20,6 +20,7 @@ const samplePlayer = {
   tags: ['passe'],
   paymentPlan: 'PER_MATCH',
   isFixedList: true,
+  photoUrl: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 } satisfies Player;
@@ -35,6 +36,7 @@ describe('pelada roster logic (3.7-API)', () => {
       tags: ['passe'],
       isFixedList: true,
       userId: null,
+      photoUrl: null,
     });
   });
 

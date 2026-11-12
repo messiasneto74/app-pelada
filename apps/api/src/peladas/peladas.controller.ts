@@ -157,13 +157,26 @@ export class PeladasController {
 
   @Patch('peladas/:peladaId/players/:playerId')
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('photo', {
+      storage: photoUpload,
+      limits: { fileSize: maxPhotoBytes },
+    }),
+  )
   patchPeladaPlayer(
     @CurrentUser() user: AuthUserPayload,
     @Param('peladaId') peladaId: string,
     @Param('playerId') playerId: string,
+    @UploadedFile() photo: Express.Multer.File | undefined,
     @Body() body: PatchPlayerDto,
   ) {
-    return this.peladaPlayersService.patchPlayer(user, peladaId, playerId, body);
+    return this.peladaPlayersService.patchPlayer(
+      user,
+      peladaId,
+      playerId,
+      body,
+      photo,
+    );
   }
 
   @Delete('peladas/:peladaId/players/:playerId')
