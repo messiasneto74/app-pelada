@@ -91,6 +91,8 @@ Saída: `apps/pelada-web/dist/pelada-web/browser/` → publicar em Cloudflare Pa
 
 O arquivo `environment.staging.generated.ts` é criado pelo script e está no `.gitignore`.
 
+**STORE-1:** após publicar o bundle, a política de privacidade fica em `https://app.<seu-dominio>/privacidade.html` (arquivo em `apps/pelada-web/public/privacidade.html`).
+
 ## 4. Smoke pós-deploy
 
 Com `.env` carregado (ou variáveis exportadas apontando para **staging** na internet):

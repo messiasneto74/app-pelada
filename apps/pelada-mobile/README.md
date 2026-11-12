@@ -8,7 +8,19 @@ Shell nativo que embute o build estático de `apps/pelada-web`. **Não** dupliqu
 - **Android:** Android Studio, JDK 17+ (`./gradlew bundleRelease` → `.aab`)
 - **iOS:** macOS + Xcode (Archive → TestFlight) — não roda no CI Windows
 
-API e Keycloak em **HTTPS** (ver [docs/deploy-staging.md](../../docs/deploy-staging.md)). No client Keycloak, inclua redirect/deep link do app quando usar scheme customizado.
+API e Keycloak em **HTTPS** (ver [docs/deploy-staging.md](../../docs/deploy-staging.md)).
+
+### Deep links / OAuth
+
+| Plataforma | Config |
+|------------|--------|
+| Android | `AndroidManifest.xml` — `com.pelada.app://callback` + `https://{host}/entrar` (`manifestPlaceholders.peladaDeepLinkHost` em `android/app/build.gradle`) |
+| iOS | `Info.plist` — URL scheme `com.pelada.app` (Universal Links / Associated Domains no Xcode ao publicar) |
+| Keycloak | Mesmos hosts do web staging + scheme do app na ficha do client `pelada-web` |
+
+Política de privacidade na loja: `https://app.<dominio>/privacidade.html` (ver `apps/pelada-web/public/privacidade.html`).
+
+Ícone/splash: cores Resenha `#173d32` / `#dcf58a` (drawables vetoriais; substituir PNG legacy antes da produção se quiser arte final).
 
 ## Comandos (raiz do monorepo)
 

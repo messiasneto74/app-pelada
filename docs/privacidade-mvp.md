@@ -1,6 +1,10 @@
 # Política de privacidade (MVP — STORE-1)
 
-Publicar este texto em URL **HTTPS** estável (mesmo domínio do app web) antes de submeter Play Store ou App Store. Substituir placeholders `SEU_DOMINIO` e e-mail de suporte.
+Publicar em URL **HTTPS** estável no mesmo domínio do Angular:
+
+- Página estática incluída no build web: `apps/pelada-web/public/privacidade.html` → `https://app.<seu-dominio>/privacidade.html` após `build:web` / deploy staging (DEPLOY-1).
+
+Substituir placeholders `SEU_DOMINIO` e e-mail de suporte na cópia publicada.
 
 ## Pelada — resumo
 
