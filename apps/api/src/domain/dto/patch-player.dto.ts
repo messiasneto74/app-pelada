@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -11,6 +12,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { PaymentPlan } from '@prisma/client';
+import { parseOptionalBoolean } from '../../common/parse-optional-boolean';
 
 export class PatchPlayerDto {
   @IsOptional()
@@ -19,6 +21,7 @@ export class PatchPlayerDto {
   displayName?: string;
 
   @IsOptional()
+  @Transform(({ value }) => parseOptionalBoolean(value))
   @IsBoolean()
   isGoalkeeper?: boolean;
 
@@ -42,6 +45,7 @@ export class PatchPlayerDto {
   paymentPlan?: PaymentPlan;
 
   @IsOptional()
+  @Transform(({ value }) => parseOptionalBoolean(value))
   @IsBoolean()
   isFixedList?: boolean;
 

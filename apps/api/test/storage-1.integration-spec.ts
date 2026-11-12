@@ -78,6 +78,48 @@ if (runHarness) {
       expect(res.body.message).toContain('5 MB');
     });
 
+    it('PATCH multipart isFixedList=false com foto não coerce para true', async () => {
+      const token = signTestJwt({
+        sub: 'st-bool',
+        email: 'bool@pelada.test',
+      });
+
+      const peladaRes = await request(app.getHttpServer())
+        .post('/peladas')
+        .set('Authorization', `Bearer ${token}`)
+        .field('name', 'Elenco bool')
+        .expect(201);
+
+      const peladaId = peladaRes.body.id as string;
+
+      await request(app.getHttpServer())
+        .patch(`/peladas/${peladaId}/rules`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ fixedListOnly: true })
+        .expect(200);
+
+      const created = await request(app.getHttpServer())
+        .post(`/peladas/${peladaId}/players`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ displayName: 'Bool Test', isFixedList: true })
+        .expect(201);
+
+      expect(created.body.isFixedList).toBe(true);
+
+      const patched = await request(app.getHttpServer())
+        .patch(`/peladas/${peladaId}/players/${created.body.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .field('isFixedList', 'false')
+        .attach('photo', Buffer.from('jpeg'), {
+          filename: 'bool.jpg',
+          contentType: 'image/jpeg',
+        })
+        .expect(200);
+
+      expect(patched.body.isFixedList).toBe(false);
+      expect(patched.body.photoUrl).toMatch(/\/uploads\/.+\.jpg$/);
+    });
+
     it('PATCH player com foto: 200, arquivo no disco e GET /uploads/*', async () => {
       const token = signTestJwt({ sub: 'st-player', email: 'pl@pelada.test' });
 
