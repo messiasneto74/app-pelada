@@ -29,6 +29,7 @@ npm run dev:api    # :3000
 npm run dev:web    # :4200
 npm run db:up      # Docker Postgres :5433
 npm run stack:up   # Postgres + Keycloak + API (F0-7)
+npm run stack:up:staging   # igual + overlay Keycloak hostname/proxy (DEPLOY-1)
 npm run smoke:stack
 npm run smoke:staging   # pós-deploy DEPLOY-1 (URLs em .env.staging.example)
 npm run build:web:staging

@@ -31,6 +31,7 @@
     "db:test:migrate": "node scripts/db-test-migrate.mjs",
     "db:down": "docker compose down",
     "stack:up": "docker compose up -d --build",
+    "stack:up:staging": "docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build",
     "stack:down": "docker compose down",
     "stack:logs": "docker compose logs -f --tail=100",
     "smoke:stack": "node scripts/stack-smoke.mjs",

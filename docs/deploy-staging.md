@@ -49,8 +49,12 @@ API: `KEYCLOAK_ISSUER` e `KEYCLOAK_JWKS_URI` no `.env` devem usar o host públic
 git clone https://github.com/messiasneto74/app-pelada.git
 cd app-pelada
 cp .env.staging.example .env   # editar senhas e hosts
-docker compose up -d --build   # = npm run stack:up
+docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
 ```
+
+Dev local / CI continuam com `npm run stack:up` (somente `docker-compose.yml`, sem forçar `KC_HOSTNAME` vazio — isso impede o Keycloak de subir).
+
+Na VPS, equivalente: `npm run stack:up:staging`.
 
 Reverse proxy (Caddy / Traefik / Cloudflare Tunnel) encaminha TLS e headers `X-Forwarded-Proto` / `X-Forwarded-Host`:
 
@@ -68,7 +72,7 @@ No `.env` da VPS (ver [.env.staging.example](../.env.staging.example)):
 | `KEYCLOAK_PUBLIC_HOSTNAME` | `auth.staging.seudominio.com` (host **sem** `https://`) |
 | `KC_PROXY_HEADERS` | `xforwarded` |
 
-O `docker-compose.yml` repassa essas variáveis ao serviço `keycloak` (`KC_HOSTNAME`, `KC_PROXY_HEADERS`). Referência: [Keycloak — hostname e reverse proxy](https://www.keycloak.org/server/hostname#_using_a_reverse_proxy).
+O arquivo [`docker-compose.staging.yml`](../docker-compose.staging.yml) (overlay) repassa `KC_HOSTNAME` e `KC_PROXY_HEADERS` ao serviço `keycloak`. Referência: [Keycloak — hostname e reverse proxy](https://www.keycloak.org/server/hostname#_using_a_reverse_proxy).
 
 O smoke `npm run smoke:staging` já compara o `issuer` do `.well-known/openid-configuration` com `KEYCLOAK_ISSUER` — se o hostname/proxy estiver errado, o passo Keycloak falha antes do login manual.
 

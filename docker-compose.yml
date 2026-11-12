@@ -80,9 +80,6 @@ services:
       KC_DB_USERNAME: ${POSTGRES_KEYCLOAK_USER:-keycloak}
       KC_DB_PASSWORD: ${POSTGRES_KEYCLOAK_PASSWORD:-keycloak_dev}
       KC_HOSTNAME_STRICT: "false"
-      # Staging/VPS: definir KEYCLOAK_PUBLIC_HOSTNAME + KC_PROXY_HEADERS=xforwarded no .env (docs/deploy-staging.md)
-      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_HOSTNAME:-}
-      KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-}
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "false"
