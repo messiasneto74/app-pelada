@@ -72,9 +72,10 @@ jobs:
   cursor-revisar-pr:
     name: Cursor Automation — revisar PR
     needs: test-all
+  # Falha de test:all dispara revisão; sucesso aguarda job pós-E2E (e2e-pr.yml) para incluir test:e2e no SHA.
     if: >-
       always() &&
-      needs.test-all.result != 'cancelled' &&
+      needs.test-all.result == 'failure' &&
       github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 3

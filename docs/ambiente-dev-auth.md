@@ -35,7 +35,7 @@ Copie [.env.example](../.env.example) para `.env` na raiz (Compose: `npm run sta
 | Standard flow | ON |
 | Direct access grants | OFF (não usar senha direto na API) |
 | Valid redirect URIs | `http://localhost:4200/*` |
-| Valid post logout redirect URIs | `http://localhost:4200/` |
+| Valid post logout redirect URIs | `http://localhost:4200/entrar` (ou `…/*` — o app usa `/entrar` como `redirectUri`; ver `auth.config.ts`) |
 | Web origins | `http://localhost:4200` |
 | PKCE | S256 (obrigatório para client público) |
 

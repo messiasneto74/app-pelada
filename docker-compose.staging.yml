@@ -1,0 +1,10 @@
+# Overlay VPS/staging (DEPLOY-1): hostname público + proxy TLS.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
+# Não use no dev/CI local (sem KEYCLOAK_PUBLIC_HOSTNAME) — ver docs/deploy-staging.md
+name: pelada
+
+services:
+  keycloak:
+    environment:
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_HOSTNAME:?defina KEYCLOAK_PUBLIC_HOSTNAME no .env de staging}
+      KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
