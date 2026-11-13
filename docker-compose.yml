@@ -7,7 +7,7 @@ services:
     container_name: pelada-postgres-app
     restart: unless-stopped
     ports:
-      - "${POSTGRES_APP_PORT:-5433}:5432"
+      - "127.0.0.1:${POSTGRES_APP_PORT:-5433}:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_APP_USER:-pelada_app}
       POSTGRES_PASSWORD: ${POSTGRES_APP_PASSWORD:-pelada_app_dev}
@@ -25,7 +25,7 @@ services:
     container_name: pelada-postgres-app-test
     restart: unless-stopped
     ports:
-      - "${POSTGRES_APP_TEST_PORT:-5435}:5432"
+      - "127.0.0.1:${POSTGRES_APP_TEST_PORT:-5435}:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_APP_TEST_USER:-pelada_test}
       POSTGRES_PASSWORD: ${POSTGRES_APP_TEST_PASSWORD:-pelada_test_dev}
@@ -47,7 +47,7 @@ services:
     container_name: pelada-postgres-keycloak
     restart: unless-stopped
     ports:
-      - "${POSTGRES_KEYCLOAK_PORT:-5434}:5432"
+      - "127.0.0.1:${POSTGRES_KEYCLOAK_PORT:-5434}:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_KEYCLOAK_USER:-keycloak}
       POSTGRES_PASSWORD: ${POSTGRES_KEYCLOAK_PASSWORD:-keycloak_dev}
@@ -113,9 +113,13 @@ services:
       DEV_AUTH_BYPASS: ${DEV_AUTH_BYPASS:-false}
       PUBLIC_UPLOAD_BASE_URL: ${PUBLIC_UPLOAD_BASE_URL:-http://localhost:3000/uploads}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
+    volumes:
+      - pelada_uploads:/app/uploads
 
 volumes:
   pelada_pg_app:
     name: pelada_pg_app
   pelada_pg_keycloak:
     name: pelada_pg_keycloak
+  pelada_uploads:
+    name: pelada_uploads

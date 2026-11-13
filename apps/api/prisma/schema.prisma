@@ -104,6 +104,7 @@ model Player {
   peladaId     String      @map("pelada_id")
   userId       String?     @map("user_id")
   displayName  String      @map("display_name")
+  isGuest      Boolean     @default(false) @map("is_guest")
   isGoalkeeper Boolean     @default(false) @map("is_goalkeeper")
   position     String?
   rating       Int?

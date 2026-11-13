@@ -201,12 +201,11 @@ export class PeladasService {
 
     const [rosterPlayerCount, nextMatch, receivedAgg, expectedAgg] =
       await Promise.all([
-        this.prisma.player.count({ where: { peladaId } }),
+        this.prisma.player.count({ where: { peladaId, isGuest: false } }),
         this.prisma.match.findFirst({
           where: {
             peladaId,
             status: { not: 'FINISHED' },
-            scheduledAt: { gte: now },
           },
           orderBy: { scheduledAt: 'asc' },
           include: {

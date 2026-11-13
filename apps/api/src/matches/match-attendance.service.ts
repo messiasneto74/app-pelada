@@ -145,6 +145,7 @@ export class MatchAttendanceService {
         position: 'Convidado',
         rating: 5,
         tags: [],
+        isGuest: true,
       },
     });
     await this.prisma.matchAttendance.create({
@@ -340,7 +341,7 @@ export class MatchAttendanceService {
 
   private async ensureAttendanceRows(match: Match): Promise<void> {
     const players = await this.prisma.player.findMany({
-      where: { peladaId: match.peladaId },
+      where: { peladaId: match.peladaId, isGuest: false },
       orderBy: { createdAt: 'asc' },
     });
     const existing = await this.prisma.matchAttendance.findMany({
@@ -410,14 +411,19 @@ export class MatchAttendanceService {
   }
 
   private assertListOpenForEdits(match: Match, isOrganizador: boolean): void {
-    if (match.status !== 'LIST_CLOSED') {
+    if (match.status === 'SCHEDULED') {
       return;
     }
     if (!isOrganizador) {
       throw new ForbiddenException('Lista fechada para novas alterações.');
     }
+    if (match.status === 'LIST_CLOSED') {
+      throw new BadRequestException(
+        'Lista fechada. Reabra a lista para alterar presenças.',
+      );
+    }
     throw new BadRequestException(
-      'Lista fechada. Reabra a lista para alterar presenças.',
+      'Partida já foi sorteada ou está em campo. Presenças não podem mais ser alteradas.',
     );
   }
 

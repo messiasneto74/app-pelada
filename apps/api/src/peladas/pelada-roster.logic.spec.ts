@@ -13,6 +13,7 @@ const samplePlayer = {
   peladaId: 'pel1',
   userId: null,
   displayName: 'Ana',
+  isGuest: false,
   isGoalkeeper: false,
   position: 'Meio',
   rating: 8,

@@ -255,6 +255,44 @@ if (runHarness) {
       expect(['CONFIRMED', 'QUEUE']).toContain(row.status);
     });
 
+    it('convidado não vira jogador permanente do elenco (A3)', async () => {
+      const { pelada, match, token } = await seedMatch();
+
+      const guestRes = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/guests`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ displayName: 'Visitante' })
+        .expect(201);
+      const guest = guestRes.body.entries.find(
+        (e: { isGuest: boolean }) => e.isGuest,
+      );
+      expect(guest).toBeDefined();
+
+      const roster = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/players`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(
+        roster.body.players.some(
+          (p: { id: string }) => p.id === guest.playerId,
+        ),
+      ).toBe(false);
+
+      const nextMatch = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-10-08T19:00:00Z'),
+      });
+      const nextList = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${nextMatch.id}/attendance`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(
+        nextList.body.entries.some(
+          (e: { playerId: string }) => e.playerId === guest.playerId,
+        ),
+      ).toBe(false);
+    });
+
     it('confirmações concorrentes não furam a capacidade (C3)', async () => {
       const sub = `att-c3-${Math.random().toString(36).slice(2, 8)}`;
       const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
@@ -405,6 +443,67 @@ if (runHarness) {
         where: { id: match.id },
       });
       expect(unchanged.status).toBe('IN_PROGRESS');
+    });
+
+    it('presença não pode ser editada depois do sorteio (A4)', async () => {
+      const sub = `att-a4-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const pelada = await createPelada(prisma, { owner: org });
+      const token = signTestJwt({
+        sub: `${sub}-org`,
+        email: org.email ?? 'o@y.z',
+      });
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-10-01T19:00:00Z'),
+      });
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { teamCount: 2, playersPerTeam: 2, capacity: null },
+      });
+      const players = [];
+      for (let i = 0; i < 4; i++) {
+        players.push(
+          await createPlayer(prisma, {
+            peladaId: pelada.id,
+            displayName: `P${i}`,
+          }),
+        );
+      }
+      for (const p of players) {
+        await request(app.getHttpServer())
+          .patch(
+            `/peladas/${pelada.id}/matches/${match.id}/attendance/${p.id}`,
+          )
+          .set('Authorization', `Bearer ${token}`)
+          .send({ status: 'CONFIRMED' })
+          .expect(200);
+      }
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/close-list`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/draw`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({})
+        .expect(201);
+
+      // Depois de DRAWN, presença não pode mais ser alterada pelo organizador.
+      await request(app.getHttpServer())
+        .patch(
+          `/peladas/${pelada.id}/matches/${match.id}/attendance/${players[0].id}`,
+        )
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'DECLINED' })
+        .expect(400);
+
+      const unchanged = await prisma.matchAttendance.findUnique({
+        where: {
+          matchId_playerId: { matchId: match.id, playerId: players[0].id },
+        },
+      });
+      expect(unchanged?.status).toBe('CONFIRMED');
     });
   });
 }
