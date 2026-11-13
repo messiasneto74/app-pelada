@@ -1,5 +1,7 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnDestroy, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { OAuthService } from 'angular-oauth2-oidc';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaApiService } from '../../core/pelada/pelada-api.service';
 import {
@@ -131,6 +133,7 @@ export class CriarPeladaComponent implements OnDestroy {
   private readonly peladaContext = inject(PeladaContextService);
   private readonly peladaApi = inject(PeladaApiService);
   private readonly router = inject(Router);
+  private readonly oauth = inject(OAuthService);
 
   readonly photoAccept = PHOTO_ACCEPT;
   readonly weekdays = WEEKDAY_OPTIONS;
@@ -207,6 +210,11 @@ export class CriarPeladaComponent implements OnDestroy {
       return;
     }
 
+    if (!this.oauth.hasValidAccessToken()) {
+      this.nameError.set('Entre na sua conta em /entrar para criar a pelada.');
+      return;
+    }
+
     this.submitting.set(true);
     const preview = this.photoPreview();
     this.objectUrl = null;
@@ -229,7 +237,7 @@ export class CriarPeladaComponent implements OnDestroy {
           });
           void this.router.navigate(['/inicio/regras']);
         },
-        error: (err: unknown) => {
+        error: (err: HttpErrorResponse) => {
           this.nameError.set(mapCreatePeladaApiError(err));
           this.submitting.set(false);
         },
