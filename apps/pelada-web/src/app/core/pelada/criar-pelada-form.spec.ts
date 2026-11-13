@@ -1,5 +1,6 @@
 import {
   isCriarPeladaFormValid,
+  mapCreatePeladaApiError,
   MAX_PHOTO_BYTES,
   validateCriarPeladaForm,
   validatePeladaPhotoFile,
@@ -27,5 +28,10 @@ describe('criar-pelada-form', () => {
     expect(WEEKDAY_OPTIONS.length).toBe(7);
     expect(WEEKDAY_OPTIONS[0].value).toBe(0);
     expect(WEEKDAY_OPTIONS[6].value).toBe(6);
+  });
+
+  it('mapCreatePeladaApiError traduz 401 e API offline', () => {
+    expect(mapCreatePeladaApiError({ status: 401 })).toContain('Sessão expirada');
+    expect(mapCreatePeladaApiError({ status: 0 })).toContain('contactar a API');
   });
 });

@@ -48,6 +48,7 @@ export const routes: Routes = [
       },
       {
         path: 'criar-pelada',
+        canActivate: [authGuard],
         loadComponent: () =>
           import('./features/onboarding/criar-pelada.component').then(
             (m) => m.CriarPeladaComponent,
