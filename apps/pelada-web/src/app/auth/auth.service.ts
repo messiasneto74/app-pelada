@@ -137,7 +137,7 @@ export class AuthService {
    */
   async loginWithPassword(username: string, password: string): Promise<void> {
     await this.ensureDiscovery();
-    await this.oauth.fetchTokenUsingPasswordFlow(
+    await this.oauth.fetchTokenUsingPasswordFlowAndLoadUserProfile(
       username.trim(),
       password,
     );

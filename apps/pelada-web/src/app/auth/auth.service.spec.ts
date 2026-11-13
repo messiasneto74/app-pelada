@@ -47,6 +47,75 @@ describe('mapRegisterError', () => {
   });
 });
 
+describe('AuthService.loginWithPassword', () => {
+  let service: AuthService;
+  let oauth: {
+    fetchTokenUsingPasswordFlowAndLoadUserProfile: jasmine.Spy;
+    loadDiscoveryDocument: jasmine.Spy;
+    tokenEndpoint: string;
+    getIdentityClaims: jasmine.Spy;
+    configure: jasmine.Spy;
+  };
+  let peladaContext: { refreshFromStorage: jasmine.Spy };
+
+  beforeEach(() => {
+    oauth = {
+      fetchTokenUsingPasswordFlowAndLoadUserProfile: jasmine
+        .createSpy('fetchTokenUsingPasswordFlowAndLoadUserProfile')
+        .and.resolveTo({}),
+      loadDiscoveryDocument: jasmine
+        .createSpy('loadDiscoveryDocument')
+        .and.resolveTo({}),
+      tokenEndpoint: 'http://keycloak/token',
+      getIdentityClaims: jasmine
+        .createSpy('getIdentityClaims')
+        .and.returnValue({ sub: 'keycloak-sub-login' }),
+      configure: jasmine.createSpy('configure'),
+    };
+    peladaContext = {
+      refreshFromStorage: jasmine.createSpy('refreshFromStorage'),
+    };
+
+    TestBed.configureTestingModule({
+      providers: [
+        AuthService,
+        { provide: OAuthService, useValue: oauth },
+        {
+          provide: HttpClient,
+          useValue: {
+            get: jasmine.createSpy('get'),
+            post: jasmine.createSpy('post'),
+          },
+        },
+        {
+          provide: Router,
+          useValue: {
+            navigateByUrl: jasmine.createSpy('navigateByUrl').and.resolveTo(true),
+          },
+        },
+        { provide: PeladaContextService, useValue: peladaContext },
+        {
+          provide: PeladaApiService,
+          useValue: { listMyPeladas: jasmine.createSpy('listMyPeladas') },
+        },
+      ],
+    });
+    service = TestBed.inject(AuthService);
+  });
+
+  it('carrega user profile no password grant (sub disponível)', async () => {
+    await service.loginWithPassword(' dev@pelada.local ', 'pass-ok');
+    expect(oauth.fetchTokenUsingPasswordFlowAndLoadUserProfile).toHaveBeenCalledWith(
+      'dev@pelada.local',
+      'pass-ok',
+    );
+    expect(oauth.getIdentityClaims()).toEqual(
+      jasmine.objectContaining({ sub: 'keycloak-sub-login' }),
+    );
+    expect(peladaContext.refreshFromStorage).toHaveBeenCalled();
+  });
+});
+
 describe('AuthService.continueAfterLogin', () => {
   let service: AuthService;
   let oauth: { hasValidAccessToken: jasmine.Spy };
