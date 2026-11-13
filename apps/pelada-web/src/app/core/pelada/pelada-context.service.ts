@@ -58,8 +58,8 @@ export class PeladaContextService {
    * da persistência no chave escopada ao `sub`, ou se houve troca de chave legacy.
    */
   refreshFromStorage(): void {
-    const stored = this.loadStoredWithLegacyMigration();
     const current = this.activeSignal();
+    const stored = this.loadStoredWithLegacyMigration(current);
 
     if (stored) {
       const merged =
@@ -113,10 +113,12 @@ export class PeladaContextService {
   }
 
   private loadStored(): ActivePelada | null {
-    return this.loadStoredWithLegacyMigration();
+    return this.loadStoredWithLegacyMigration(null);
   }
 
-  private loadStoredWithLegacyMigration(): ActivePelada | null {
+  private loadStoredWithLegacyMigration(
+    inMemory: ActivePelada | null,
+  ): ActivePelada | null {
     const scopedKey = this.storageKey();
     const fromScoped = this.readActiveFromSession(scopedKey);
     if (fromScoped) {
@@ -125,20 +127,32 @@ export class PeladaContextService {
 
     const legacyKey = ACTIVE_PELADA_STORAGE_KEY;
     if (scopedKey === legacyKey) {
-      return null;
+      return this.readActiveFromSession(legacyKey);
     }
 
     const legacy = this.readActiveFromSession(legacyKey);
-    if (legacy) {
-      sessionStorage.setItem(
-        scopedKey,
-        JSON.stringify(this.toStoredMetadata(legacy)),
-      );
-      sessionStorage.removeItem(legacyKey);
-      return legacy;
+    if (!legacy) {
+      return null;
     }
 
-    return null;
+    const sub = this.readCurrentSub();
+    const ownsLegacy =
+      inMemory !== null &&
+      inMemory.id === legacy.id &&
+      (this.activeMemorySub === null ||
+        sub === null ||
+        this.activeMemorySub === sub);
+
+    if (!ownsLegacy) {
+      return null;
+    }
+
+    sessionStorage.setItem(
+      scopedKey,
+      JSON.stringify(this.toStoredMetadata(legacy)),
+    );
+    sessionStorage.removeItem(legacyKey);
+    return legacy;
   }
 
   private readActiveFromSession(key: string): ActivePelada | null {
