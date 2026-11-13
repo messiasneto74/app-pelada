@@ -111,6 +111,11 @@ services:
       KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:-http://localhost:8080/realms/pelada}
       KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/pelada/protocol/openid-connect/certs
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-pelada-web}
+      # Admin API (POST /register) — URL interna do serviço Keycloak no compose.
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-pelada}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak_admin_dev}
       DEV_AUTH_BYPASS: ${DEV_AUTH_BYPASS:-false}
       PUBLIC_UPLOAD_BASE_URL: ${PUBLIC_UPLOAD_BASE_URL:-http://localhost:3000/uploads}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}

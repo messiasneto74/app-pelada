@@ -70,14 +70,15 @@ type EntrarMode = 'login' | 'register';
 
         <form class="form" (ngSubmit)="submit()">
           @if (mode() === 'register') {
-            <pelada-field label="Nome" forId="entrar-nome">
+            <pelada-field label="Nome e sobrenome" forId="entrar-nome">
               <input
                 id="entrar-nome"
                 name="name"
                 peladaInput
                 [(ngModel)]="name"
+                required
                 autocomplete="name"
-                placeholder="Como te chamam na pelada"
+                placeholder="Ana Silva"
               />
             </pelada-field>
           }
@@ -104,9 +105,9 @@ type EntrarMode = 'login' | 'register';
               peladaInput
               [(ngModel)]="password"
               required
-              minlength="8"
+              [attr.minlength]="mode() === 'register' ? 8 : null"
               [autocomplete]="mode() === 'login' ? 'current-password' : 'new-password'"
-              placeholder="Mínimo 8 caracteres"
+              [placeholder]="mode() === 'register' ? 'Mínimo 8 caracteres' : 'Sua senha'"
             />
           </pelada-field>
 
@@ -212,9 +213,16 @@ export class EntrarComponent implements OnInit {
       this.fieldError.set('Informe e-mail e senha.');
       return;
     }
-    if (password.length < 8) {
-      this.error.set('A senha precisa ter pelo menos 8 caracteres.');
-      return;
+    if (this.mode() === 'register') {
+      const name = this.name.trim();
+      if (!/\S+\s+\S+/.test(name)) {
+        this.fieldError.set('Informe nome e sobrenome.');
+        return;
+      }
+      if (password.length < 8) {
+        this.error.set('A senha precisa ter pelo menos 8 caracteres.');
+        return;
+      }
     }
 
     this.submitting.set(true);
@@ -223,7 +231,7 @@ export class EntrarComponent implements OnInit {
         await this.auth.registerAccount({
           email,
           password,
-          name: this.name,
+          name: this.name.trim(),
         });
       } else {
         await this.auth.loginWithPassword(email, password);

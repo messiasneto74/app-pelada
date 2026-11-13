@@ -20,18 +20,21 @@ describe('buildKeycloakAdminUrls', () => {
 });
 
 describe('splitDisplayName', () => {
-  it('vazio', () => {
-    expect(splitDisplayName(undefined)).toEqual({
-      firstName: '',
-      lastName: '',
+  it('vazio usa defaults validados', () => {
+    expect(splitDisplayName('')).toEqual({
+      firstName: 'Jogador',
+      lastName: 'Pelada',
     });
-    expect(splitDisplayName('  ')).toEqual({ firstName: '', lastName: '' });
+    expect(splitDisplayName('  ')).toEqual({
+      firstName: 'Jogador',
+      lastName: 'Pelada',
+    });
   });
 
-  it('só primeiro nome', () => {
+  it('só primeiro nome preenche sobrenome padrão', () => {
     expect(splitDisplayName('Ana')).toEqual({
       firstName: 'Ana',
-      lastName: '',
+      lastName: 'Pelada',
     });
   });
 

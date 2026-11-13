@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 export type KeycloakCreateUserInput = {
   email: string;
   password: string;
-  name?: string;
+  name: string;
 };
 
 /** Monta URLs do Admin API a partir da base do Keycloak (sem barra final). */
@@ -20,17 +20,16 @@ export function buildKeycloakAdminUrls(baseUrl: string, realm: string) {
   };
 }
 
-export function splitDisplayName(name: string | undefined): {
+export function splitDisplayName(name: string): {
   firstName: string;
   lastName: string;
 } {
-  const trimmed = name?.trim() ?? '';
-  if (!trimmed) {
-    return { firstName: '', lastName: '' };
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return { firstName: 'Jogador', lastName: 'Pelada' };
   }
-  const parts = trimmed.split(/\s+/);
   if (parts.length === 1) {
-    return { firstName: parts[0], lastName: '' };
+    return { firstName: parts[0], lastName: 'Pelada' };
   }
   return {
     firstName: parts[0],
@@ -76,8 +75,8 @@ export class KeycloakAdminClient {
           email,
           enabled: true,
           emailVerified: true,
-          firstName: firstName || undefined,
-          lastName: lastName || undefined,
+          firstName,
+          lastName,
           credentials: [
             {
               type: 'password',

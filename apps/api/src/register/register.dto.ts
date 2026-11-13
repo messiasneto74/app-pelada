@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
@@ -10,9 +10,12 @@ export class RegisterDto {
   @MaxLength(128)
   password!: string;
 
-  @IsOptional()
+  /** Nome e sobrenome — Keycloak 26 rejeita perfil incompleto no password grant. */
   @IsString()
-  @MinLength(1)
+  @MinLength(3)
   @MaxLength(80)
-  name?: string;
+  @Matches(/\S+\s+\S+/, {
+    message: 'Informe nome e sobrenome',
+  })
+  name!: string;
 }

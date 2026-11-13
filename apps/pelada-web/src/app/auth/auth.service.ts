@@ -17,7 +17,7 @@ export type MeProfile = {
 export type RegisterAccountInput = {
   email: string;
   password: string;
-  name?: string;
+  name: string;
 };
 
 /** Mensagem amigável a partir do erro do token endpoint / password grant. */
@@ -147,7 +147,7 @@ export class AuthService {
       this.http.post(`${environment.apiUrl}/register`, {
         email: input.email.trim(),
         password: input.password,
-        name: input.name?.trim() || undefined,
+        name: input.name.trim(),
       }),
     );
     await this.loginWithPassword(input.email, input.password);
