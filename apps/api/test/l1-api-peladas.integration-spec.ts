@@ -95,5 +95,36 @@ if (runHarness) {
 
       expect(res.body.photoUrl).toMatch(/\/uploads\/.+\.jpg$/);
     });
+
+    it('GET /me/peladas devolve a pelada após login em outro aparelho (C1)', async () => {
+      const token = signTestJwt({
+        sub: 'c1-sub',
+        email: 'c1@pelada.test',
+      });
+
+      const created = await request(app.getHttpServer())
+        .post('/peladas')
+        .set('Authorization', `Bearer ${token}`)
+        .field('name', 'Pelada do Bairro')
+        .expect(201);
+
+      // Simula abrir em outro aparelho/sessão: sem sessionStorage, só o token.
+      const mine = await request(app.getHttpServer())
+        .get('/me/peladas')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(mine.body).toEqual([
+        expect.objectContaining({
+          id: created.body.id,
+          name: 'Pelada do Bairro',
+          role: 'ORGANIZADOR',
+        }),
+      ]);
+    });
+
+    it('GET /me/peladas without token returns 401', () => {
+      return request(app.getHttpServer()).get('/me/peladas').expect(401);
+    });
   });
 }

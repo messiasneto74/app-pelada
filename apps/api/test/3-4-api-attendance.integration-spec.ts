@@ -215,6 +215,59 @@ if (runHarness) {
       expect(['CONFIRMED', 'QUEUE']).toContain(row.status);
     });
 
+    it('confirmações concorrentes não furam a capacidade (C3)', async () => {
+      const sub = `att-c3-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const pelada = await createPelada(prisma, { owner: org });
+      const token = signTestJwt({
+        sub: `${sub}-org`,
+        email: org.email ?? 'o@y.z',
+      });
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-10-01T19:00:00Z'),
+      });
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { capacity: 4 },
+      });
+      const players = [];
+      for (let i = 0; i < 10; i++) {
+        players.push(
+          await createPlayer(prisma, {
+            peladaId: pelada.id,
+            displayName: `P${i}`,
+          }),
+        );
+      }
+      await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/attendance`)
+        .set('Authorization', `Bearer ${token}`);
+
+      await Promise.all(
+        players.map((p) =>
+          request(app.getHttpServer())
+            .patch(
+              `/peladas/${pelada.id}/matches/${match.id}/attendance/${p.id}`,
+            )
+            .set('Authorization', `Bearer ${token}`)
+            .send({ status: 'CONFIRMED' }),
+        ),
+      );
+
+      const confirmed = await prisma.matchAttendance.count({
+        where: { matchId: match.id, status: 'CONFIRMED' },
+      });
+      expect(confirmed).toBe(4);
+
+      const queue = await prisma.matchAttendance.findMany({
+        where: { matchId: match.id, status: 'QUEUE' },
+        orderBy: { queuePosition: 'asc' },
+      });
+      expect(queue).toHaveLength(6);
+      expect(queue.map((q) => q.queuePosition)).toEqual([1, 2, 3, 4, 5, 6]);
+    });
+
     it('POST close-list blocks further PATCH until reopen', async () => {
       const { pelada, match, token, p1 } = await seedMatch();
       await request(app.getHttpServer())
@@ -236,6 +289,82 @@ if (runHarness) {
         .set('Authorization', `Bearer ${token}`)
         .expect(201)
         .expect((res) => expect(res.body.listClosed).toBe(false));
+    });
+
+    it('close-list e reopen-list não regridem partida já sorteada/em campo (C5)', async () => {
+      const sub = `att-c5-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const pelada = await createPelada(prisma, { owner: org });
+      const token = signTestJwt({
+        sub: `${sub}-org`,
+        email: org.email ?? 'o@y.z',
+      });
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-10-01T19:00:00Z'),
+      });
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { teamCount: 2, playersPerTeam: 2, capacity: null },
+      });
+      const players = [];
+      for (let i = 0; i < 4; i++) {
+        players.push(
+          await createPlayer(prisma, {
+            peladaId: pelada.id,
+            displayName: `P${i}`,
+          }),
+        );
+      }
+      await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/attendance`)
+        .set('Authorization', `Bearer ${token}`);
+      for (const p of players) {
+        await request(app.getHttpServer())
+          .patch(
+            `/peladas/${pelada.id}/matches/${match.id}/attendance/${p.id}`,
+          )
+          .set('Authorization', `Bearer ${token}`)
+          .send({ status: 'CONFIRMED' });
+      }
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/close-list`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/draw`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({})
+        .expect(201);
+
+      // Depois do sorteio (DRAWN), close-list não pode mais agir.
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/close-list`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400);
+
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({})
+        .expect(201);
+
+      // Partida IN_PROGRESS: nem close-list nem reopen-list podem regredir o status.
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/close-list`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400);
+      await request(app.getHttpServer())
+        .post(
+          `/peladas/${pelada.id}/matches/${match.id}/attendance/reopen-list`,
+        )
+        .set('Authorization', `Bearer ${token}`)
+        .expect(400);
+
+      const unchanged = await prisma.match.findUniqueOrThrow({
+        where: { id: match.id },
+      });
+      expect(unchanged.status).toBe('IN_PROGRESS');
     });
   });
 }

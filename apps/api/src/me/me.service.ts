@@ -11,6 +11,15 @@ export type MeResponse = {
   phone: string | null;
 };
 
+export type MyPeladaSummary = {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  defaultWeekday: number | null;
+  defaultLocation: string | null;
+  role: string;
+};
+
 @Injectable()
 export class MeService {
   constructor(private readonly prisma: PrismaService) {}
@@ -48,6 +57,30 @@ export class MeService {
       },
     });
     return this.toResponse(user);
+  }
+
+  /**
+   * Peladas do usuário autenticado (C1 — restaura a pelada ativa ao abrir
+   * em outro aparelho/sessão em vez de depender só do sessionStorage).
+   * Organizador primeiro, depois ordem de entrada.
+   */
+  async listMyPeladas(auth: AuthUserPayload): Promise<MyPeladaSummary[]> {
+    const user = await this.getOrCreateUser(auth);
+    const memberships = await this.prisma.peladaMember.findMany({
+      where: { userId: user.id },
+      include: { pelada: true },
+      orderBy: { joinedAt: 'asc' },
+    });
+    return memberships
+      .map((m) => ({
+        id: m.pelada.id,
+        name: m.pelada.name,
+        photoUrl: m.pelada.photoUrl,
+        defaultWeekday: m.pelada.defaultWeekday,
+        defaultLocation: m.pelada.defaultLocation,
+        role: m.role as string,
+      }))
+      .sort((a, b) => (a.role === b.role ? 0 : a.role === 'ORGANIZADOR' ? -1 : 1));
   }
 
   private toResponse(user: User): MeResponse {

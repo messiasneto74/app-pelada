@@ -137,38 +137,7 @@ export class MatchFieldSessionService {
     const user = await this.meService.getOrCreateUser(auth);
     await this.assertOrganizador(peladaId, user.id);
     const { draw } = await this.loadDrawContext(peladaId, matchId);
-    const session = await this.requireOpenSession(matchId);
-
-    let goalHistory = this.parseGoalHistory(session.goalHistory);
-    let scoreHome = session.scoreHome;
-    let scoreAway = session.scoreAway;
-    let elapsedMs = session.elapsedMs;
-    let timerRunningSince = session.timerRunningSince;
-
-    if (body.timer) {
-      const next = applyTimerAction(
-        elapsedMs,
-        timerRunningSince,
-        body.timer,
-      );
-      elapsedMs = next.elapsedMs;
-      timerRunningSince = next.timerRunningSince;
-    }
-
-    if (body.addGoal === 'HOME') {
-      scoreHome += 1;
-      goalHistory = [...goalHistory, 'HOME'];
-    } else if (body.addGoal === 'AWAY') {
-      scoreAway += 1;
-      goalHistory = [...goalHistory, 'AWAY'];
-    } else if (body.undoGoal) {
-      const last = goalHistory.pop();
-      if (last === 'HOME') {
-        scoreHome = Math.max(0, scoreHome - 1);
-      } else if (last === 'AWAY') {
-        scoreAway = Math.max(0, scoreAway - 1);
-      }
-    }
+    const existing = await this.requireOpenSession(matchId);
 
     if (
       !body.timer &&
@@ -178,15 +147,59 @@ export class MatchFieldSessionService {
       throw new BadRequestException('Nenhuma alteração informada.');
     }
 
-    const updated = await this.prisma.matchFieldSession.update({
-      where: { id: session.id },
-      data: {
-        scoreHome,
-        scoreAway,
-        elapsedMs,
-        timerRunningSince,
-        goalHistory,
-      },
+    // Lock a linha da sessão em campo (SELECT ... FOR UPDATE) para que gols/timer
+    // concorrentes (dois toques rápidos, dois celulares) sejam serializados em vez
+    // de se perderem num read-modify-write sem controle (C4).
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT 1 FROM match_field_sessions WHERE id = ${existing.id} FOR UPDATE`;
+      const session = await tx.matchFieldSession.findUniqueOrThrow({
+        where: { id: existing.id },
+      });
+      if (session.finishedAt) {
+        throw new BadRequestException('Partida já encerrada.');
+      }
+
+      let goalHistory = this.parseGoalHistory(session.goalHistory);
+      let scoreHome = session.scoreHome;
+      let scoreAway = session.scoreAway;
+      let elapsedMs = session.elapsedMs;
+      let timerRunningSince = session.timerRunningSince;
+
+      if (body.timer) {
+        const next = applyTimerAction(
+          elapsedMs,
+          timerRunningSince,
+          body.timer,
+        );
+        elapsedMs = next.elapsedMs;
+        timerRunningSince = next.timerRunningSince;
+      }
+
+      if (body.addGoal === 'HOME') {
+        scoreHome += 1;
+        goalHistory = [...goalHistory, 'HOME'];
+      } else if (body.addGoal === 'AWAY') {
+        scoreAway += 1;
+        goalHistory = [...goalHistory, 'AWAY'];
+      } else if (body.undoGoal) {
+        const last = goalHistory.pop();
+        if (last === 'HOME') {
+          scoreHome = Math.max(0, scoreHome - 1);
+        } else if (last === 'AWAY') {
+          scoreAway = Math.max(0, scoreAway - 1);
+        }
+      }
+
+      return tx.matchFieldSession.update({
+        where: { id: session.id },
+        data: {
+          scoreHome,
+          scoreAway,
+          elapsedMs,
+          timerRunningSince,
+          goalHistory,
+        },
+      });
     });
 
     return this.toDto(updated, draw.teams);
