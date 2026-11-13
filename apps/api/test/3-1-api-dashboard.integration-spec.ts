@@ -121,6 +121,30 @@ if (runHarness) {
       expect(res.body.nextMatch.capacity).toBeGreaterThan(0);
     });
 
+    it('GET /peladas/:id/dashboard mantém a partida em campo após o horário (A1)', async () => {
+      const sub = 'dash-a1';
+      const user = await createUser(prisma, { keycloakSub: sub });
+      const pelada = await createPelada(prisma, { owner: user });
+      const token = signTestJwt({ sub, email: user.email ?? 'a1@sh.c' });
+
+      const past = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: past,
+      });
+      await prisma.match.update({
+        where: { id: match.id },
+        data: { status: 'IN_PROGRESS' },
+      });
+
+      const res = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/dashboard`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(res.body.nextMatch?.id).toBe(match.id);
+    });
+
     it('GET /peladas/:id/dashboard aggregates cash for current UTC month', async () => {
       const sub = 'dash-cash';
       const user = await createUser(prisma, { keycloakSub: sub });

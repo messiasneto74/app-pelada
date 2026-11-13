@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type {
   AttendanceStatus,
+  GoalkeeperMode,
   Match,
   PeladaRules,
   Player,
@@ -98,7 +99,9 @@ export class MatchDrawService {
     const players = await this.prisma.player.findMany({
       where: { id: { in: allIds } },
     });
-    const corePlayers = players.map((p) => this.playerToDrawInput(p));
+    const corePlayers = players.map((p) =>
+      this.playerToDrawInput(p, effective.goalkeeperMode),
+    );
     const teamPlayerIds = [...draw.teams]
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((t) =>
@@ -199,7 +202,9 @@ export class MatchDrawService {
     const players = await this.prisma.player.findMany({
       where: { id: { in: [...playerIds] } },
     });
-    const corePlayers = players.map((p) => this.playerToDrawInput(p));
+    const corePlayers = players.map((p) =>
+      this.playerToDrawInput(p, effective.goalkeeperMode),
+    );
 
     const slots = draw.teams.map((t) => ({
       teamIndex: t.sortOrder,
@@ -269,7 +274,16 @@ export class MatchDrawService {
     return Math.max(0, Math.min(10, r));
   }
 
-  private playerToDrawInput(player: Player): DrawPlayerInput {
+  /**
+   * No modo ROTATING não há papel de goleiro dedicado no sorteio — qualquer
+   * jogador assume o gol durante a partida, por isso o goleiro conta como
+   * linha. Sem isso, `FIXED_OFF_LINE` (ver `mapGoalkeeperMode`) excluía do
+   * sorteio quem estava marcado `isGoalkeeper`, mesmo no modo padrão (A2).
+   */
+  private playerToDrawInput(
+    player: Player,
+    goalkeeperMode: GoalkeeperMode,
+  ): DrawPlayerInput {
     const attrs =
       player.attributes && typeof player.attributes === 'object' && !Array.isArray(player.attributes)
         ? (player.attributes as Record<string, unknown>)
@@ -280,11 +294,13 @@ export class MatchDrawService {
         : typeof attrs.attributeScore === 'number'
           ? Math.max(0, Math.min(10, attrs.attributeScore))
           : undefined;
+    const isGoalkeeper =
+      goalkeeperMode === 'ROTATING' ? false : player.isGoalkeeper;
 
     return {
       id: player.id,
       rating: this.ratingToCore(player),
-      isGoalkeeper: player.isGoalkeeper,
+      isGoalkeeper,
       ...(attrScore !== undefined ? { attributeScore: attrScore } : {}),
       ...(player.tags?.length ? { tags: [...player.tags] } : {}),
       ...(player.position?.trim() ? { position: player.position.trim() } : {}),
@@ -304,7 +320,9 @@ export class MatchDrawService {
         ? (effective.drawWeights['mode'] as 'BALANCED' | 'RANDOM')
         : 'BALANCED');
 
-    const corePlayers = players.map((p) => this.playerToDrawInput(p));
+    const corePlayers = players.map((p) =>
+      this.playerToDrawInput(p, effective.goalkeeperMode),
+    );
 
     return {
       players: corePlayers,

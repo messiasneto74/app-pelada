@@ -35,7 +35,7 @@ export class PeladaPlayersService {
     await this.assertMember(peladaId, user.id);
 
     const players = await this.prisma.player.findMany({
-      where: { peladaId },
+      where: { peladaId, isGuest: false },
       orderBy: [{ displayName: 'asc' }, { id: 'asc' }],
     });
 
