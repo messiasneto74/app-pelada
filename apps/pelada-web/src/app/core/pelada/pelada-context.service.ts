@@ -9,7 +9,14 @@ import {
 @Injectable({ providedIn: 'root' })
 export class PeladaContextService {
   private readonly oauth = inject(OAuthService);
-  private readonly activeSignal = signal<ActivePelada | null>(this.loadStored());
+  private readonly initialPelada = this.loadStored();
+  private readonly activeSignal = signal<ActivePelada | null>(
+    this.initialPelada,
+  );
+  /** `sub` do OIDC dono da pelada em memória (isolamento entre usuários na mesma aba). */
+  private activeMemorySub: string | null = this.initialPelada
+    ? this.readCurrentSub()
+    : null;
 
   readonly activePelada = this.activeSignal.asReadonly();
 
@@ -30,6 +37,7 @@ export class PeladaContextService {
       URL.revokeObjectURL(prev.photoPreviewUrl);
     }
     this.activeSignal.set(pelada);
+    this.activeMemorySub = this.readCurrentSub();
     this.persistMetadata(pelada);
   }
 
@@ -39,12 +47,61 @@ export class PeladaContextService {
       URL.revokeObjectURL(current.photoPreviewUrl);
     }
     this.activeSignal.set(null);
+    this.activeMemorySub = null;
     this.removeStored();
   }
 
-  /** Re-carrega do sessionStorage (ex.: após login com sub diferente). */
+  /**
+   * Re-carrega do sessionStorage (ex.: após login com sub diferente).
+   * Não zera pelada já definida em memória quando o cache está vazio — evita
+   * perder a ativa logo após `POST /peladas` se `token_refreshed` dispara antes
+   * da persistência no chave escopada ao `sub`.
+   */
   refreshFromStorage(): void {
-    this.activeSignal.set(this.loadStored());
+    const stored = this.loadStored();
+    const current = this.activeSignal();
+
+    if (stored) {
+      const merged =
+        current?.id === stored.id && current.photoPreviewUrl
+          ? { ...stored, photoPreviewUrl: current.photoPreviewUrl }
+          : { ...stored, photoPreviewUrl: null };
+      this.activeSignal.set(merged);
+      this.activeMemorySub = this.readCurrentSub();
+      return;
+    }
+
+    if (current) {
+      const sub = this.readCurrentSub();
+      if (
+        this.activeMemorySub !== null &&
+        sub !== null &&
+        this.activeMemorySub !== sub
+      ) {
+        this.discardInMemoryActive();
+        return;
+      }
+      this.activeMemorySub = sub ?? this.activeMemorySub;
+      this.persistMetadata(current);
+      return;
+    }
+
+    this.activeSignal.set(null);
+    this.activeMemorySub = null;
+  }
+
+  private readCurrentSub(): string | null {
+    const sub = this.oauth.getIdentityClaims()?.['sub'];
+    return typeof sub === 'string' && sub.length > 0 ? sub : null;
+  }
+
+  private discardInMemoryActive(): void {
+    const current = this.activeSignal();
+    if (current?.photoPreviewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(current.photoPreviewUrl);
+    }
+    this.activeSignal.set(null);
+    this.activeMemorySub = null;
   }
 
   private storageKey(): string {

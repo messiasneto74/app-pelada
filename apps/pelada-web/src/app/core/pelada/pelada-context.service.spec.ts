@@ -75,4 +75,48 @@ describe('PeladaContextService', () => {
     service.clearActivePelada();
     expect(revoke).toHaveBeenCalledWith('blob:http://localhost/fake');
   });
+
+  it('refreshFromStorage não apaga pelada ativa só em memória (token após POST /peladas)', () => {
+    sessionStorage.clear();
+    service.setActivePelada({
+      id: 'p-novo',
+      name: 'Pelada recém-criada',
+      defaultWeekday: 3,
+      defaultLocation: 'Campo',
+      photoPreviewUrl: null,
+    });
+    sessionStorage.removeItem(storageKey);
+
+    service.refreshFromStorage();
+
+    expect(service.getActivePelada()?.id).toBe('p-novo');
+    expect(sessionStorage.getItem(storageKey)).toContain('Pelada recém-criada');
+  });
+
+  it('refreshFromStorage descarta pelada em memória de outro sub (troca de usuário)', () => {
+    const oauthMock = {
+      getIdentityClaims: jasmine
+        .createSpy('getIdentityClaims')
+        .and.returnValue({ sub: 'user-a' }),
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [{ provide: OAuthService, useValue: oauthMock }],
+    });
+    const svcA = TestBed.inject(PeladaContextService);
+    svcA.setActivePelada({
+      id: 'p-a',
+      name: 'Pelada do A',
+      defaultWeekday: null,
+      defaultLocation: '',
+      photoPreviewUrl: null,
+    });
+    sessionStorage.removeItem(`${ACTIVE_PELADA_STORAGE_KEY}:user-a`);
+
+    oauthMock.getIdentityClaims.and.returnValue({ sub: 'user-b' });
+    svcA.refreshFromStorage();
+
+    expect(svcA.hasActivePelada()).toBe(false);
+    expect(sessionStorage.getItem(`${ACTIVE_PELADA_STORAGE_KEY}:user-b`)).toBeNull();
+  });
 });
