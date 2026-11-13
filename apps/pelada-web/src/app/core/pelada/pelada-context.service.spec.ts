@@ -119,4 +119,41 @@ describe('PeladaContextService', () => {
     expect(svcA.hasActivePelada()).toBe(false);
     expect(sessionStorage.getItem(`${ACTIVE_PELADA_STORAGE_KEY}:user-b`)).toBeNull();
   });
+
+  it('refreshFromStorage migra chave legacy só com posse na mesma sessão', () => {
+    sessionStorage.clear();
+    service.setActivePelada({
+      id: 'p-legacy',
+      name: 'Pelada legacy',
+      defaultWeekday: null,
+      defaultLocation: '',
+      photoPreviewUrl: null,
+    });
+    sessionStorage.removeItem(storageKey);
+
+    service.refreshFromStorage();
+
+    expect(service.getActivePelada()?.id).toBe('p-legacy');
+    expect(sessionStorage.getItem(storageKey)).toContain('p-legacy');
+    expect(sessionStorage.getItem(ACTIVE_PELADA_STORAGE_KEY)).toBeNull();
+  });
+
+  it('não importa chave legacy para outro sub sem pelada em memória', () => {
+    sessionStorage.clear();
+    sessionStorage.setItem(
+      ACTIVE_PELADA_STORAGE_KEY,
+      JSON.stringify({
+        id: 'p-outro',
+        name: 'Pelada alheia',
+        defaultWeekday: null,
+        defaultLocation: '',
+      }),
+    );
+
+    service.refreshFromStorage();
+
+    expect(service.hasActivePelada()).toBe(false);
+    expect(sessionStorage.getItem(storageKey)).toBeNull();
+    expect(sessionStorage.getItem(ACTIVE_PELADA_STORAGE_KEY)).toContain('p-outro');
+  });
 });

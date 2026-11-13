@@ -55,11 +55,11 @@ export class PeladaContextService {
    * Re-carrega do sessionStorage (ex.: após login com sub diferente).
    * Não zera pelada já definida em memória quando o cache está vazio — evita
    * perder a ativa logo após `POST /peladas` se `token_refreshed` dispara antes
-   * da persistência no chave escopada ao `sub`.
+   * da persistência no chave escopada ao `sub`, ou se houve troca de chave legacy.
    */
   refreshFromStorage(): void {
-    const stored = this.loadStored();
     const current = this.activeSignal();
+    const stored = this.loadStoredWithLegacyMigration(current);
 
     if (stored) {
       const merged =
@@ -113,11 +113,54 @@ export class PeladaContextService {
   }
 
   private loadStored(): ActivePelada | null {
+    return this.loadStoredWithLegacyMigration(null);
+  }
+
+  private loadStoredWithLegacyMigration(
+    inMemory: ActivePelada | null,
+  ): ActivePelada | null {
+    const scopedKey = this.storageKey();
+    const fromScoped = this.readActiveFromSession(scopedKey);
+    if (fromScoped) {
+      return fromScoped;
+    }
+
+    const legacyKey = ACTIVE_PELADA_STORAGE_KEY;
+    if (scopedKey === legacyKey) {
+      return this.readActiveFromSession(legacyKey);
+    }
+
+    const legacy = this.readActiveFromSession(legacyKey);
+    if (!legacy) {
+      return null;
+    }
+
+    const sub = this.readCurrentSub();
+    const ownsLegacy =
+      inMemory !== null &&
+      inMemory.id === legacy.id &&
+      (this.activeMemorySub === null ||
+        sub === null ||
+        this.activeMemorySub === sub);
+
+    if (!ownsLegacy) {
+      return null;
+    }
+
+    sessionStorage.setItem(
+      scopedKey,
+      JSON.stringify(this.toStoredMetadata(legacy)),
+    );
+    sessionStorage.removeItem(legacyKey);
+    return legacy;
+  }
+
+  private readActiveFromSession(key: string): ActivePelada | null {
     if (typeof sessionStorage === 'undefined') {
       return null;
     }
     try {
-      const raw = sessionStorage.getItem(this.storageKey());
+      const raw = sessionStorage.getItem(key);
       if (!raw) {
         return null;
       }
@@ -131,17 +174,25 @@ export class PeladaContextService {
     }
   }
 
-  private persistMetadata(pelada: ActivePelada): void {
-    if (typeof sessionStorage === 'undefined') {
-      return;
-    }
-    const stored: StoredActivePelada = {
+  private toStoredMetadata(pelada: ActivePelada): StoredActivePelada {
+    return {
       id: pelada.id,
       name: pelada.name,
       defaultWeekday: pelada.defaultWeekday,
       defaultLocation: pelada.defaultLocation,
     };
+  }
+
+  private persistMetadata(pelada: ActivePelada): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    const stored = this.toStoredMetadata(pelada);
     sessionStorage.setItem(this.storageKey(), JSON.stringify(stored));
+    const scoped = this.storageKey();
+    if (scoped !== ACTIVE_PELADA_STORAGE_KEY) {
+      sessionStorage.removeItem(ACTIVE_PELADA_STORAGE_KEY);
+    }
   }
 
   private removeStored(): void {
@@ -149,5 +200,6 @@ export class PeladaContextService {
       return;
     }
     sessionStorage.removeItem(this.storageKey());
+    sessionStorage.removeItem(ACTIVE_PELADA_STORAGE_KEY);
   }
 }
