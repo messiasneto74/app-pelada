@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
@@ -32,7 +33,10 @@ describe('CriarPeladaComponent', () => {
         provideRouter([{ path: 'inicio/regras', component: CriarPeladaComponent }]),
         {
           provide: OAuthService,
-          useValue: { getIdentityClaims: () => ({ sub: 'user-test' }) },
+          useValue: {
+            getIdentityClaims: () => ({ sub: 'user-test' }),
+            hasValidAccessToken: () => true,
+          },
         },
         { provide: PeladaApiService, useValue: peladaApi },
       ],
@@ -64,12 +68,23 @@ describe('CriarPeladaComponent', () => {
   });
 
   it('reabilita submit após erro da API', () => {
-    peladaApi.createPelada.and.returnValue(throwError(() => new Error('network')));
+    peladaApi.createPelada.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 0 })),
+    );
     component.name.set('Pelada da Praça');
     component.onSubmit(new Event('submit'));
-    expect(component.nameError()).toContain('Não foi possível');
+    expect(component.nameError()).toContain('contactar a API');
     expect(component.submitting()).toBe(false);
     expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia submit sem token válido', () => {
+    const oauth = TestBed.inject(OAuthService) as { hasValidAccessToken: () => boolean };
+    oauth.hasValidAccessToken = () => false;
+    component.name.set('Pelada da Praça');
+    component.onSubmit(new Event('submit'));
+    expect(peladaApi.createPelada).not.toHaveBeenCalled();
+    expect(component.nameError()).toContain('/entrar');
   });
 
   it('salva pelada e navega para regras quando válido', () => {

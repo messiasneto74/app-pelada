@@ -1,9 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
+  Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -13,7 +18,15 @@ import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUserPayload } from '../auth/auth-user';
+import { CreatePlayerDto } from '../domain/dto/create-player.dto';
+import { PatchPeladaRulesDto } from '../domain/dto/patch-pelada-rules.dto';
+import { PatchPlayerDto } from '../domain/dto/patch-player.dto';
+import { CreatePaymentLedgerDto } from '../domain/dto/create-payment-ledger.dto';
+import { PaymentLedgerQueryDto } from '../domain/dto/payment-ledger-query.dto';
 import { CreatePeladaDto } from './dto/create-pelada.dto';
+import { PeladaPaymentsService } from './pelada-payments.service';
+import { PeladaPlayersService } from './pelada-players.service';
+import { MultipartPlayerPatchInterceptor } from './multipart-player-patch.interceptor';
 import { PeladasService } from './peladas.service';
 
 const photoUpload = memoryStorage();
@@ -21,7 +34,11 @@ const maxPhotoBytes = 5 * 1024 * 1024;
 
 @Controller()
 export class PeladasController {
-  constructor(private readonly peladasService: PeladasService) {}
+  constructor(
+    private readonly peladasService: PeladasService,
+    private readonly peladaPlayersService: PeladaPlayersService,
+    private readonly peladaPaymentsService: PeladaPaymentsService,
+  ) {}
 
   @Post('peladas')
   @HttpCode(HttpStatus.CREATED)
@@ -38,5 +55,140 @@ export class PeladasController {
     @Body() body: CreatePeladaDto,
   ) {
     return this.peladasService.createPelada(user, body, photo);
+  }
+
+  @Get('peladas/:peladaId/rules')
+  @UseGuards(JwtAuthGuard)
+  getPeladaRules(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+  ) {
+    return this.peladasService.getPeladaRules(user, peladaId);
+  }
+
+  @Patch('peladas/:peladaId/rules')
+  @UseGuards(JwtAuthGuard)
+  patchPeladaRules(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Body() body: PatchPeladaRulesDto,
+  ) {
+    return this.peladasService.patchPeladaRules(user, peladaId, body);
+  }
+
+  @Get('peladas/:peladaId/payments/ledger')
+  @UseGuards(JwtAuthGuard)
+  getPaymentLedger(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Query() query: PaymentLedgerQueryDto,
+  ) {
+    return this.peladaPaymentsService.getLedger(user, peladaId, query);
+  }
+
+  @Post('peladas/:peladaId/payments/ledger')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard)
+  createPaymentLedgerEntry(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Body() body: CreatePaymentLedgerDto,
+  ) {
+    return this.peladaPaymentsService.createLedgerEntry(user, peladaId, body);
+  }
+
+  @Post('peladas/:peladaId/payments/:ledgerId/mark-paid')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  markPaymentPaid(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('ledgerId') ledgerId: string,
+  ) {
+    return this.peladaPaymentsService.markPaid(user, peladaId, ledgerId);
+  }
+
+  @Get('peladas/:peladaId/dashboard')
+  @UseGuards(JwtAuthGuard)
+  getPeladaDashboard(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+  ) {
+    return this.peladasService.getPeladaDashboard(user, peladaId);
+  }
+
+  @Get('peladas/:peladaId/membership')
+  @UseGuards(JwtAuthGuard)
+  getPeladaMembership(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+  ) {
+    return this.peladasService.getPeladaMembership(user, peladaId);
+  }
+
+  @Get('peladas/:peladaId/players')
+  @UseGuards(JwtAuthGuard)
+  listPeladaPlayers(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+  ) {
+    return this.peladaPlayersService.listPlayers(user, peladaId);
+  }
+
+  @Get('peladas/:peladaId/players/:playerId')
+  @UseGuards(JwtAuthGuard)
+  getPeladaPlayer(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('playerId') playerId: string,
+  ) {
+    return this.peladaPlayersService.getPlayer(user, peladaId, playerId);
+  }
+
+  @Post('peladas/:peladaId/players')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard)
+  createPeladaPlayer(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Body() body: CreatePlayerDto,
+  ) {
+    return this.peladaPlayersService.createPlayer(user, peladaId, body);
+  }
+
+  @Patch('peladas/:peladaId/players/:playerId')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('photo', {
+      storage: photoUpload,
+      limits: { fileSize: maxPhotoBytes },
+    }),
+    MultipartPlayerPatchInterceptor,
+  )
+  patchPeladaPlayer(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('playerId') playerId: string,
+    @UploadedFile() photo: Express.Multer.File | undefined,
+    @Body() body: PatchPlayerDto,
+  ) {
+    return this.peladaPlayersService.patchPlayer(
+      user,
+      peladaId,
+      playerId,
+      body,
+      photo,
+    );
+  }
+
+  @Delete('peladas/:peladaId/players/:playerId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  deletePeladaPlayer(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('playerId') playerId: string,
+  ) {
+    return this.peladaPlayersService.deletePlayer(user, peladaId, playerId);
   }
 }

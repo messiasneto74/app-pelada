@@ -1,8 +1,8 @@
-# Desenvolvimento e testes — só na sua máquina (MVP)
+# Desenvolvimento e testes — reprodução opcional e gates automatizados
 
-**Decisão:** testes rodam **localmente** (`npm run test:*`) e no **PR** (check `test:all + R-07` — ver [ci-github.md](ci-github.md)).
+**Decisão:** os testes obrigatórios rodam pelos agentes revisores e pelo CI no PR (check `test:all + R-07` — ver [ci-github.md](ci-github.md)). A execução local é opcional e serve apenas para reproduzir uma falha ou investigar um diagnóstico.
 
-**Quem roda:** você antes de fechar a issue; o **agente Cursor** roda os mesmos comandos **no seu PC** enquanto implementa a issue que você pediu (não a suíte inteira sozinho). Processo completo: [processo-testes-e-qualidade.md](processo-testes-e-qualidade.md).
+**Quem roda:** o CI, o agente Cursor e o agente Codex executam os gates no checkout do PR e registram comandos, resultado e falhas. Você apenas consulta os checks e os pareceres; não precisa repetir a suíte localmente. Processo completo: [processo-testes-e-qualidade.md](processo-testes-e-qualidade.md).
 
 ## Pré-requisitos
 
@@ -32,7 +32,7 @@ app-futebol/
   apps/pelada-web/     # @pelada/web — Angular
   apps/api/            # @pelada/api — Nest (Prisma na F0-2)
   packages/core/       # @pelada/core — sorteio (Vitest)
-  apps/pelada-mobile/  # Capacitor — após STORE-1
+  apps/pelada-mobile/  # @pelada/mobile — Capacitor (STORE-1)
 ```
 
 Primeira vez:
@@ -61,7 +61,7 @@ npm.cmd run test:all
 | `npm.cmd run test:all:ci` | Igual ao runner Linux do GitHub Actions |
 | `npm.cmd run test:api:harness` | Postgres :5435 + migrations + `test:api` com DB |
 
-**Definition of Done (local):** antes de fechar a issue, `npm.cmd run test:all` (e o que a issue pedir) passa **no seu PC**; no PR o check **`test:all + R-07`** verde.
+**Definition of Done automatizado:** antes de fechar a issue, os agentes/CI devem executar os gates aplicáveis, registrar o resultado e deixar o check **`test:all + R-07`** verde. O resultado local no seu PC não é requisito adicional.
 
 ## Variáveis e Keycloak (antes de codar F0-4)
 
@@ -176,6 +176,8 @@ npm.cmd run smoke:stack
 npm.cmd run dev:web
 ```
 
+`dev:web` e `ng serve` compilam `@pelada/core` antes (`packages/core/dist`); se aparecer `Cannot find module '@pelada/core'`, rode `npm.cmd run build:core` e reinicie o servidor.
+
 | Serviço | URL |
 |---------|-----|
 | Web (`ng serve`) | http://localhost:4200 |
@@ -201,6 +203,30 @@ Até F0-4/5 prontos: `DEV_AUTH_BYPASS=true` só na API local (ver `.env.example`
 ## E2E (issue E2E-1)
 
 Rodar **local** com stack Docker + Playwright; **não** depende de VPS no início.
+
+Pré-requisitos: Postgres + Keycloak + API (`npm.cmd run stack:up` ou `db:up` + `keycloak:up` + `dev:api`) e web (`npm.cmd run dev:web`).
+
+```powershell
+Set-Location D:\desenvolvimento\app-futebol
+npm.cmd run test:e2e:install
+npm.cmd run test:e2e
+```
+
+Variáveis opcionais: `PELADA_WEB_URL`, `PELADA_API_URL`, `E2E_KC_USER`, `E2E_KC_PASSWORD` (padrão `dev` / `dev-pelada-local` — ver [credenciais-dev-local.md](credenciais-dev-local.md)).
+
+O fluxo MVP (`e2e/mvp-flow.spec.ts`) cadastra elenco via API (UI de adicionar jogador ainda é hint na #25). Presença, sorteio e campo são na UI. Fechar lista navega para Sorteio logo após persistir `listClosed` (§3.4); a API sincroniza em segundo plano. O teste ainda pode `POST …/close-list` se o servidor não refletir `LIST_CLOSED` antes do draw.
+
+## Mobile Capacitor (STORE-1)
+
+```powershell
+Set-Location D:\desenvolvimento\app-futebol
+npm.cmd run build:mobile
+npm.cmd run cap:open:android   # Android Studio
+```
+
+Staging: `npm.cmd run build:mobile:staging` antes de empacotar contra API/Keycloak públicos.
+
+Detalhes Play / App Store: [publicacao-lojas-play-app-store.md](publicacao-lojas-play-app-store.md) · [apps/pelada-mobile/README.md](../apps/pelada-mobile/README.md).
 
 ## PowerShell
 

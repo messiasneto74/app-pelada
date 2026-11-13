@@ -1,0 +1,21 @@
+# Overlay VPS/staging (DEPLOY-1): hostname público + proxy TLS.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
+# Não use no dev/CI local (sem KEYCLOAK_PUBLIC_HOSTNAME) — ver docs/deploy-staging.md
+name: pelada
+
+services:
+  keycloak:
+    environment:
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_HOSTNAME:?defina KEYCLOAK_PUBLIC_HOSTNAME no .env de staging}
+      KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
+
+  api:
+    environment:
+      # Só aqui a API fica de fato atrás de um reverse proxy único — ver
+      # resolveTrustProxySetting em apps/api/src/bootstrap.ts.
+      TRUST_PROXY: ${TRUST_PROXY:-true}
+      # Cadastro in-app: Admin API no hostname interno (igual ao compose base).
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-pelada}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-keycloak_admin_dev}

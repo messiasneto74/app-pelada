@@ -8,6 +8,9 @@ describe('MeService', () => {
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    peladaMember: {
+      findMany: jest.fn(),
+    },
   } as unknown as PrismaService;
 
   const service = new MeService(prisma);
@@ -62,5 +65,44 @@ describe('MeService', () => {
       data: { phone: '11999990000' },
     });
     expect(result.phone).toBe('11999990000');
+  });
+
+  it('listMyPeladas retorna peladas com organizador primeiro (C1)', async () => {
+    prisma.user.upsert = jest.fn().mockResolvedValue({
+      id: 'u1',
+      keycloakSub: 'kc-sub-1',
+      email: 'a@b.com',
+      phone: null,
+    });
+    prisma.peladaMember.findMany = jest.fn().mockResolvedValue([
+      {
+        role: 'JOGADOR',
+        pelada: {
+          id: 'p-jogador',
+          name: 'Pelada B',
+          photoUrl: null,
+          defaultWeekday: null,
+          defaultLocation: null,
+        },
+      },
+      {
+        role: 'ORGANIZADOR',
+        pelada: {
+          id: 'p-org',
+          name: 'Pelada A',
+          photoUrl: null,
+          defaultWeekday: 2,
+          defaultLocation: 'Quadra',
+        },
+      },
+    ]);
+
+    const result = await service.listMyPeladas(auth);
+
+    expect(prisma.peladaMember.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'u1' } }),
+    );
+    expect(result.map((r) => r.id)).toEqual(['p-org', 'p-jogador']);
+    expect(result[0].role).toBe('ORGANIZADOR');
   });
 });

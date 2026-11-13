@@ -32,10 +32,10 @@ Copie [.env.example](../.env.example) para `.env` na raiz (Compose: `npm run sta
 | Client type | OpenID Connect |
 | Client ID | `pelada-web` |
 | Client authentication | **OFF** (público + PKCE) |
-| Standard flow | ON |
-| Direct access grants | OFF (não usar senha direto na API) |
+| Standard flow | ON (legado / IdP Google via redirect) |
+| Direct access grants | **ON** (login in-app Resenha — Resource Owner Password) |
 | Valid redirect URIs | `http://localhost:4200/*` |
-| Valid post logout redirect URIs | `http://localhost:4200/` |
+| Valid post logout redirect URIs | `http://localhost:4200/entrar` (ou `…/*` — o app usa `/entrar` como `redirectUri`; ver `auth.config.ts`) |
 | Web origins | `http://localhost:4200` |
 | PKCE | S256 (obrigatório para client público) |
 
@@ -63,7 +63,9 @@ Redirect do Google aponta para o Keycloak, não para o Angular.
 
 ---
 
-## Fluxo no app (F0-5 / F0-6)
+## Fluxo no app (F0-5 / F0-6 + UX-AUTH in-app)
+
+Login e cadastro ficam em **http://localhost:4200/entrar** (UI Resenha). O Angular obtém tokens no endpoint Token do Keycloak (`grant_type=password`); não há redirect para a UI do IdP no caminho feliz.
 
 ```mermaid
 sequenceDiagram
@@ -72,27 +74,30 @@ sequenceDiagram
   participant K as Keycloak :8080
   participant A as API :3000
 
-  U->>W: Abre /entrar
-  W->>K: Redirect authorize + PKCE
-  K->>U: Login Google ou e-mail
-  K->>W: Redirect com code
-  W->>K: Troca code por tokens
-  W->>A: GET /users/me Bearer access_token
+  U->>W: /entrar (e-mail + senha)
+  alt Criar conta
+    W->>A: POST /register
+    A->>K: Admin API cria usuário
+  end
+  W->>K: POST token (password grant + client_id público)
+  K-->>W: access_token (+ refresh)
+  W->>A: GET /me Bearer access_token
   A->>K: Valida JWT (JWKS)
   A->>A: JIT User por sub
   A-->>W: Perfil app (telefone, pelada ativa)
 ```
 
-1. **Angular** guarda `access_token` (memória + storage seguro conforme lib; refresh com `refresh_token` se configurado).
+1. **Angular** guarda `access_token` via `angular-oauth2-oidc` (`fetchTokenUsingPasswordFlow`).
 2. **Interceptor** adiciona `Authorization: Bearer …` em chamadas à API.
-3. **API** não lê cookie de sessão própria para login — só JWT Keycloak.
-4. Sem telefone → `/entrar/completar` → `PATCH /users/me` (ou `/me` conforme implementação F0-4b).
+3. **API** não emite sessão própria — só JWT Keycloak. `POST /register` só provisiona usuário no IdP (não troca senha por token).
+4. Sem telefone → `/entrar/completar` → `PATCH /me`.
+5. **Volume Keycloak já existente:** o import JSON só roda na 1ª subida. Ative **Direct access grants** no client `pelada-web` (Admin Console) **ou** `npm.cmd run keycloak:reset`.
 
 ### Rotas Angular (auth)
 
 | Rota | Guard |
 |------|--------|
-| `/entrar` | Público; inicia OIDC |
+| `/entrar` | Público; formulário in-app (login/cadastro) |
 | `/entrar/completar` | `authGuard` + falta telefone |
 | `/inicio`, `/partida/*`, … | `authGuard` |
 | Regras, fechar lista, sortear, caixa adm | `organizadorGuard` |
@@ -119,14 +124,14 @@ Biblioteca sugerida: `angular-oauth2-oidc` (PKCE) ou `keycloak-angular`.
 
 ---
 
-## Testar login no Angular (F0-5)
+## Testar login no Angular (F0-5 / in-app)
 
 1. `npm.cmd run keycloak:up` e `npm.cmd run dev:api` (API com **`DEV_AUTH_BYPASS=false`** para JWT real).
-2. `npm.cmd run dev:web` → http://localhost:4200/entrar → **Entrar com Keycloak**.
-3. Login `dev@pelada.local` / `dev-pelada-local` (ou Google se IdP ativo).
-4. Sem telefone na API → `/entrar/completar`; com telefone → `/inicio` (mostra e-mail logado).
+2. `npm.cmd run dev:web` → http://localhost:4200/entrar → e-mail/senha **no próprio app**.
+3. Login `dev@pelada.local` / `dev-pelada-local` (ou **Criar conta** para um e-mail novo).
+4. Sem telefone na API → `/entrar/completar`; com telefone → `/inicio`.
 
-Redirect OIDC: `http://localhost:4200/entrar` (já no client `pelada-web`).
+Se o login in-app falhar com `unauthorized_client`: Direct Access Grants ainda OFF no client — Admin Console ou `keycloak:reset`.
 
 ## Modo dev sem Keycloak (temporário)
 

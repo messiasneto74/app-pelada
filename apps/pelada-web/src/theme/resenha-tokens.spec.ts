@@ -7,11 +7,14 @@ import {
 } from './resenha-tokens';
 
 describe('Resenha design tokens (T1)', () => {
-  it('cores alinhadas ao protótipo', () => {
+  it('cores alinhadas ao protótipo (AA onde aplicável)', () => {
     expect(RESENHA_COLORS.green).toBe('#173d32');
     expect(RESENHA_COLORS.lime).toBe('#dcf58a');
     expect(RESENHA_COLORS.bg).toBe('#f5f6f3');
     expect(RESENHA_COLORS.ink).toBe('#202c27');
+    expect(RESENHA_COLORS.muted).toBe('#656f69');
+    expect(RESENHA_COLORS.accent).toBe('#587338');
+    expect(RESENHA_COLORS.focus).toBe('#456b3a');
   });
 
   it('tipografia Barlow Condensed + DM Sans', () => {

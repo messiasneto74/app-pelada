@@ -10,12 +10,19 @@ A automação **app-pelada — revisar PR** deve ficar ativa somente com o trigg
 **Webhook**. Remova `PR opened`, `PR pushed` e `CI completed`, pois esses triggers
 criavam um check operacional verde separado.
 
-Cadastre no GitHub Actions os secrets
-`CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK` e
-`CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK_KEY`. O workflow envia repositório, PR,
-URL e SHA ao webhook somente depois que `test:all + R-07` passar. O secret da
-chave aceita tanto o valor puro quanto o cabeçalho `Bearer ...`. O agente deve
-publicar a review pelo usuário **`cursor`**.
+1. Na automação, adicione trigger **Webhook** e salve.
+2. Copie a **URL** e a **API key** do webhook.
+3. No GitHub (repo **app-pelada**):
+
+```powershell
+gh secret set CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK --repo messiasneto74/app-pelada
+gh secret set CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK_KEY --repo messiasneto74/app-pelada
+```
+
+O workflow **Review policy** envia repositório, PR, URL e SHA ao webhook somente
+depois que `test:all + R-07` passar. O secret da chave aceita tanto o valor puro
+quanto o cabeçalho `Bearer ...`. O agente deve publicar a review pelo usuário
+**`cursor`**.
 
 ## O que aparece no GitHub
 

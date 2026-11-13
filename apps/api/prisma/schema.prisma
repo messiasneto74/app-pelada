@@ -104,6 +104,7 @@ model Player {
   peladaId     String      @map("pelada_id")
   userId       String?     @map("user_id")
   displayName  String      @map("display_name")
+  isGuest      Boolean     @default(false) @map("is_guest")
   isGoalkeeper Boolean     @default(false) @map("is_goalkeeper")
   position     String?
   rating       Int?
@@ -111,6 +112,7 @@ model Player {
   tags         String[]    @default([])
   paymentPlan  PaymentPlan @default(PER_MATCH) @map("payment_plan")
   isFixedList  Boolean     @default(false) @map("is_fixed_list")
+  photoUrl     String?     @map("photo_url")
   createdAt    DateTime    @default(now()) @map("created_at")
   updatedAt    DateTime    @updatedAt @map("updated_at")
 
@@ -147,11 +149,40 @@ model Match {
 
   pelada      Pelada            @relation(fields: [peladaId], references: [id], onDelete: Cascade)
   attendances MatchAttendance[]
-  draw        Draw?
-  payments    PaymentLedger[]
+  draw            Draw?
+  fieldSession    MatchFieldSession?
+  payments        PaymentLedger[]
 
   @@index([peladaId, scheduledAt])
   @@map("matches")
+}
+
+enum FieldRotationPolicy {
+  WINNER_STAYS
+  REST_QUEUE
+  SEQUENTIAL
+}
+
+model MatchFieldSession {
+  id                  String              @id @default(cuid())
+  matchId             String              @unique @map("match_id")
+  rotationPolicy      FieldRotationPolicy @default(WINNER_STAYS) @map("rotation_policy")
+  roundNumber         Int                 @default(1) @map("round_number")
+  homeTeamSortOrder   Int                 @map("home_team_sort_order")
+  awayTeamSortOrder   Int                 @map("away_team_sort_order")
+  scoreHome           Int                 @default(0) @map("score_home")
+  scoreAway           Int                 @default(0) @map("score_away")
+  elapsedMs           Int                 @default(0) @map("elapsed_ms")
+  timerRunningSince   DateTime?           @map("timer_running_since")
+  goalHistory         Json                @default("[]") @map("goal_history")
+  fixedGkMeta         Json                @default("{}") @map("fixed_gk_meta")
+  finishedAt          DateTime?           @map("finished_at")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@map("match_field_sessions")
 }
 
 enum AttendanceStatus {

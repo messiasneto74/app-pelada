@@ -107,10 +107,10 @@ npx cap sync               # copia o bundle web para android/ e ios/
 
 ## Checklist STORE-1 (Definition of Done sugerida)
 
-- [ ] `apps/pelada-mobile` com Capacitor apontando para build de produção do Angular
+- [x] `apps/pelada-mobile` com Capacitor apontando para build de produção do Angular (`npm run build:mobile`)
 - [ ] Ícone e splash alinhados ao visual Resenha (`#173d32`, lime `#dcf58a`)
 - [ ] AAB em teste interno (Play) + build TestFlight (Apple)
-- [ ] Política de privacidade e suporte (e-mail/URL) publicados
+- [ ] Política de privacidade e suporte (e-mail/URL) publicados — modelo em [privacidade-mvp.md](privacidade-mvp.md)
 - [ ] Keycloak e API acessíveis em HTTPS a partir do app empacotado
 - [ ] Documentar versões mínimas (Android API level, iOS) no README
 

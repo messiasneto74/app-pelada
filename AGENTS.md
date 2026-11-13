@@ -9,6 +9,7 @@ App de pelada (organização de partidas, presença, sorteio). Monorepo npm:
 | Pacote | Caminho | Stack |
 |--------|---------|--------|
 | Web | `apps/pelada-web` | Angular 19 |
+| Mobile | `apps/pelada-mobile` | Capacitor 7 (STORE-1) |
 | API | `apps/api` | NestJS 11 + Prisma + PostgreSQL |
 | Core | `packages/core` | TypeScript + Vitest (motor de sorteio) |
 | Protótipo | `prototipo/` | HTML/JS referência UI Resenha (não é produção) |
@@ -29,11 +30,17 @@ npm run dev:api    # :3000
 npm run dev:web    # :4200
 npm run db:up      # Docker Postgres :5433
 npm run stack:up   # Postgres + Keycloak + API (F0-7)
+npm run stack:up:staging   # igual + overlay Keycloak hostname/proxy (DEPLOY-1)
 npm run smoke:stack
+npm run smoke:staging   # pós-deploy DEPLOY-1 (URLs em .env.staging.example)
+npm run build:web:staging
+npm run build:mobile   # web + cap sync (Android/iOS)
 npm run db:migrate
 npm run keycloak:up
 npm run keycloak:reset  # volume IdP + credenciais do .env
 npm run smoke:keycloak
+npm run test:e2e          # Playwright (E2E-1) — stack + dev:web rodando
+npm run test:e2e:install  # Chromium do Playwright
 ```
 
 No Windows PowerShell, use `npm.cmd` se scripts estiverem bloqueados.

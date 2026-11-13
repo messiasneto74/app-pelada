@@ -33,7 +33,7 @@ Bootstrap só na **primeira** subida com volume vazio. Se a senha não funcionar
 
 ## Login no app (realm **pelada**)
 
-Tela do Keycloak ao abrir `/entrar` no Angular (http://localhost:4200).
+Formulário **in-app** em http://localhost:4200/entrar (não abre a UI do Keycloak).
 
 | Campo | Valor |
 |-------|--------|
@@ -41,7 +41,7 @@ Tela do Keycloak ao abrir `/entrar` no Angular (http://localhost:4200).
 | Senha | `dev-pelada-local` |
 | Telefone (atributo) | `11999990000` (exemplo no import) |
 
-Definido em `infra/keycloak/import/pelada-realm.json` — importado na 1ª subida do IdP com volume novo.
+Definido em `infra/keycloak/import/pelada-realm.json` — importado na 1ª subida do IdP com volume novo. Client `pelada-web` precisa de **Direct access grants = ON** (já no JSON de import; em volume antigo, ative no Admin ou `keycloak:reset`).
 
 ## OIDC (API / Angular)
 

@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 import { authGuard } from './auth/auth.guard';
 import { phoneRequiredGuard } from './auth/phone-required.guard';
 import { peladaOnboardingGuard } from './core/pelada/pelada-onboarding.guard';
+import { presenceListClosedGuard } from './core/presence/presence-list-closed.guard';
+import { devRoutesGuard } from './dev/dev-routes.guard';
 import { MainShellComponent } from './shell/main-shell.component';
 
 const placeholder = () =>
@@ -22,30 +24,114 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'dev/componentes',
-    loadComponent: () =>
-      import('./features/dev/componentes-preview.component').then(
-        (m) => m.ComponentesPreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/tema',
-    loadComponent: () =>
-      import('./features/dev/tema-preview.component').then((m) => m.TemaPreviewComponent),
-  },
-  {
-    path: 'dev/mobile-ux',
-    loadComponent: () =>
-      import('./features/dev/mobile-ux-preview.component').then(
-        (m) => m.MobileUxPreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/criar-pelada',
-    loadComponent: () =>
-      import('./features/onboarding/criar-pelada.component').then(
-        (m) => m.CriarPeladaComponent,
-      ),
+    path: 'dev',
+    canActivateChild: [devRoutesGuard],
+    children: [
+      {
+        path: 'componentes',
+        loadComponent: () =>
+          import('./features/dev/componentes-preview.component').then(
+            (m) => m.ComponentesPreviewComponent,
+          ),
+      },
+      {
+        path: 'tema',
+        loadComponent: () =>
+          import('./features/dev/tema-preview.component').then((m) => m.TemaPreviewComponent),
+      },
+      {
+        path: 'mobile-ux',
+        loadComponent: () =>
+          import('./features/dev/mobile-ux-preview.component').then(
+            (m) => m.MobileUxPreviewComponent,
+          ),
+      },
+      {
+        path: 'criar-pelada',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/onboarding/criar-pelada.component').then(
+            (m) => m.CriarPeladaComponent,
+          ),
+      },
+      {
+        path: 'inicio-empty',
+        loadComponent: () =>
+          import('./features/dev/inicio-empty-preview.component').then(
+            (m) => m.InicioEmptyPreviewComponent,
+          ),
+      },
+      {
+        path: 'jogadores-list',
+        loadComponent: () =>
+          import('./features/dev/jogadores-list-preview.component').then(
+            (m) => m.JogadoresListPreviewComponent,
+          ),
+      },
+      {
+        path: 'jogador-perfil',
+        loadComponent: () =>
+          import('./features/dev/jogador-perfil-preview.component').then(
+            (m) => m.JogadorPerfilPreviewComponent,
+          ),
+      },
+      {
+        path: 'jogador-perfil-edit',
+        loadComponent: () =>
+          import('./features/dev/jogador-perfil-edit-preview.component').then(
+            (m) => m.JogadorPerfilEditPreviewComponent,
+          ),
+      },
+      {
+        path: 'criar-partida',
+        loadComponent: () =>
+          import('./features/dev/criar-partida-preview.component').then(
+            (m) => m.CriarPartidaPreviewComponent,
+          ),
+      },
+      {
+        path: 'presenca',
+        loadComponent: () =>
+          import('./features/dev/presenca-preview.component').then(
+            (m) => m.PresencaPreviewComponent,
+          ),
+      },
+      {
+        path: 'partida-sorteio',
+        loadComponent: () =>
+          import('./features/dev/sorteio-nav-preview.component').then(
+            (m) => m.SorteioNavPreviewComponent,
+          ),
+      },
+      {
+        path: 'sorteio-3-5',
+        loadComponent: () =>
+          import('./features/dev/sorteio-3-5-preview.component').then(
+            (m) => m.Sorteio35PreviewComponent,
+          ),
+      },
+      {
+        path: 'sorteio-3-5-share',
+        loadComponent: () =>
+          import('./features/dev/sorteio-3-5-share-preview.component').then(
+            (m) => m.Sorteio35SharePreviewComponent,
+          ),
+      },
+      {
+        path: 'campo-3-6',
+        loadComponent: () =>
+          import('./features/dev/campo-3-6-preview.component').then(
+            (m) => m.Campo36PreviewComponent,
+          ),
+      },
+      {
+        path: 'caixa-3-9',
+        loadComponent: () =>
+          import('./features/dev/caixa-3-9-preview.component').then(
+            (m) => m.Caixa39PreviewComponent,
+          ),
+      },
+    ],
   },
   {
     path: 'onboarding/pelada',
@@ -67,38 +153,64 @@ export const routes: Routes = [
       },
       {
         path: 'inicio/regras',
-        loadComponent: placeholder,
-        data: { title: 'Regras da pelada', eyebrow: 'Início' },
+        loadComponent: () =>
+          import('./features/inicio/regras-pelada.component').then(
+            (m) => m.RegrasPeladaComponent,
+          ),
       },
       {
         path: 'inicio/criar-partida',
-        loadComponent: placeholder,
-        data: { title: 'Criar partida', eyebrow: 'Início' },
+        loadComponent: () =>
+          import('./features/inicio/criar-partida.component').then(
+            (m) => m.CriarPartidaComponent,
+          ),
       },
       { path: 'partida', redirectTo: 'partida/presenca', pathMatch: 'full' },
       {
         path: 'partida/presenca',
-        loadComponent: placeholder,
-        data: { title: 'Presença', eyebrow: 'Partida' },
+        loadComponent: () =>
+          import('./features/partida/presenca-partida.component').then(
+            (m) => m.PresencaPartidaComponent,
+          ),
       },
       {
         path: 'partida/sorteio',
-        loadComponent: placeholder,
+        canActivate: [presenceListClosedGuard],
+        loadComponent: () =>
+          import('./features/partida/sorteio-partida.component').then(
+            (m) => m.SorteioPartidaComponent,
+          ),
         data: { title: 'Sorteio', eyebrow: 'Partida' },
       },
       {
         path: 'partida/campo',
-        loadComponent: placeholder,
+        canActivate: [presenceListClosedGuard],
+        loadComponent: () =>
+          import('./features/partida/campo-partida.component').then(
+            (m) => m.CampoPartidaComponent,
+          ),
         data: { title: 'Em campo', eyebrow: 'Partida' },
       },
       {
         path: 'jogadores',
-        loadComponent: placeholder,
-        data: { title: 'Jogadores', eyebrow: 'Elenco' },
+        loadComponent: () =>
+          import('./features/jogadores/jogadores-lista.component').then(
+            (m) => m.JogadoresListaComponent,
+          ),
+      },
+      {
+        path: 'jogadores/:playerId',
+        loadComponent: () =>
+          import('./features/jogadores/jogador-perfil.component').then(
+            (m) => m.JogadorPerfilComponent,
+          ),
       },
       {
         path: 'caixa',
-        loadComponent: placeholder,
+        loadComponent: () =>
+          import('./features/caixa/caixa-pelada.component').then(
+            (m) => m.CaixaPeladaComponent,
+          ),
         data: { title: 'Caixa', eyebrow: 'Pagamentos' },
       },
       { path: '', pathMatch: 'full', redirectTo: 'inicio' },

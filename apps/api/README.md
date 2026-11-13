@@ -53,6 +53,9 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 
 - **Sem** rotas `/auth/*` — login só no Keycloak (Angular F0-5).
 - `GET /me` e `PATCH /me` exigem `Authorization: Bearer <access_token>`.
+- JWT validado via JWKS (`KEYCLOAK_ISSUER`, `KEYCLOAK_JWKS_URI`).
+- Primeiro acesso cria `User` no Postgres (JIT por `sub`).
+- Dev local: `DEV_AUTH_BYPASS=true` + qualquer `Bearer` (ver `.env.example`); **nunca** em produção.
 
 ## Peladas (L1-API)
 
@@ -60,13 +63,49 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 - Resposta `201`: `{ id, name, city, state, photoUrl?, role: "ORGANIZADOR" }`.
 - Cria `Pelada`, `PeladaMember` (ORGANIZADOR) e `PeladaRules` padrão; foto em `UPLOAD_DIR` (padrão `./uploads`) servida em `/uploads/...` (`PUBLIC_UPLOAD_BASE_URL` no `.env`).
 - Arquivo grande demais: `413` (Multer `LIMIT_FILE_SIZE`).
-- JWT validado via JWKS (`KEYCLOAK_ISSUER`, `KEYCLOAK_JWKS_URI`).
-- Primeiro acesso cria `User` no Postgres (JIT por `sub`).
-- Dev local: `DEV_AUTH_BYPASS=true` + qualquer `Bearer` (ver `.env.example`); **nunca** em produção.
+
+## Regras (3.2-API)
+
+- `GET /peladas/:peladaId/rules` — JWT; membro da pelada.
+- `PATCH /peladas/:peladaId/rules` — JWT; **ORGANIZADOR**; body `PatchPeladaRulesDto` (`domain/dto/`).
+- Validação GK: `extra.goalkeeperPerTeam` e `extra.fixedGoalkeeper` não podem ser true juntos; conflito com `goalkeeperMode` → `400`.
+
+## Exceção de regras por partida (3.2-EXC)
+
+- `POST /peladas/:peladaId/matches` — JWT; **ORGANIZADOR**; body `CreateMatchDto`; grava snapshot das regras em `Match.rulesOverride`.
+- `GET /peladas/:peladaId/matches/:matchId/rules` — JWT; membro; resposta `{ matchId, peladaId, rulesOverride, defaultRules, effectiveRules }`.
+- `PATCH /peladas/:peladaId/matches/:matchId/rules-override` — JWT; **ORGANIZADOR**; body `PatchMatchRulesOverrideDto`; persiste só em `Match.rulesOverride` (não altera `PeladaRules`).
+- Mesma validação GK do patch de regras da pelada, aplicada ao merge **effective** antes de salvar.
+
+## Presença (3.4-API)
+
+- `GET /peladas/:peladaId/matches/:matchId/attendance` — JWT; membro; sincroniza linhas do elenco; `{ matchId, listClosed, capacity, counts, entries[] }`.
+- `PATCH .../attendance/:playerId` — JWT; **ORGANIZADOR**; body `{ status: PENDING|CONFIRMED|DECLINED|QUEUE }`; respeita capacidade e fila FIFO (`queuePosition`).
+- `POST .../attendance/self` — JWT; jogador com `Player.userId` vinculado; body `{ action: confirm|decline }`; só se `Match.presenceMode === SELF_CONFIRM`.
+- `POST .../attendance/guests` — JWT; membro; body `{ displayName }`; cria convidado pendente.
+- `POST .../attendance/guests/:playerId/approve|decline` — JWT; **ORGANIZADOR**.
+- `POST .../attendance/close-list` — JWT; **ORGANIZADOR**; `Match.status = LIST_CLOSED`.
+- `POST .../attendance/reopen-list` — JWT; **ORGANIZADOR**; reabre lista (`SCHEDULED`).
+
+## Dashboard Início (3.1-API)
+
+- `GET /peladas/:peladaId/dashboard` — JWT; membro; `{ peladaId, nextMatch, rosterPlayerCount, cashMonth }`.
+- `nextMatch`: próxima partida não finalizada com `scheduledAt` futuro; confirmados, capacidade (regras efetivas), avatares/nomes.
+- `cashMonth`: soma `PAID` no mês UTC (`receivedCents`) e `PENDING`+`PAID` criados no mês (`expectedCents`).
+
+## Elenco / jogadores (3.7-API)
+
+- `GET /peladas/:peladaId/membership` — JWT; membro; `{ peladaId, role }` (`ORGANIZADOR` | `JOGADOR`).
+- `GET /peladas/:peladaId/players` — JWT; membro; `{ peladaId, players[] }` (contrato alinhado ao web §3.7).
+- `GET /peladas/:peladaId/players/:playerId` — JWT; membro; perfil §3.8 (`attributes`, `paymentPlan`, `userId`).
+- `POST /peladas/:peladaId/players` — JWT; **ORGANIZADOR**; body `CreatePlayerDto`.
+- `PATCH /peladas/:peladaId/players/:playerId` — JWT; **ORGANIZADOR** ou jogador com **L27** no próprio vínculo; JSON `PatchPlayerDto` ou `multipart` com campo opcional `photo` (JPEG/PNG/WebP, 5 MB). Resposta inclui `photoUrl`.
+- `DELETE /peladas/:peladaId/players/:playerId` — JWT; **ORGANIZADOR**; `204`.
+- `isFixedList: true` só é aceito quando `PeladaRules.fixedListOnly` está ativo (regra 16); caso contrário `400`.
 
 ## Testes de integração (TEST-API-HARNESS)
 
 - Runner: `test/jest-integration.json` (incluído em `npm run test:api`).
 - Postgres dedicado: `npm run db:test:up` + `db:test:migrate` na raiz; `DATABASE_URL_TEST` no `.env`.
 - Com DB de teste: `$env:RUN_DB_TESTS="1"; npm.cmd run test:api` — health, 401, JIT com JWT RS256 de fixture (`test/helpers/sign-test-jwt.ts`).
-- Factories: `test/factories/user.factory.ts`, `pelada.factory.ts`.
+- Factories: `test/factories/user.factory.ts`, `pelada.factory.ts`, `match.factory.ts`, `player.factory.ts`.

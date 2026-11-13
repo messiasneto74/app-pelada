@@ -1,71 +1,191 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { RouterLink } from '@angular/router';
-import { environment } from '../../../environments/environment';
-import { AuthService, MeProfile } from '../../auth/auth.service';
+import { Component, effect, inject, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { PeladaDashboardRefreshService } from '../../core/inicio/pelada-dashboard-refresh.service';
+import {
+  INICIO_SHORTCUTS,
+  type InicioDashboardView,
+} from '../../core/inicio/inicio-dashboard.model';
+import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
+import { resolveInicioEmptyStates } from '../../core/inicio/inicio-empty-states';
+import { PeladaContextService } from '../../core/pelada/pelada-context.service';
+import { PeladaAvatarComponent } from '../../ui/avatar.component';
 import { PeladaButtonComponent } from '../../ui/button.component';
+import { PeladaCardComponent } from '../../ui/card.component';
+import { PeladaProgressComponent } from '../../ui/progress.component';
 import { ScreenHeaderComponent } from '../../ui/screen-header.component';
 
 @Component({
   selector: 'app-inicio',
   standalone: true,
+  imports: [
+    RouterLink,
+    ScreenHeaderComponent,
+    PeladaCardComponent,
+    PeladaProgressComponent,
+    PeladaAvatarComponent,
+    PeladaButtonComponent,
+  ],
   template: `
     <section class="pelada-shell">
       <pelada-screen-header
         eyebrow="Início"
-        title="Bora jogar"
-        subtitle="Próxima partida e atalhos — tela 3.1 nas issues M1."
-      >
-        <a headerActions routerLink="/inicio/criar-partida" peladaButton variant="lime">
-          Criar partida
-        </a>
-      </pelada-screen-header>
-      @if (health) {
-        <p class="pelada-text-ok">
-          API: {{ health.status }} · DB: {{ health.database }} ({{ health.service }})
-        </p>
-      } @else if (healthError) {
-        <p class="pelada-text-warn">API offline — rode <code>npm run dev:api</code></p>
-      }
-      <nav>
-        <a routerLink="/entrar">Entrar</a>
-        @if (profile) {
-          <span class="pelada-muted"> · logado ({{ profile.email ?? profile.keycloakSub }})</span>
+        [title]="dashboard()?.peladaName ?? 'Bora jogar'"
+        subtitle="Próxima partida, atalhos e caixa do mês (§3.1)."
+      />
+
+      @if (loading()) {
+        <p class="pelada-muted">Carregando…</p>
+      } @else {
+        @if (dashboard(); as dash) {
+        @if (dash.nextMatch; as match) {
+          <pelada-card title="Próxima partida">
+            <p class="match-when">
+              {{ match.dateLabel }}
+              @if (match.timeLabel) {
+                · {{ match.timeLabel }}
+              }
+            </p>
+            <p class="match-meta">
+              {{ match.locationLabel }} · {{ match.modalityLabel }}
+            </p>
+            <div class="avatar-row">
+              @for (p of match.confirmedPlayers.slice(0, 5); track p.id) {
+                <pelada-avatar [name]="p.displayName" size="small" tone="lime" />
+              }
+            </div>
+            <pelada-progress
+              [value]="match.vacancyPercent"
+              [startLabel]="match.confirmedCount + '/' + match.capacity + ' confirmados'"
+              [endLabel]="match.vacancyPercent + '%'"
+            />
+            <a
+              [routerLink]="match.presenceLink"
+              peladaButton
+              variant="lime"
+              [peladaButtonBlock]="true"
+            >
+              Abrir lista de presença
+            </a>
+          </pelada-card>
+        } @else {
+          <pelada-card title="Nenhuma partida marcada">
+            <p class="pelada-muted">
+              Crie a primeira partida para ver dia, hora, vagas e confirmados aqui.
+            </p>
+            <a
+              routerLink="/inicio/criar-partida"
+              peladaButton
+              [peladaButtonBlock]="true"
+            >
+              Criar partida
+            </a>
+          </pelada-card>
         }
-      </nav>
+
+        @if (resolveInicioEmptyStates(dash).showNoRoster) {
+          <pelada-card title="Elenco vazio">
+            <p class="pelada-muted">
+              Adicione jogadores para confirmar presença, sortear times e usar o caixa.
+            </p>
+            <a
+              routerLink="/jogadores"
+              peladaButton
+              variant="secondary"
+              [peladaButtonBlock]="true"
+            >
+              Ir para o elenco
+            </a>
+          </pelada-card>
+        }
+
+        <div class="shortcut-grid">
+          @for (s of shortcuts; track s.id) {
+            <a [routerLink]="s.route" class="shortcut" peladaButton variant="secondary">
+              {{ s.label }}
+            </a>
+          }
+        </div>
+
+        <pelada-card title="Caixa do mês">
+          <p class="cash-line">
+            {{ dash.cashReceivedLabel }}
+            <span class="pelada-muted">de {{ dash.cashExpectedLabel }}</span>
+          </p>
+          <pelada-progress
+            [value]="dash.cashPercent"
+            startLabel="Recebido no período"
+            [endLabel]="dash.cashPercent + '% do total'"
+          />
+        </pelada-card>
+        }
+      }
     </section>
   `,
   styles: [
     `
-      nav {
-        margin-top: var(--pelada-space-4);
+      pelada-card {
+        display: block;
+        margin-bottom: var(--pelada-space-4);
       }
-      code {
-        font-size: 0.85em;
+      .match-when {
+        font-weight: 600;
+        margin: 0 0 var(--pelada-space-2);
+      }
+      .match-meta {
+        margin: 0 0 var(--pelada-space-3);
+        color: var(--pelada-muted, #5a6b63);
+      }
+      .avatar-row {
+        display: flex;
+        gap: var(--pelada-space-2);
+        margin-bottom: var(--pelada-space-3);
+      }
+      .shortcut-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--pelada-space-3);
+        margin-bottom: var(--pelada-space-4);
+      }
+      .shortcut {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        text-decoration: none;
+      }
+      .cash-line {
+        margin: 0 0 var(--pelada-space-3);
+        font-size: 1.125rem;
       }
     `,
   ],
-  imports: [RouterLink, ScreenHeaderComponent, PeladaButtonComponent],
 })
-export class InicioComponent implements OnInit {
-  private readonly http = inject(HttpClient);
-  private readonly auth = inject(AuthService);
-  health: { status: string; service: string; database?: string } | null = null;
-  healthError = false;
-  profile: MeProfile | null = null;
+export class InicioComponent {
+  private readonly peladaContext = inject(PeladaContextService);
+  private readonly dashboardService = inject(PeladaDashboardService);
+  private readonly dashboardRefresh = inject(PeladaDashboardRefreshService);
+  private readonly router = inject(Router);
 
-  ngOnInit(): void {
-    this.http
-      .get<{ status: string; service: string; database?: string }>(
-        `${environment.apiUrl}/health`,
-      )
-      .subscribe({
-        next: (body) => (this.health = body),
-        error: () => (this.healthError = true),
+  readonly shortcuts = INICIO_SHORTCUTS;
+  readonly dashboard = signal<InicioDashboardView | null>(null);
+  readonly loading = signal(true);
+  readonly resolveInicioEmptyStates = resolveInicioEmptyStates;
+
+  constructor() {
+    effect(() => {
+      const pelada = this.peladaContext.getActivePelada();
+      this.dashboardRefresh.refreshToken();
+      if (!pelada) {
+        this.loading.set(false);
+        void this.router.navigate(['/onboarding/pelada']);
+        return;
+      }
+      this.loading.set(true);
+      this.dashboardService.loadDashboard(pelada, (view) => {
+        this.dashboard.set(view);
+        this.loading.set(false);
       });
-
-    if (this.auth.isLoggedIn()) {
-      this.auth.getMe().then((me) => (this.profile = me)).catch(() => undefined);
-    }
+    });
   }
 }

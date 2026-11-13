@@ -33,6 +33,24 @@ describe('AllExceptionsFilter', () => {
     );
   });
 
+  it('mapeia Multer LIMIT_FILE_SIZE para 413 com mensagem PT', () => {
+    const { host, status, json } = mockHost('/peladas');
+    filter.catch(
+      Object.assign(new Error('File too large'), {
+        name: 'MulterError',
+        code: 'LIMIT_FILE_SIZE',
+      }),
+      host,
+    );
+
+    expect(status).toHaveBeenCalledWith(413);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Foto deve ter no máximo 5 MB.',
+      }),
+    );
+  });
+
   it('formats unknown errors as 500', () => {
     const { host, status, json } = mockHost();
     filter.catch(new Error('boom'), host);

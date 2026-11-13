@@ -15,6 +15,12 @@ export class MeController {
     return this.meService.getMe(user);
   }
 
+  @Get('me/peladas')
+  @UseGuards(JwtAuthGuard)
+  listMyPeladas(@CurrentUser() user: AuthUserPayload) {
+    return this.meService.listMyPeladas(user);
+  }
+
   @Patch('me')
   @UseGuards(JwtAuthGuard)
   patchMe(@CurrentUser() user: AuthUserPayload, @Body() body: PatchMeDto) {

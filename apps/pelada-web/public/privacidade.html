@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#173d32" />
+    <title>Política de privacidade — Pelada</title>
+    <style>
+      body {
+        font-family: 'DM Sans', system-ui, sans-serif;
+        line-height: 1.5;
+        margin: 0;
+        padding: 24px;
+        max-width: 42rem;
+        color: #202c27;
+        background: #f5f6f3;
+      }
+      h1 {
+        font-family: 'Barlow Condensed', system-ui, sans-serif;
+        color: #173d32;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1rem 0;
+      }
+      th,
+      td {
+        border: 1px solid #e7eae4;
+        padding: 8px;
+        text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Política de privacidade</h1>
+    <p>
+      O app <strong>Pelada</strong> organiza partidas, presença e sorteio de times. Não vendemos dados
+      pessoais.
+    </p>
+    <h2>Dados coletados</h2>
+    <table>
+      <tr>
+        <th>Dado</th>
+        <th>Finalidade</th>
+      </tr>
+      <tr>
+        <td>Conta (nome, e-mail) via Keycloak</td>
+        <td>Login e identificação</td>
+      </tr>
+      <tr>
+        <td>Telefone (quando solicitado)</td>
+        <td>Contato do organizador</td>
+      </tr>
+      <tr>
+        <td>Pelada, jogadores, partidas</td>
+        <td>Funcionalidade do app</td>
+      </tr>
+      <tr>
+        <td>Fotos enviadas</td>
+        <td>Exibição no elenco</td>
+      </tr>
+    </table>
+    <p>
+      Dados ficam na API e PostgreSQL do operador. Autenticação via OpenID Connect (Keycloak); a API
+      valida JWT e não armazena senhas do IdP no app.
+    </p>
+    <p>
+      Versão completa e contato: ver
+      <a href="https://github.com/messiasneto74/app-pelada/blob/main/docs/privacidade-mvp.md"
+        >documentação no repositório</a
+      >
+      e e-mail de suporte configurado na ficha da loja após deploy staging.
+    </p>
+  </body>
+</html>
