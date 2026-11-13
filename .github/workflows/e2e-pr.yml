@@ -1,0 +1,74 @@
+# E2E-1 — Playwright com stack Docker (evidência reproduzível no PR).
+name: E2E (Playwright)
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-e2e:
+    name: test:e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: .env mínimo
+        run: cp .env.example .env
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Chrome (Playwright)
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Postgres + Keycloak (Docker)
+        run: docker compose up -d postgres-app postgres-keycloak keycloak
+
+      - name: Migrations Postgres app
+        run: npm run db:migrate
+
+      - name: Aguardar Keycloak + build API/web
+        run: |
+          npm run smoke:keycloak
+          npm run build:core
+          npm run build:api
+
+      - name: API + web (host)
+        run: |
+          (cd apps/api && nohup node --env-file=../../.env dist/main.js > ../../api-e2e.log 2>&1 &)
+          nohup npm run start -w @pelada/web -- --host 0.0.0.0 --disable-host-check > web-e2e.log 2>&1 &
+          for i in $(seq 1 120); do
+            if curl -fsS http://localhost:3000/health >/dev/null 2>&1 &&
+               curl -fsS http://localhost:4200/ >/dev/null 2>&1; then
+              echo "Stack OK"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "=== api-e2e.log ===" && tail -n 100 api-e2e.log || true
+          echo "=== web-e2e.log ===" && tail -n 100 web-e2e.log || true
+          exit 1
+
+      - name: npm run test:e2e:playwright
+        env:
+          PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: npm run test:e2e:playwright
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/

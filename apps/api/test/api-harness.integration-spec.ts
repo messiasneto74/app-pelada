@@ -10,9 +10,8 @@ import { signTestJwt } from './helpers/sign-test-jwt';
 const runHarness =
   process.env.RUN_DB_TESTS === '1' && process.env.DATABASE_URL_TEST;
 
-(runHarness ? describe : describe.skip)(
-  'API harness (Postgres + mock JWT)',
-  () => {
+if (runHarness) {
+  describe('API harness (Postgres + mock JWT)', () => {
     let app: INestApplication<App>;
     let prisma: PrismaService;
 
@@ -70,5 +69,5 @@ const runHarness =
       expect(pelada.members[0].role).toBe('ORGANIZADOR');
       expect(pelada.owner.id).toBe(pelada.ownerId);
     });
-  },
-);
+  });
+}

@@ -17,6 +17,22 @@ describe('pelada-rules-api.mapper', () => {
     expect(form.drawMode).toBe('RANDOM');
     expect(form.drawUseAttributes).toBe(false);
     expect(form.paymentModel).toBe('MONTHLY');
+    expect(form.allowPlayerSelfEdit).toBe(false);
+  });
+
+  it('mapeia allowPlayerSelfEdit da API', () => {
+    const form = peladaRulesFromApi({
+      peladaId: 'p1',
+      playersPerTeam: 6,
+      teamCount: 2,
+      modality: 'campo',
+      goalkeeperMode: 'ROTATING',
+      fixedListOnly: false,
+      allowPlayerSelfEdit: true,
+      drawWeights: {},
+      extra: {},
+    });
+    expect(form.allowPlayerSelfEdit).toBe(true);
   });
 
   it('mapeia formulário → PATCH', () => {
@@ -33,8 +49,10 @@ describe('pelada-rules-api.mapper', () => {
       drawUseRating: true,
       drawUseAttributes: true,
       drawUseStyleTags: false,
+      allowPlayerSelfEdit: true,
     });
     expect(body['goalkeeperMode']).toBe('FIXED_PER_TEAM');
+    expect(body['allowPlayerSelfEdit']).toBe(true);
     const weights = body['drawWeights'] as Record<string, unknown>;
     expect(weights['useStyleTags']).toBe(false);
   });

@@ -43,6 +43,35 @@ describe('AppController (e2e)', () => {
       });
   });
 
+  it('respostas incluem cabeçalhos de segurança do helmet (Médio)', async () => {
+    const res = await request(app.getHttpServer()).get('/health').expect(200);
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['x-dns-prefetch-control']).toBe('off');
+  });
+
+  it('não confia em proxy por padrão (TRUST_PROXY não definido no .env de teste): achado P2 do Codex no PR #129 — confiar sempre deixaria qualquer chamador direto forjar X-Forwarded-For e furar o rate limit', () => {
+    const expressApp = app.getHttpAdapter().getInstance() as {
+      get(setting: string): unknown;
+    };
+    expect(expressApp.get('trust proxy')).toBe(false);
+  });
+
+  it('corpo acima do limite configurado (1mb) retorna 413 (Médio)', () => {
+    const big = { name: 'x'.repeat(2 * 1024 * 1024) };
+    return request(app.getHttpServer())
+      .post('/_probe/validate')
+      .send(big)
+      .expect(413);
+  });
+
+  it('corpo entre o default do Express (100kb) e o limite configurado (1mb) passa (Médio)', () => {
+    const mid = { name: 'x'.repeat(500 * 1024) };
+    return request(app.getHttpServer())
+      .post('/_probe/validate')
+      .send(mid)
+      .expect(201);
+  });
+
   it('unknown route returns standard error body', () => {
     return request(app.getHttpServer())
       .get('/rota-inexistente')

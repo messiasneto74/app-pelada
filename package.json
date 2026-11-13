@@ -8,9 +8,15 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:web": "npm run start -w @pelada/web",
+    "dev:web": "npm run build:core && npm run start -w @pelada/web",
     "dev:api": "npm run start:dev -w @pelada/api",
     "build:web": "npm run build -w @pelada/web",
+    "build:web:staging": "node scripts/prepare-staging-web-env.mjs && npm run build -w @pelada/web -- --configuration=staging",
+    "cap:sync": "npm run cap:sync -w @pelada/mobile",
+    "build:mobile": "npm run build:web && npm run cap:sync",
+    "build:mobile:staging": "npm run build:web:staging && npm run cap:sync",
+    "cap:open:android": "npm run cap:open:android -w @pelada/mobile",
+    "cap:open:ios": "npm run cap:open:ios -w @pelada/mobile",
     "build:api": "npm run build -w @pelada/api",
     "build:core": "npm run build -w @pelada/core",
     "test:core": "npm run test -w @pelada/core",
@@ -22,28 +28,39 @@
     "test:scripts:cov": "vitest run --config vitest.config.mjs --coverage",
     "test:scripts:r07": "npm run test:scripts:cov && node scripts/check-pr-line-coverage.mjs",
     "test:no-skipped": "node scripts/check-no-skipped-tests.mjs",
+    "check:review-policy": "node scripts/check-review-policy.mjs",
     "check:codex-review-policy": "node scripts/check-codex-review-policy.mjs",
-    "test:all": "npm run test:no-skipped && npm run test:core && npm run test:api && npm run test:web && npm run test:scripts:r07",
-    "test:all:ci": "npm run test:no-skipped && npm run test:core && npm run test:api && npm run test:web:ci && npm run test:scripts:r07",
+    "test:all": "npm run test:no-skipped && npm run test:core && npm run build:core && npm run test:api && npm run test:web && npm run test:scripts:r07",
+    "test:all:ci": "npm run test:no-skipped && npm run test:core && npm run build:core && npm run test:api && npm run test:web:ci && npm run test:scripts:r07",
     "issue:mark-dod": "node scripts/mark-issue-dod.mjs",
     "db:up": "docker compose up -d postgres-app",
     "db:test:up": "node scripts/db-test-up.mjs",
     "db:test:migrate": "node scripts/db-test-migrate.mjs",
     "db:down": "docker compose down",
     "stack:up": "docker compose up -d --build",
+    "stack:up:staging": "docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build",
     "stack:down": "docker compose down",
     "stack:logs": "docker compose logs -f --tail=100",
     "smoke:stack": "node scripts/stack-smoke.mjs",
+    "smoke:staging": "node scripts/smoke-staging.mjs",
     "db:migrate": "npm run prisma:migrate:deploy -w @pelada/api",
     "keycloak:up": "docker compose up -d postgres-keycloak keycloak",
     "keycloak:down": "docker compose stop keycloak postgres-keycloak",
     "keycloak:reset": "node scripts/keycloak-reset.mjs",
-    "smoke:keycloak": "node scripts/keycloak-smoke.mjs"
+    "smoke:keycloak": "node scripts/keycloak-smoke.mjs",
+    "test:e2e": "node scripts/run-e2e.mjs",
+    "test:e2e:install": "playwright install chromium",
+    "test:e2e:playwright": "playwright test --config e2e/playwright.config.ts"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.22.3"
+  },
+  "overrides": {
+    "multer": "2.5.0",
+    "deepmerge-ts": "8.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@vitest/coverage-v8": "^3.2.0",
     "vitest": "^3.2.0"
   }

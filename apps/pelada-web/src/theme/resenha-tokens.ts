@@ -6,13 +6,13 @@ export const RESENHA_COLORS = {
   bg: '#f5f6f3',
   paper: '#ffffff',
   ink: '#202c27',
-  muted: '#7b847e',
+  muted: '#656f69',
   green: '#173d32',
   lime: '#dcf58a',
   line: '#e7eae4',
-  accent: '#6b8a45',
+  accent: '#587338',
   red: '#b94848',
-  focus: '#92b936',
+  focus: '#456b3a',
 } as const;
 
 export const RESENHA_FONTS = {

@@ -46,4 +46,4 @@ Keycloak: atualize redirect URIs do client `pelada-web` para `https://app.seudom
 
 Na máquina de desenvolvimento o mesmo `docker-compose.yml` usa portas `localhost` — ver [desenvolvimento-local.md](desenvolvimento-local.md#subir-ambiente-integrado-f0-7).
 
-Issue **F0-7**; evolução de CI/CD na **CI-1** / **DEPLOY-1**.
+Issue **F0-7**; passo a passo de **staging** em [deploy-staging.md](deploy-staging.md) (**DEPLOY-1**); evolução de CI/CD na **CI-1**.

@@ -18,16 +18,10 @@ const FORBIDDEN_MARKERS = [
   },
 ];
 
-const CONDITIONAL_DB_HARNESS =
-  /^\s*\(\s*\w+\s*\?\s*describe\s*:\s*describe\.skip\s*\)/;
-
 export function scanTestSource(source, file = '<memory>') {
   const violations = [];
 
   source.split(/\r?\n/).forEach((line, index) => {
-    if (CONDITIONAL_DB_HARNESS.test(line)) {
-      return;
-    }
     for (const marker of FORBIDDEN_MARKERS) {
       if (marker.pattern.test(line)) {
         violations.push({

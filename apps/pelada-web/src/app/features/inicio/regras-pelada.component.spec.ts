@@ -37,6 +37,7 @@ describe('RegrasPeladaComponent', () => {
                 modality: DEFAULT_PELADA_RULES.modality,
                 goalkeeperMode: 'ROTATING',
                 fixedListOnly: false,
+                allowPlayerSelfEdit: false,
                 drawWeights: {},
                 extra: {},
               }),
@@ -48,6 +49,7 @@ describe('RegrasPeladaComponent', () => {
                 modality: 'campo',
                 goalkeeperMode: 'ROTATING',
                 fixedListOnly: false,
+                allowPlayerSelfEdit: false,
                 drawWeights: {},
                 extra: {},
               }),
@@ -79,6 +81,9 @@ describe('RegrasPeladaComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Formato');
     expect(fixture.nativeElement.textContent).toContain('Salvar como padrão');
     expect(fixture.nativeElement.textContent).toContain('Usar atributos');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Jogador edita o próprio perfil',
+    );
   });
 
   it('bloqueia combinação inválida de goleiro ao salvar', () => {
@@ -97,5 +102,11 @@ describe('RegrasPeladaComponent', () => {
     fixture.componentInstance.saveDefault();
     expect(rulesService.hasSavedRules('p1')).toBe(true);
     expect(fixture.componentInstance.savedMessage()).toContain('salvas');
+  });
+
+  it('persiste allowPlayerSelfEdit ao salvar', () => {
+    fixture.componentInstance.allowPlayerSelfEdit.set(true);
+    fixture.componentInstance.saveDefault();
+    expect(rulesService.getDefaultRules('p1').allowPlayerSelfEdit).toBe(true);
   });
 });
