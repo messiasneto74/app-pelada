@@ -200,6 +200,31 @@ if (runHarness) {
       ]);
     });
 
+    it('gols concorrentes não se perdem (C4)', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+
+      const results = await Promise.all(
+        Array.from({ length: 5 }, () =>
+          request(app.getHttpServer())
+            .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+            .set('Authorization', `Bearer ${orgToken}`)
+            .send({ addGoal: 'HOME' }),
+        ),
+      );
+      expect(results.every((r) => r.status === 200)).toBe(true);
+
+      const final = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+      expect(final.body.scoreHome).toBe(5);
+    });
+
     it('só organizador pode iniciar sessão', async () => {
       const { pelada, match, jogadorToken } = await seedThreeTeamDraw();
       await request(app.getHttpServer())

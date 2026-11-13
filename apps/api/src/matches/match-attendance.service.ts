@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { AttendanceStatus, Match, PeladaRules } from '@prisma/client';
+import type { AttendanceStatus, Match, PeladaRules, Prisma } from '@prisma/client';
 import type { AuthUserPayload } from '../auth/auth-user';
 import { UpdateAttendanceDto } from '../domain/dto/update-attendance.dto';
 import { GuestAttendanceRequestDto } from '../domain/dto/guest-attendance-request.dto';
@@ -227,6 +227,11 @@ export class MatchAttendanceService {
     if (match.status === 'LIST_CLOSED') {
       return this.buildListDto(match, defaults);
     }
+    if (match.status !== 'SCHEDULED') {
+      throw new BadRequestException(
+        'Lista só pode ser fechada enquanto a partida está agendada.',
+      );
+    }
     const updated = await this.prisma.match.update({
       where: { id: matchId },
       data: { status: 'LIST_CLOSED', listClosedAt: new Date() },
@@ -246,6 +251,14 @@ export class MatchAttendanceService {
       matchId,
       user.id,
     );
+    if (match.status === 'SCHEDULED') {
+      return this.buildListDto(match, defaults);
+    }
+    if (match.status !== 'LIST_CLOSED') {
+      throw new BadRequestException(
+        'Lista só pode ser reaberta antes do sorteio ou da partida ir a campo.',
+      );
+    }
     const updated = await this.prisma.match.update({
       where: { id: matchId },
       data: { status: 'SCHEDULED', listClosedAt: null },
@@ -259,25 +272,36 @@ export class MatchAttendanceService {
     requested: AttendanceStatus,
     defaults: PeladaRules,
   ): Promise<void> {
-    const match = await this.prisma.match.findUniqueOrThrow({
-      where: { id: matchId },
+    // Lock a linha da partida (SELECT ... FOR UPDATE) para serializar confirmações
+    // concorrentes: sem isso, duas confirmações simultâneas liam a mesma capacidade
+    // e contagem de fila, e ambas "passavam", furando o limite de vagas (C3).
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT 1 FROM matches WHERE id = ${matchId} FOR UPDATE`;
+      const match = await tx.match.findUniqueOrThrow({
+        where: { id: matchId },
+      });
+      const capacity = this.capacityForMatch(match, defaults);
+      const rows = await this.loadRowInputs(tx, matchId);
+      if (!rows.some((r) => r.playerId === playerId)) {
+        throw new NotFoundException(
+          'Jogador não está na lista desta partida.',
+        );
+      }
+      const nextRows = applyAttendanceStatusChange(
+        rows,
+        playerId,
+        requested,
+        capacity,
+      );
+      await this.persistRowInputs(tx, matchId, rows, nextRows);
     });
-    const capacity = this.capacityForMatch(match, defaults);
-    const rows = await this.loadRowInputs(matchId);
-    if (!rows.some((r) => r.playerId === playerId)) {
-      throw new NotFoundException('Jogador não está na lista desta partida.');
-    }
-    const nextRows = applyAttendanceStatusChange(
-      rows,
-      playerId,
-      requested,
-      capacity,
-    );
-    await this.persistRowInputs(matchId, rows, nextRows);
   }
 
-  private async loadRowInputs(matchId: string): Promise<AttendanceRowInput[]> {
-    const list = await this.prisma.matchAttendance.findMany({
+  private async loadRowInputs(
+    tx: Prisma.TransactionClient,
+    matchId: string,
+  ): Promise<AttendanceRowInput[]> {
+    const list = await tx.matchAttendance.findMany({
       where: { matchId },
     });
     return list.map((a) => ({
@@ -289,6 +313,7 @@ export class MatchAttendanceService {
   }
 
   private async persistRowInputs(
+    tx: Prisma.TransactionClient,
     matchId: string,
     before: AttendanceRowInput[],
     after: AttendanceRowInput[],
@@ -303,7 +328,7 @@ export class MatchAttendanceService {
       ) {
         continue;
       }
-      await this.prisma.matchAttendance.update({
+      await tx.matchAttendance.update({
         where: { matchId_playerId: { matchId, playerId: row.playerId } },
         data: {
           status: row.status,
@@ -332,6 +357,7 @@ export class MatchAttendanceService {
         playerId: p.id,
         status: 'PENDING' as AttendanceStatus,
       })),
+      skipDuplicates: true,
     });
   }
 

@@ -11,3 +11,13 @@ export interface ActivePelada {
 export const ACTIVE_PELADA_STORAGE_KEY = 'pelada:active-v1';
 
 export type StoredActivePelada = Omit<ActivePelada, 'photoPreviewUrl'>;
+
+/** `GET /me/peladas` (C1) — peladas do usuário autenticado, organizador primeiro. */
+export interface MyPeladaSummary {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  defaultWeekday: number | null;
+  defaultLocation: string | null;
+  role: string;
+}
