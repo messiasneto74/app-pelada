@@ -1,4 +1,5 @@
 import {
+  DrawValidationError,
   drawTeams,
   type DrawPlayerInput,
   type DrawTeamsResult,
@@ -102,6 +103,10 @@ export type SpikeDrawState = {
   rosterById: ReadonlyMap<string, RosterPlayer>;
 };
 
+export type SpikeSwapResult =
+  | { ok: true; state: SpikeDrawState }
+  | { ok: false; message: string };
+
 export function rosterToDrawPlayers(
   roster: readonly RosterPlayer[],
 ): DrawPlayerInput[] {
@@ -166,23 +171,33 @@ export function swapSpikePlayers(
   state: SpikeDrawState,
   playerAId: string,
   playerBId: string,
-): SpikeDrawState {
-  const swapped = swapDrawPlayers({
-    players: state.drawPlayers,
-    teams: state.draw.teams,
-    playerAId,
-    playerBId,
-    goalkeepersMode: 'ONE_PER_TEAM',
-  });
-  const draw: DrawTeamsResult = {
-    teams: swapped.teams,
-    metrics: swapped.metrics,
-    seed: state.draw.seed,
-  };
-  return {
-    draw,
-    drawPlayers: state.drawPlayers,
-    rosterById: state.rosterById,
-    teams: mapSpikeDrawToTeams(draw, state.rosterById),
-  };
+): SpikeSwapResult {
+  try {
+    const swapped = swapDrawPlayers({
+      players: state.drawPlayers,
+      teams: state.draw.teams,
+      playerAId,
+      playerBId,
+      goalkeepersMode: 'ONE_PER_TEAM',
+    });
+    const draw: DrawTeamsResult = {
+      teams: swapped.teams,
+      metrics: swapped.metrics,
+      seed: state.draw.seed,
+    };
+    return {
+      ok: true,
+      state: {
+        draw,
+        drawPlayers: state.drawPlayers,
+        rosterById: state.rosterById,
+        teams: mapSpikeDrawToTeams(draw, state.rosterById),
+      },
+    };
+  } catch (err) {
+    if (err instanceof DrawValidationError) {
+      return { ok: false, message: err.message };
+    }
+    throw err;
+  }
 }

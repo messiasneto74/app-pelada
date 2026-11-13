@@ -61,6 +61,9 @@ import {
         </pelada-card>
 
         <p class="pelada-muted drag-hint">Segure e arraste um jogador para trocar de time.</p>
+        @if (swapError(); as err) {
+          <p class="swap-error" role="alert">{{ err }}</p>
+        }
 
         <div cdkDropListGroup class="teams-grid">
           @for (meta of s.teams; track meta.sortOrder) {
@@ -142,6 +145,15 @@ import {
         font-size: 0.8125rem;
         margin-bottom: var(--pelada-space-3);
       }
+      .swap-error {
+        margin: 0 0 var(--pelada-space-3);
+        padding: var(--pelada-space-2) var(--pelada-space-3);
+        border-radius: var(--pelada-radius-md);
+        border: 1px solid #e8b4b4;
+        background: #fdf2f2;
+        color: #8a2f2f;
+        font-size: 0.8125rem;
+      }
       .teams-grid {
         display: flex;
         flex-direction: column;
@@ -201,6 +213,7 @@ export class Sorteio35PreviewComponent {
   readonly state = signal(
     buildSpikeDrawState(SPIKE_MOCK_ROSTER, this.spikeSeed),
   );
+  readonly swapError = signal<string | null>(null);
   readonly rosterPositionLabel = rosterPositionLabel;
   readonly formatRosterRating = formatRosterRating;
 
@@ -219,6 +232,7 @@ export class Sorteio35PreviewComponent {
 
   redrawBalanced(): void {
     this.spikeSeed += 1;
+    this.swapError.set(null);
     this.state.set(redrawSpikeBalanced(this.state(), this.spikeSeed));
   }
 
@@ -226,7 +240,8 @@ export class Sorteio35PreviewComponent {
     if (event.previousContainer === event.container) {
       return;
     }
-    const working = cloneTeamsState(this.state().teams);
+    const previous = this.state();
+    const working = cloneTeamsState(previous.teams);
     const src = working.find((t) => `sorteio-team-${t.sortOrder}` === event.previousContainer.id);
     const tgt = working.find((t) => t.sortOrder === targetSortOrder);
     const dragged = event.item.data as RosterPlayer;
@@ -245,11 +260,17 @@ export class Sorteio35PreviewComponent {
       dragged.id,
     );
     if (!pair) {
+      this.state.set({ ...previous, teams: cloneTeamsState(previous.teams) });
       return;
     }
-    this.state.set(
-      swapSpikePlayers(this.state(), pair.playerAId, pair.playerBId),
-    );
+    const result = swapSpikePlayers(previous, pair.playerAId, pair.playerBId);
+    if (!result.ok) {
+      this.swapError.set(result.message);
+      this.state.set({ ...previous, teams: cloneTeamsState(previous.teams) });
+      return;
+    }
+    this.swapError.set(null);
+    this.state.set(result.state);
   }
 }
 

@@ -22,16 +22,58 @@ describe('sorteio-spike.logic (5-SPIKE)', () => {
 
   it('recalcula métricas após swap local', () => {
     const state = buildSpikeDrawState(SPIKE_MOCK_ROSTER, 99);
-    const teamA = state.teams[0]?.players[0];
-    const teamB = state.teams[1]?.players[0];
+    const teamA = state.teams[0]?.players.find((p) => !p.isGoalkeeper);
+    const teamB = state.teams[1]?.players.find((p) => !p.isGoalkeeper);
     expect(teamA).toBeDefined();
     expect(teamB).toBeDefined();
     if (!teamA || !teamB) {
       return;
     }
     const next = swapSpikePlayers(state, teamA.id, teamB.id);
-    expect(next.draw.metrics.balanceScore).toBeGreaterThan(0);
-    expect(next.teams[0]?.players.some((p) => p.id === teamB.id)).toBe(true);
-    expect(next.teams[1]?.players.some((p) => p.id === teamA.id)).toBe(true);
+    expect(next.ok).toBe(true);
+    if (!next.ok) {
+      return;
+    }
+    expect(next.state.draw.metrics.balanceScore).toBeGreaterThan(0);
+    expect(next.state.teams[0]?.players.some((p) => p.id === teamB.id)).toBe(true);
+    expect(next.state.teams[1]?.players.some((p) => p.id === teamA.id)).toBe(true);
+  });
+
+  it('rejeita swap goleiro↔linha sem lançar (ONE_PER_TEAM)', () => {
+    const state = buildSpikeDrawState(SPIKE_MOCK_ROSTER, 42);
+    const gk = state.teams[0]?.players.find((p) => p.isGoalkeeper);
+    const line = state.teams[1]?.players.find((p) => !p.isGoalkeeper);
+    expect(gk).toBeDefined();
+    expect(line).toBeDefined();
+    if (!gk || !line) {
+      return;
+    }
+    const result = swapSpikePlayers(state, gk.id, line.id);
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.message).toMatch(/goleiro/i);
+    expect(state.draw.teams).toEqual(
+      buildSpikeDrawState(SPIKE_MOCK_ROSTER, 42).draw.teams,
+    );
+  });
+
+  it('permite swap goleiro↔goleiro', () => {
+    const state = buildSpikeDrawState(SPIKE_MOCK_ROSTER, 42);
+    const gkA = state.teams[0]?.players.find((p) => p.isGoalkeeper);
+    const gkB = state.teams[1]?.players.find((p) => p.isGoalkeeper);
+    expect(gkA).toBeDefined();
+    expect(gkB).toBeDefined();
+    if (!gkA || !gkB) {
+      return;
+    }
+    const result = swapSpikePlayers(state, gkA.id, gkB.id);
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.state.teams[0]?.players.some((p) => p.id === gkB.id)).toBe(true);
+    expect(result.state.teams[1]?.players.some((p) => p.id === gkA.id)).toBe(true);
   });
 });
