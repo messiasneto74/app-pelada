@@ -81,6 +81,46 @@ if (runHarness) {
         .expect(403);
     });
 
+    it('GETs concorrentes de /attendance não quebram com 500 (C2)', async () => {
+      const sub = `att-c2-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const pelada = await createPelada(prisma, { owner: org });
+      const token = signTestJwt({
+        sub: `${sub}-org`,
+        email: org.email ?? 'o@y.z',
+      });
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-10-01T19:00:00Z'),
+      });
+      const players = [];
+      for (let i = 0; i < 8; i++) {
+        players.push(
+          await createPlayer(prisma, {
+            peladaId: pelada.id,
+            displayName: `P${i}`,
+          }),
+        );
+      }
+
+      const results = await Promise.all(
+        Array.from({ length: 5 }, () =>
+          request(app.getHttpServer())
+            .get(`/peladas/${pelada.id}/matches/${match.id}/attendance`)
+            .set('Authorization', `Bearer ${token}`),
+        ),
+      );
+
+      expect(results.every((r) => r.status === 200)).toBe(true);
+
+      const rows = await prisma.matchAttendance.findMany({
+        where: { matchId: match.id },
+      });
+      expect(rows).toHaveLength(players.length);
+      const uniquePlayerIds = new Set(rows.map((r) => r.playerId));
+      expect(uniquePlayerIds.size).toBe(players.length);
+    });
+
     it('PATCH attendance confirms player for organizador', async () => {
       const { pelada, match, token, p1 } = await seedMatch();
       const list = await request(app.getHttpServer())
