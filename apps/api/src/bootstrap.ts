@@ -32,6 +32,35 @@ export function assertNoDevAuthBypassInProduction(env: {
   }
 }
 
+/**
+ * Sem `KEYCLOAK_CLIENT_ID`, `JwtStrategy` pula a checagem de `azp`/`aud`
+ * (ver Médio M2) — em produção isso não pode passar em silêncio, por
+ * exemplo se o deploy esquecer de repassar a variável ao container.
+ */
+export function assertKeycloakClientIdConfiguredInProduction(env: {
+  NODE_ENV?: string;
+  KEYCLOAK_CLIENT_ID?: string;
+}): void {
+  if (env.NODE_ENV === 'production' && !env.KEYCLOAK_CLIENT_ID?.trim()) {
+    throw new Error(
+      'KEYCLOAK_CLIENT_ID é obrigatório com NODE_ENV=production (restrição de client no JWT).',
+    );
+  }
+}
+
+/**
+ * `trust proxy` só pode ser ativado quando a API realmente está atrás de um
+ * reverse proxy (staging — ver `docs/deploy-staging.md`). Deixar sempre
+ * ativo deixaria qualquer chamador direto (ex.: `dev:api` local, ou uma
+ * exposição direta sem proxy) forjar `X-Forwarded-For` e furar o rate
+ * limit do throttler (M3), que usa `req.ip` (achado P2 do Codex no PR #129).
+ */
+export function resolveTrustProxySetting(env: {
+  TRUST_PROXY?: string;
+}): number | false {
+  return env.TRUST_PROXY === 'true' || env.TRUST_PROXY === '1' ? 1 : false;
+}
+
 /** CORS, validação global e formato de erro — usado em `main` e testes e2e. */
 export function configureNestApp(app: INestApplication): void {
   const config = app.get(ConfigService);
@@ -40,6 +69,10 @@ export function configureNestApp(app: INestApplication): void {
     NODE_ENV: config.get<string>('NODE_ENV'),
     DEV_AUTH_BYPASS: config.get<string>('DEV_AUTH_BYPASS'),
   });
+  assertKeycloakClientIdConfiguredInProduction({
+    NODE_ENV: config.get<string>('NODE_ENV'),
+    KEYCLOAK_CLIENT_ID: config.get<string>('KEYCLOAK_CLIENT_ID'),
+  });
 
   const origin = parseCorsOrigins(config.get<string>('CORS_ORIGIN'));
 
@@ -47,6 +80,12 @@ export function configureNestApp(app: INestApplication): void {
   app.enableCors({ origin, credentials: true });
 
   const expressApp = app as NestExpressApplication;
+  // Desativado por padrão (ver resolveTrustProxySetting); só habilitar via
+  // TRUST_PROXY=true no deploy que de fato tem um reverse proxy na frente.
+  expressApp.set(
+    'trust proxy',
+    resolveTrustProxySetting({ TRUST_PROXY: config.get<string>('TRUST_PROXY') }),
+  );
   expressApp.useBodyParser('json', { limit: '1mb' });
   expressApp.useBodyParser('urlencoded', { extended: true, limit: '1mb' });
 

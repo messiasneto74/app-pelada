@@ -49,6 +49,13 @@ describe('AppController (e2e)', () => {
     expect(res.headers['x-dns-prefetch-control']).toBe('off');
   });
 
+  it('não confia em proxy por padrão (TRUST_PROXY não definido no .env de teste): achado P2 do Codex no PR #129 — confiar sempre deixaria qualquer chamador direto forjar X-Forwarded-For e furar o rate limit', () => {
+    const expressApp = app.getHttpAdapter().getInstance() as {
+      get(setting: string): unknown;
+    };
+    expect(expressApp.get('trust proxy')).toBe(false);
+  });
+
   it('corpo acima do limite configurado (1mb) retorna 413 (Médio)', () => {
     const big = { name: 'x'.repeat(2 * 1024 * 1024) };
     return request(app.getHttpServer())
