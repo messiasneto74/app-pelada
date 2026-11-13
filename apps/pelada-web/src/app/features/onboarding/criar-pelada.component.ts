@@ -4,6 +4,7 @@ import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaApiService } from '../../core/pelada/pelada-api.service';
 import {
   isCriarPeladaFormValid,
+  mapCreatePeladaApiError,
   PHOTO_ACCEPT,
   validateCriarPeladaForm,
   validatePeladaPhotoFile,
@@ -228,8 +229,8 @@ export class CriarPeladaComponent implements OnDestroy {
           });
           void this.router.navigate(['/inicio/regras']);
         },
-        error: () => {
-          this.nameError.set('Não foi possível criar a pelada. Tente de novo.');
+        error: (err: unknown) => {
+          this.nameError.set(mapCreatePeladaApiError(err));
           this.submitting.set(false);
         },
         complete: () => this.submitting.set(false),

@@ -75,4 +75,40 @@ describe('PeladaContextService', () => {
     service.clearActivePelada();
     expect(revoke).toHaveBeenCalledWith('blob:http://localhost/fake');
   });
+
+  it('refreshFromStorage não apaga pelada ativa só em memória (token após POST /peladas)', () => {
+    sessionStorage.clear();
+    service.setActivePelada({
+      id: 'p-novo',
+      name: 'Pelada recém-criada',
+      defaultWeekday: 3,
+      defaultLocation: 'Campo',
+      photoPreviewUrl: null,
+    });
+    sessionStorage.removeItem(storageKey);
+
+    service.refreshFromStorage();
+
+    expect(service.getActivePelada()?.id).toBe('p-novo');
+    expect(sessionStorage.getItem(storageKey)).toContain('Pelada recém-criada');
+  });
+
+  it('refreshFromStorage migra chave legacy sem sub para chave do usuário', () => {
+    sessionStorage.clear();
+    sessionStorage.setItem(
+      ACTIVE_PELADA_STORAGE_KEY,
+      JSON.stringify({
+        id: 'p-legacy',
+        name: 'Pelada legacy',
+        defaultWeekday: null,
+        defaultLocation: '',
+      }),
+    );
+
+    service.refreshFromStorage();
+
+    expect(service.getActivePelada()?.id).toBe('p-legacy');
+    expect(sessionStorage.getItem(storageKey)).toContain('p-legacy');
+    expect(sessionStorage.getItem(ACTIVE_PELADA_STORAGE_KEY)).toBeNull();
+  });
 });
