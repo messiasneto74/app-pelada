@@ -69,10 +69,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Node 20
+      - name: Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: pr/package-lock.json
 
@@ -95,7 +95,7 @@ jobs:
             -e DATABASE_URL_TEST \
             -v "${GITHUB_WORKSPACE}/pr:/work" \
             -w /work \
-            node:20-bookworm \
+            node:22-bookworm \
             bash -euo pipefail -c '
               cp .env.example .env
               npm ci
