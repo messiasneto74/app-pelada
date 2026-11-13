@@ -1,9 +1,9 @@
 import { expect, type Page } from '@playwright/test';
 
-const KC_USER = process.env.E2E_KC_USER ?? 'dev';
+const KC_USER = process.env.E2E_KC_USER ?? 'dev@pelada.local';
 const KC_PASSWORD = process.env.E2E_KC_PASSWORD ?? 'dev-pelada-local';
 
-/** Login Keycloak via tela /entrar (realm pelada). */
+/** Login in-app via /entrar (password grant → Keycloak). */
 export async function loginAsDevOrganizer(page: Page): Promise<void> {
   await page.goto('/entrar', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
@@ -11,17 +11,13 @@ export async function loginAsDevOrganizer(page: Page): Promise<void> {
     localStorage.clear();
   });
   await page.goto('/entrar', { waitUntil: 'domcontentloaded' });
-  // AuthService.init() deixa a tela em "Conectando ao Keycloak…" até concluir.
-  const loginBtn = page.getByRole('button', { name: 'Entrar com Keycloak' });
-  await expect(loginBtn).toBeVisible({ timeout: 90_000 });
-  await expect(loginBtn).toBeEnabled();
-  await loginBtn.scrollIntoViewIfNeeded();
-  await loginBtn.click({ force: true });
-  await page.waitForURL(/localhost:8080|\/realms\/pelada/, { timeout: 90_000 });
-  const userField = page.locator('#username, input[name="username"]');
-  await userField.fill(KC_USER);
-  await page.locator('#password, input[name="password"]').fill(KC_PASSWORD);
-  await page.locator('#kc-login, input[type="submit"], button[type="submit"]').first().click();
+
+  const email = page.locator('#entrar-email');
+  await expect(email).toBeVisible({ timeout: 90_000 });
+  await email.fill(KC_USER);
+  await page.locator('#entrar-senha').fill(KC_PASSWORD);
+  await page.locator('form.form button[type="submit"]').click();
+
   await page.waitForURL(/\/(inicio|onboarding\/pelada|entrar\/completar)/, {
     timeout: 120_000,
   });

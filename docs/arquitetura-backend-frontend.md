@@ -93,23 +93,23 @@ sequenceDiagram
 | Item | Sugestão |
 |------|----------|
 | Realm | `pelada` |
-| Client `pelada-web` | Público, Standard flow, **PKCE**, redirect do Angular |
-| IdP | **Google** (identity broker) |
-| Login | E-mail + senha no realm (Google na tela do Keycloak) |
+| Client `pelada-web` | Público, Standard flow + **Direct access grants**, PKCE no code flow |
+| IdP | **Google** (identity broker; opcional — ainda via redirect) |
+| Login | E-mail + senha **na UI Resenha** (`/entrar`); tokens via password grant |
 | Atributos | `phone` (custom); foto via `picture` / Google |
 | Papéis | Identidade no Keycloak; **organizador/jogador por pelada** no **Postgres da app** |
 
 ### Angular
 
-- `angular-oauth2-oidc` ou `keycloak-angular`
-- `/entrar` redireciona ao login Keycloak (Google aparece se IdP ativo)
+- `angular-oauth2-oidc` (`fetchTokenUsingPasswordFlow` no login in-app)
+- `/entrar` = formulário Resenha (login/cadastro); sem redirect obrigatório à UI Keycloak
 - Sem telefone → `/entrar/completar` → `PATCH /me` na API
 
 ### API NestJS
 
 - JWT via JWKS (`nest-keycloak-connect` ou `passport-jwt`)
 - `sub` → `User.keycloakSub` (criação JIT no primeiro acesso)
-- Rotas: `GET/PATCH /me` — **sem** `/auth/google` na API
+- Rotas: `GET/PATCH /me`, `POST /register` (provisiona usuário no Keycloak Admin) — **sem** `/auth/google` nem emissão de sessão própria
 
 ### Onde ficam nome, e-mail, telefone, foto
 

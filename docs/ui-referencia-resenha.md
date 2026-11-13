@@ -60,7 +60,7 @@ Contraste e checklist de formulários: [a11y-t1.md](a11y-t1.md).
 
 ## O que o protótipo **não** cobre (ainda é MVP via issues)
 
-- Login Keycloak (`/entrar`), multiusuário, API, Postgres  
+- Login in-app (`/entrar` → Keycloak password grant), multiusuário, API, Postgres  
 - Link público `/c/[token]` (histórias 33, 42 — Depois / issue dedicada)  
 - Todas as regras da spec §3.2 (tags, goleiro fixo, exceção por partida) — o protótipo tem **subconjunto** em `#regras`  
 - Sorteio com `packages/core` no servidor — heurística local em `app.js`
