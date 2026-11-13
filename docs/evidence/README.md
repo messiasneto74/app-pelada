@@ -30,12 +30,19 @@ $i.Dispose()
 
 ## npm audit (baseline MVP)
 
-Com **Angular 22** no `@pelada/web`, overrides de `multer@2.5.0` e `deepmerge-ts@8.0.2` na raiz, e **Node ≥22.22.3** conforme `engines`, o gate `npm audit --omit=dev --audit-level=high` pode passar sem waiver (rodar localmente e no CI).
+**Status (#84):** Na `main`, com o `package-lock.json` atual, o gate de produção passa sem waiver:
 
-Histórico (antes do bump): baseline Angular 19 / waiver na issue **#15** — [comentário MVP baseline](https://github.com/messiasneto74/app-pelada/issues/15#issuecomment-6479362114).
+```text
+npm audit --omit=dev --audit-level=high
+found 0 vulnerabilities
+```
 
-**Waiver por issue (core-only):**
+Baseline: **Angular 22** no `@pelada/web`, overrides de `multer@2.5.0` e `deepmerge-ts@8.0.2` na raiz, e **Node ≥22.22.3** conforme `engines`.
 
-- **#33** L45-CORE / PR **#101** — decisão formal no corpo da [#33](https://github.com/messiasneto74/app-pelada/issues/33) § *Decisão mantenedor — gate npm audit*; correção rastreada na **#84**.
-- **#37** CORE-3 / PR **#106** — mesma linha no corpo da [#37](https://github.com/messiasneto74/app-pelada/issues/37) § *Decisão mantenedor — gate npm audit*; correção rastreada na **#84**.
-- **#38** CORE-TEST / PR **#107** — escopo só `packages/core`; decisão no corpo da [#38](https://github.com/messiasneto74/app-pelada/issues/38); correção rastreada na **#84**.
+Histórico (antes do bump): baseline Angular 19 / waiver na issue **#15** — [comentário MVP baseline](https://github.com/messiasneto74/app-pelada/issues/15#issuecomment-6479362114). A issue **#84** foi aberta após revisão do PR **#83** (12 vulns high/moderate); o estado verde atual reflete bumps já presentes na `main` (Angular 22, overrides, lockfile), sem waiver.
+
+**Waivers históricos (core-only, encerrados com #84):**
+
+- **#33** L45-CORE / PR **#101** — decisão formal no corpo da [#33](https://github.com/messiasneto74/app-pelada/issues/33) § *Decisão mantenedor — gate npm audit*.
+- **#37** CORE-3 / PR **#106** — mesma linha no corpo da [#37](https://github.com/messiasneto74/app-pelada/issues/37) § *Decisão mantenedor — gate npm audit*.
+- **#38** CORE-TEST / PR **#107** — escopo só `packages/core`; decisão no corpo da [#38](https://github.com/messiasneto74/app-pelada/issues/38).
