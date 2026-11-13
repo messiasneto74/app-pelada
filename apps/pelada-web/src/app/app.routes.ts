@@ -3,6 +3,7 @@ import { authGuard } from './auth/auth.guard';
 import { phoneRequiredGuard } from './auth/phone-required.guard';
 import { peladaOnboardingGuard } from './core/pelada/pelada-onboarding.guard';
 import { presenceListClosedGuard } from './core/presence/presence-list-closed.guard';
+import { devRoutesGuard } from './dev/dev-routes.guard';
 import { MainShellComponent } from './shell/main-shell.component';
 
 const placeholder = () =>
@@ -23,107 +24,113 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'dev/componentes',
-    loadComponent: () =>
-      import('./features/dev/componentes-preview.component').then(
-        (m) => m.ComponentesPreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/tema',
-    loadComponent: () =>
-      import('./features/dev/tema-preview.component').then((m) => m.TemaPreviewComponent),
-  },
-  {
-    path: 'dev/mobile-ux',
-    loadComponent: () =>
-      import('./features/dev/mobile-ux-preview.component').then(
-        (m) => m.MobileUxPreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/criar-pelada',
-    loadComponent: () =>
-      import('./features/onboarding/criar-pelada.component').then(
-        (m) => m.CriarPeladaComponent,
-      ),
-  },
-  {
-    path: 'dev/inicio-empty',
-    loadComponent: () =>
-      import('./features/dev/inicio-empty-preview.component').then(
-        (m) => m.InicioEmptyPreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/jogadores-list',
-    loadComponent: () =>
-      import('./features/dev/jogadores-list-preview.component').then(
-        (m) => m.JogadoresListPreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/jogador-perfil',
-    loadComponent: () =>
-      import('./features/dev/jogador-perfil-preview.component').then(
-        (m) => m.JogadorPerfilPreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/jogador-perfil-edit',
-    loadComponent: () =>
-      import('./features/dev/jogador-perfil-edit-preview.component').then(
-        (m) => m.JogadorPerfilEditPreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/criar-partida',
-    loadComponent: () =>
-      import('./features/dev/criar-partida-preview.component').then(
-        (m) => m.CriarPartidaPreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/presenca',
-    loadComponent: () =>
-      import('./features/dev/presenca-preview.component').then(
-        (m) => m.PresencaPreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/partida-sorteio',
-    loadComponent: () =>
-      import('./features/dev/sorteio-nav-preview.component').then(
-        (m) => m.SorteioNavPreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/sorteio-3-5',
-    loadComponent: () =>
-      import('./features/dev/sorteio-3-5-preview.component').then(
-        (m) => m.Sorteio35PreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/sorteio-3-5-share',
-    loadComponent: () =>
-      import('./features/dev/sorteio-3-5-share-preview.component').then(
-        (m) => m.Sorteio35SharePreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/campo-3-6',
-    loadComponent: () =>
-      import('./features/dev/campo-3-6-preview.component').then(
-        (m) => m.Campo36PreviewComponent,
-      ),
-  },
-  {
-    path: 'dev/caixa-3-9',
-    loadComponent: () =>
-      import('./features/dev/caixa-3-9-preview.component').then(
-        (m) => m.Caixa39PreviewComponent,
-      ),
+    path: 'dev',
+    canActivateChild: [devRoutesGuard],
+    children: [
+      {
+        path: 'componentes',
+        loadComponent: () =>
+          import('./features/dev/componentes-preview.component').then(
+            (m) => m.ComponentesPreviewComponent,
+          ),
+      },
+      {
+        path: 'tema',
+        loadComponent: () =>
+          import('./features/dev/tema-preview.component').then((m) => m.TemaPreviewComponent),
+      },
+      {
+        path: 'mobile-ux',
+        loadComponent: () =>
+          import('./features/dev/mobile-ux-preview.component').then(
+            (m) => m.MobileUxPreviewComponent,
+          ),
+      },
+      {
+        path: 'criar-pelada',
+        loadComponent: () =>
+          import('./features/onboarding/criar-pelada.component').then(
+            (m) => m.CriarPeladaComponent,
+          ),
+      },
+      {
+        path: 'inicio-empty',
+        loadComponent: () =>
+          import('./features/dev/inicio-empty-preview.component').then(
+            (m) => m.InicioEmptyPreviewComponent,
+          ),
+      },
+      {
+        path: 'jogadores-list',
+        loadComponent: () =>
+          import('./features/dev/jogadores-list-preview.component').then(
+            (m) => m.JogadoresListPreviewComponent,
+          ),
+      },
+      {
+        path: 'jogador-perfil',
+        loadComponent: () =>
+          import('./features/dev/jogador-perfil-preview.component').then(
+            (m) => m.JogadorPerfilPreviewComponent,
+          ),
+      },
+      {
+        path: 'jogador-perfil-edit',
+        loadComponent: () =>
+          import('./features/dev/jogador-perfil-edit-preview.component').then(
+            (m) => m.JogadorPerfilEditPreviewComponent,
+          ),
+      },
+      {
+        path: 'criar-partida',
+        loadComponent: () =>
+          import('./features/dev/criar-partida-preview.component').then(
+            (m) => m.CriarPartidaPreviewComponent,
+          ),
+      },
+      {
+        path: 'presenca',
+        loadComponent: () =>
+          import('./features/dev/presenca-preview.component').then(
+            (m) => m.PresencaPreviewComponent,
+          ),
+      },
+      {
+        path: 'partida-sorteio',
+        loadComponent: () =>
+          import('./features/dev/sorteio-nav-preview.component').then(
+            (m) => m.SorteioNavPreviewComponent,
+          ),
+      },
+      {
+        path: 'sorteio-3-5',
+        loadComponent: () =>
+          import('./features/dev/sorteio-3-5-preview.component').then(
+            (m) => m.Sorteio35PreviewComponent,
+          ),
+      },
+      {
+        path: 'sorteio-3-5-share',
+        loadComponent: () =>
+          import('./features/dev/sorteio-3-5-share-preview.component').then(
+            (m) => m.Sorteio35SharePreviewComponent,
+          ),
+      },
+      {
+        path: 'campo-3-6',
+        loadComponent: () =>
+          import('./features/dev/campo-3-6-preview.component').then(
+            (m) => m.Campo36PreviewComponent,
+          ),
+      },
+      {
+        path: 'caixa-3-9',
+        loadComponent: () =>
+          import('./features/dev/caixa-3-9-preview.component').then(
+            (m) => m.Caixa39PreviewComponent,
+          ),
+      },
+    ],
   },
   {
     path: 'onboarding/pelada',

@@ -31,12 +31,28 @@ export function computeMatchCapacity(
   return rules.playersPerTeam * rules.teamCount * 2;
 }
 
-export function monthUtcBounds(reference: Date): { start: Date; end: Date } {
+/**
+ * Brasil não observa horário de verão desde 2019: America/Sao_Paulo é
+ * UTC-3 o ano inteiro, então um offset fixo é seguro aqui.
+ */
+const BR_TIMEZONE_OFFSET_MINUTES = -180;
+
+/**
+ * Início/fim do mês no fuso de Brasília, não em UTC — um pagamento feito
+ * depois das 21h no último dia do mês (horário de Brasília) ainda cai no
+ * mês correto (bug Médio da auditoria: `monthUtcBounds` usava UTC puro).
+ */
+export function monthUtcBounds(
+  reference: Date,
+  timezoneOffsetMinutes: number = BR_TIMEZONE_OFFSET_MINUTES,
+): { start: Date; end: Date } {
+  const offsetMs = timezoneOffsetMinutes * 60_000;
+  const local = new Date(reference.getTime() + offsetMs);
   const start = new Date(
-    Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), 1),
+    Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1) - offsetMs,
   );
   const end = new Date(
-    Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth() + 1, 1),
+    Date.UTC(local.getUTCFullYear(), local.getUTCMonth() + 1, 1) - offsetMs,
   );
   return { start, end };
 }

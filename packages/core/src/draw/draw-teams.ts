@@ -1,6 +1,6 @@
 import { computeDrawBalanceMetrics } from './metrics.js';
 import { computePlayerDrawScore } from './player-draw-score.js';
-import { createSeededRandom, randomSeed } from './rng.js';
+import { createSeededRandom, randomSeed, shuffle } from './rng.js';
 import type {
   DrawGoalkeeperMode,
   DrawPlayerInput,
@@ -236,9 +236,10 @@ function partitionBalancedOneGkPerTeam(
   weights?: DrawWeightInput,
 ): string[][] {
   const playersById = new Map(players.map((p) => [p.id, p]));
-  const keepers = players
-    .filter((p) => p.isGoalkeeper)
-    .sort(() => random() - 0.5);
+  const keepers = shuffle(
+    players.filter((p) => p.isGoalkeeper),
+    random,
+  );
   const line = players.filter((p) => !p.isGoalkeeper);
   const orderedLine = sortLineForBalance(line, random, playersById, weights);
 
@@ -314,8 +315,8 @@ function partitionRandomOneGkPerTeam(
 ): string[][] {
   const keepers = players.filter((p) => p.isGoalkeeper);
   const line = players.filter((p) => !p.isGoalkeeper);
-  const shuffledLine = [...line].sort(() => random() - 0.5);
-  const shuffledOverflowGks = [...keepers].sort(() => random() - 0.5);
+  const shuffledLine = shuffle(line, random);
+  const shuffledOverflowGks = shuffle(keepers, random);
   const teams: string[][] = Array.from({ length: teamCount }, () => []);
 
   shuffledOverflowGks
@@ -341,7 +342,7 @@ function partitionRandomFixedGks(
       'Modo goleiro fixo: faltam jogadores de linha para preencher os times (mínimo 2 por time, sem contar goleiros).',
     );
   }
-  const shuffled = [...line].sort(() => random() - 0.5);
+  const shuffled = shuffle(line, random);
   const teams: string[][] = Array.from({ length: teamCount }, () => []);
   shuffled.forEach((p, index) => {
     teams[index % teamCount].push(p.id);
@@ -422,13 +423,16 @@ export function redrawDrawTeams(input: RedrawDrawTeamsInput): DrawTeamsResult {
   if (mode === 'RANDOM') {
     const drawable =
       gkMode === 'FIXED_OFF_LINE' ? pool.filter((p) => !p.isGoalkeeper) : pool;
-    poolOrder = [...drawable].sort(() => random() - 0.5);
+    poolOrder = shuffle(drawable, random);
   } else if (gkMode === 'FIXED_OFF_LINE') {
     const lineOnly = pool.filter((p) => !p.isGoalkeeper);
     poolOrder = sortLineForBalance(lineOnly, random, playersById, weights);
   } else {
     const linePool = pool.filter((p) => !p.isGoalkeeper);
-    const gkPool = pool.filter((p) => p.isGoalkeeper).sort(() => random() - 0.5);
+    const gkPool = shuffle(
+      pool.filter((p) => p.isGoalkeeper),
+      random,
+    );
     const orderedLine = sortLineForBalance(linePool, random, playersById, weights);
     poolOrder = [...orderedLine, ...gkPool];
   }
