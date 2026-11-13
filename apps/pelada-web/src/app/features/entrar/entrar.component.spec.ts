@@ -45,6 +45,28 @@ describe('EntrarComponent (UX-AUTH)', () => {
     expect(auth.loginWithPassword).toHaveBeenCalledWith('dev@pelada.local', 'curta');
   });
 
+  it('Continuar com sessão ativa chama continueAfterLogin', async () => {
+    auth.isLoggedIn.and.returnValue(true);
+    auth.continueAfterLogin.calls.reset();
+
+    await TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [EntrarComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: auth },
+      ],
+    }).compileComponents();
+
+    const fx = TestBed.createComponent(EntrarComponent);
+    const cmp = fx.componentInstance;
+    await cmp.ngOnInit();
+    auth.continueAfterLogin.calls.reset();
+
+    await cmp.continue();
+    expect(auth.continueAfterLogin).toHaveBeenCalledTimes(1);
+  });
+
   it('register exige nome e sobrenome e senha >= 8', async () => {
     component.setMode('register');
     component.email = 'nova@pelada.local';

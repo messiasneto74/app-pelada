@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { PeladaApiService } from '../core/pelada/pelada-api.service';
 import { PeladaContextService } from '../core/pelada/pelada-context.service';
 import { buildAuthConfig } from './auth.config';
 
@@ -74,9 +75,11 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly peladaContext = inject(PeladaContextService);
+  private readonly peladaApi = inject(PeladaApiService);
 
   private configured = false;
   private oauthSideEffectsBound = false;
+  private continueAfterLoginInFlight: Promise<void> | null = null;
 
   async init(): Promise<void> {
     if (!this.configured) {
@@ -202,16 +205,51 @@ export class AuthService {
     if (!this.isLoggedIn()) {
       return;
     }
+    if (!this.continueAfterLoginInFlight) {
+      this.continueAfterLoginInFlight = this.runContinueAfterLogin().finally(() => {
+        this.continueAfterLoginInFlight = null;
+      });
+    }
+    await this.continueAfterLoginInFlight;
+  }
+
+  private async runContinueAfterLogin(): Promise<void> {
     try {
       const me = await this.getMe();
       if (!me.phone?.trim()) {
-        await this.router.navigateByUrl('/entrar/completar');
+        await this.router.navigateByUrl('/entrar/completar', { replaceUrl: true });
         return;
       }
-      await this.router.navigateByUrl('/inicio');
     } catch {
-      await this.router.navigateByUrl('/inicio');
+      await this.router.navigateByUrl('/inicio', { replaceUrl: true });
+      return;
     }
+    const target = await this.resolveAppEntryAfterProfile();
+    await this.router.navigateByUrl(target, { replaceUrl: true });
+  }
+
+  /** Mesma decisão que `peladaOnboardingGuard` — evita ping-pong via `/inicio`. */
+  private async resolveAppEntryAfterProfile(): Promise<string> {
+    if (this.peladaContext.hasActivePelada()) {
+      return '/inicio';
+    }
+    try {
+      const peladas = await this.peladaApi.listMyPeladas();
+      const first = peladas[0];
+      if (first) {
+        this.peladaContext.setActivePelada({
+          id: first.id,
+          name: first.name,
+          defaultWeekday: first.defaultWeekday,
+          defaultLocation: first.defaultLocation ?? '',
+          photoPreviewUrl: null,
+        });
+        return '/inicio';
+      }
+    } catch {
+      /* API indisponível — segue para criar pelada. */
+    }
+    return '/onboarding/pelada';
   }
 
   private async ensureDiscovery(): Promise<void> {
