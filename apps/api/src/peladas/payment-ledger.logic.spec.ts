@@ -14,11 +14,11 @@ describe('payment-ledger.logic §3.9-API', () => {
     expect(readFeeCentsFromRules({ matchFeeCents: 1800 })).toBe(1800);
   });
 
-  it('periodBoundsForPaymentModel mensal', () => {
+  it('periodBoundsForPaymentModel mensal (fuso de Brasília, UTC-3)', () => {
     const ref = new Date('2026-03-15T12:00:00.000Z');
     const { start, end } = periodBoundsForPaymentModel('MONTHLY', ref);
-    expect(start.toISOString()).toBe('2026-03-01T00:00:00.000Z');
-    expect(end.toISOString()).toBe('2026-04-01T00:00:00.000Z');
+    expect(start.toISOString()).toBe('2026-03-01T03:00:00.000Z');
+    expect(end.toISOString()).toBe('2026-04-01T03:00:00.000Z');
   });
 
   it('summarizeLedgerAmounts', () => {

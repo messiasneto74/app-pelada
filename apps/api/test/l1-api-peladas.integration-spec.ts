@@ -126,5 +126,16 @@ if (runHarness) {
     it('GET /me/peladas without token returns 401', () => {
       return request(app.getHttpServer()).get('/me/peladas').expect(401);
     });
+
+    it('GET /me/peladas com token de outro client retorna 401 (M2)', () => {
+      const token = signTestJwt({
+        sub: `l1-wrong-client-${Math.random().toString(36).slice(2)}`,
+        azp: 'outro-client',
+      });
+      return request(app.getHttpServer())
+        .get('/me/peladas')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(401);
+    });
   });
 }

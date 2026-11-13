@@ -21,9 +21,20 @@ describe('pelada-dashboard.logic', () => {
     ).toBe(24);
   });
 
-  it('monthUtcBounds cobre o mês civil UTC', () => {
+  it('monthUtcBounds cobre o mês civil no fuso de Brasília (UTC-3)', () => {
     const { start, end } = monthUtcBounds(new Date('2026-11-15T12:00:00.000Z'));
-    expect(start.toISOString()).toBe('2026-11-01T00:00:00.000Z');
-    expect(end.toISOString()).toBe('2026-12-01T00:00:00.000Z');
+    expect(start.toISOString()).toBe('2026-11-01T03:00:00.000Z');
+    expect(end.toISOString()).toBe('2026-12-01T03:00:00.000Z');
+  });
+
+  it('pagamento feito às 22h de Brasília no último dia do mês cai no mês certo (M5)', () => {
+    // 2026-11-30T22:00:00 em Brasília (UTC-3) == 2026-12-01T01:00:00Z,
+    // já em dezembro em UTC puro, mas ainda 30/11 no fuso local.
+    const paidAt = new Date('2026-12-01T01:00:00.000Z');
+    const november = monthUtcBounds(new Date('2026-11-15T12:00:00.000Z'));
+    const december = monthUtcBounds(new Date('2026-12-15T12:00:00.000Z'));
+
+    expect(paidAt >= november.start && paidAt < november.end).toBe(true);
+    expect(paidAt >= december.start && paidAt < december.end).toBe(false);
   });
 });

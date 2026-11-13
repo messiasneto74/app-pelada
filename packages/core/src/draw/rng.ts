@@ -12,3 +12,17 @@ export function createSeededRandom(seed: number): () => number {
 export function randomSeed(): number {
   return Math.floor(Math.random() * 0xffffffff);
 }
+
+/**
+ * Embaralha com Fisher–Yates (distribuição uniforme sobre as permutações).
+ * `sort(() => random() - 0.5)` NÃO é uniforme: depende do algoritmo de sort
+ * do motor JS e favorece algumas ordens (bug Médio da auditoria).
+ */
+export function shuffle<T>(items: readonly T[], random: () => number): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}

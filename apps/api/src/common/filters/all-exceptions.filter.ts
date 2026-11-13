@@ -51,6 +51,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
       };
     }
 
+    if (this.isBodyTooLarge(exception)) {
+      return {
+        statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+        error: 'Payload Too Large',
+        message: 'Corpo da requisição excede o limite permitido.',
+      };
+    }
+
     if (exception instanceof HttpException) {
       const statusCode = exception.getStatus();
       const payload = exception.getResponse();
@@ -115,6 +123,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
     return (
       typeof record.message === 'string' && record.message === 'File too large'
+    );
+  }
+
+  /** body-parser (JSON/urlencoded) rejeita o corpo com `type: 'entity.too.large'`. */
+  private isBodyTooLarge(exception: unknown): boolean {
+    if (!exception || typeof exception !== 'object') {
+      return false;
+    }
+    const record = exception as Record<string, unknown>;
+    return (
+      record.type === 'entity.too.large' ||
+      (record.statusCode === HttpStatus.PAYLOAD_TOO_LARGE &&
+        record.expose !== undefined)
     );
   }
 }
