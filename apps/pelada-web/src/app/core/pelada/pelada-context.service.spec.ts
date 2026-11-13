@@ -93,6 +93,33 @@ describe('PeladaContextService', () => {
     expect(sessionStorage.getItem(storageKey)).toContain('Pelada recém-criada');
   });
 
+  it('refreshFromStorage descarta pelada em memória de outro sub (troca de usuário)', () => {
+    const oauthMock = {
+      getIdentityClaims: jasmine
+        .createSpy('getIdentityClaims')
+        .and.returnValue({ sub: 'user-a' }),
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [{ provide: OAuthService, useValue: oauthMock }],
+    });
+    const svcA = TestBed.inject(PeladaContextService);
+    svcA.setActivePelada({
+      id: 'p-a',
+      name: 'Pelada do A',
+      defaultWeekday: null,
+      defaultLocation: '',
+      photoPreviewUrl: null,
+    });
+    sessionStorage.removeItem(`${ACTIVE_PELADA_STORAGE_KEY}:user-a`);
+
+    oauthMock.getIdentityClaims.and.returnValue({ sub: 'user-b' });
+    svcA.refreshFromStorage();
+
+    expect(svcA.hasActivePelada()).toBe(false);
+    expect(sessionStorage.getItem(`${ACTIVE_PELADA_STORAGE_KEY}:user-b`)).toBeNull();
+  });
+
   it('refreshFromStorage migra chave legacy sem sub para chave do usuário', () => {
     sessionStorage.clear();
     sessionStorage.setItem(
