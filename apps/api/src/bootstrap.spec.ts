@@ -1,4 +1,7 @@
-import { assertNoDevAuthBypassInProduction } from './bootstrap';
+import {
+  assertKeycloakClientIdConfiguredInProduction,
+  assertNoDevAuthBypassInProduction,
+} from './bootstrap';
 
 describe('assertNoDevAuthBypassInProduction (Médio)', () => {
   it('lança se DEV_AUTH_BYPASS=true e NODE_ENV=production', () => {
@@ -28,6 +31,38 @@ describe('assertNoDevAuthBypassInProduction (Médio)', () => {
     ).not.toThrow();
     expect(() =>
       assertNoDevAuthBypassInProduction({ NODE_ENV: 'production' }),
+    ).not.toThrow();
+  });
+});
+
+describe('assertKeycloakClientIdConfiguredInProduction (achado de segurança do Codex no PR #128)', () => {
+  it('lança se NODE_ENV=production sem KEYCLOAK_CLIENT_ID', () => {
+    expect(() =>
+      assertKeycloakClientIdConfiguredInProduction({ NODE_ENV: 'production' }),
+    ).toThrow(/KEYCLOAK_CLIENT_ID/);
+  });
+
+  it('lança se NODE_ENV=production com KEYCLOAK_CLIENT_ID vazio/espaços', () => {
+    expect(() =>
+      assertKeycloakClientIdConfiguredInProduction({
+        NODE_ENV: 'production',
+        KEYCLOAK_CLIENT_ID: '   ',
+      }),
+    ).toThrow(/KEYCLOAK_CLIENT_ID/);
+  });
+
+  it('permite produção com KEYCLOAK_CLIENT_ID definido', () => {
+    expect(() =>
+      assertKeycloakClientIdConfiguredInProduction({
+        NODE_ENV: 'production',
+        KEYCLOAK_CLIENT_ID: 'pelada-web',
+      }),
+    ).not.toThrow();
+  });
+
+  it('permite ausência de KEYCLOAK_CLIENT_ID fora de produção', () => {
+    expect(() =>
+      assertKeycloakClientIdConfiguredInProduction({ NODE_ENV: 'development' }),
     ).not.toThrow();
   });
 });

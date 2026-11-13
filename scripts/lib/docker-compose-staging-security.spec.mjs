@@ -25,4 +25,12 @@ describe('docker-compose.yml segurança de staging (A5)', () => {
     expect(apiServiceMatch?.[1]).toMatch(/pelada_uploads:\/app\/uploads/);
     expect(yml).toMatch(/^\s*pelada_uploads:\s*$/m);
   });
+
+  it('repassa KEYCLOAK_CLIENT_ID ao container da API (achado de segurança do Codex no PR #128: sem isso, a restrição de client no JWT — Médio M2 — fica sempre desativada em produção)', () => {
+    const apiServiceMatch = yml.match(/ {2}api:\n([\s\S]*?)\nvolumes:\n/);
+    expect(apiServiceMatch).toBeTruthy();
+    expect(apiServiceMatch?.[1]).toMatch(
+      /KEYCLOAK_CLIENT_ID:\s*\$\{KEYCLOAK_CLIENT_ID/,
+    );
+  });
 });

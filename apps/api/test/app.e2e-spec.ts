@@ -49,6 +49,13 @@ describe('AppController (e2e)', () => {
     expect(res.headers['x-dns-prefetch-control']).toBe('off');
   });
 
+  it('confia em 1 hop de proxy (achado de segurança do Codex no PR #128): sem isso, o throttler trataria todo mundo atrás do reverse proxy de staging como o mesmo IP', () => {
+    const expressApp = app.getHttpAdapter().getInstance() as {
+      get(setting: string): unknown;
+    };
+    expect(expressApp.get('trust proxy')).toBe(1);
+  });
+
   it('corpo acima do limite configurado (1mb) retorna 413 (Médio)', () => {
     const big = { name: 'x'.repeat(2 * 1024 * 1024) };
     return request(app.getHttpServer())

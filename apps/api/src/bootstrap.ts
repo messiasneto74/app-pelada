@@ -32,6 +32,22 @@ export function assertNoDevAuthBypassInProduction(env: {
   }
 }
 
+/**
+ * Sem `KEYCLOAK_CLIENT_ID`, `JwtStrategy` pula a checagem de `azp`/`aud`
+ * (ver Médio M2) — em produção isso não pode passar em silêncio, por
+ * exemplo se o deploy esquecer de repassar a variável ao container.
+ */
+export function assertKeycloakClientIdConfiguredInProduction(env: {
+  NODE_ENV?: string;
+  KEYCLOAK_CLIENT_ID?: string;
+}): void {
+  if (env.NODE_ENV === 'production' && !env.KEYCLOAK_CLIENT_ID?.trim()) {
+    throw new Error(
+      'KEYCLOAK_CLIENT_ID é obrigatório com NODE_ENV=production (restrição de client no JWT).',
+    );
+  }
+}
+
 /** CORS, validação global e formato de erro — usado em `main` e testes e2e. */
 export function configureNestApp(app: INestApplication): void {
   const config = app.get(ConfigService);
@@ -40,6 +56,10 @@ export function configureNestApp(app: INestApplication): void {
     NODE_ENV: config.get<string>('NODE_ENV'),
     DEV_AUTH_BYPASS: config.get<string>('DEV_AUTH_BYPASS'),
   });
+  assertKeycloakClientIdConfiguredInProduction({
+    NODE_ENV: config.get<string>('NODE_ENV'),
+    KEYCLOAK_CLIENT_ID: config.get<string>('KEYCLOAK_CLIENT_ID'),
+  });
 
   const origin = parseCorsOrigins(config.get<string>('CORS_ORIGIN'));
 
@@ -47,6 +67,10 @@ export function configureNestApp(app: INestApplication): void {
   app.enableCors({ origin, credentials: true });
 
   const expressApp = app as NestExpressApplication;
+  // Staging fica atrás de um único reverse proxy (Caddy/Traefik/Cloudflare
+  // Tunnel — ver docs/deploy-staging.md). Sem isso, `req.ip` do throttler
+  // (M3) seria sempre o IP do proxy, juntando todo mundo no mesmo limite.
+  expressApp.set('trust proxy', 1);
   expressApp.useBodyParser('json', { limit: '1mb' });
   expressApp.useBodyParser('urlencoded', { extended: true, limit: '1mb' });
 
