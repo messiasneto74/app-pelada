@@ -1,6 +1,7 @@
 import {
   assertKeycloakClientIdConfiguredInProduction,
   assertNoDevAuthBypassInProduction,
+  resolveTrustProxySetting,
 } from './bootstrap';
 
 describe('assertNoDevAuthBypassInProduction (Médio)', () => {
@@ -64,5 +65,21 @@ describe('assertKeycloakClientIdConfiguredInProduction (achado de segurança do 
     expect(() =>
       assertKeycloakClientIdConfiguredInProduction({ NODE_ENV: 'development' }),
     ).not.toThrow();
+  });
+});
+
+describe('resolveTrustProxySetting (achado de segurança do Codex no PR #129)', () => {
+  it('desativado por padrão (sem TRUST_PROXY)', () => {
+    expect(resolveTrustProxySetting({})).toBe(false);
+  });
+
+  it('desativado para qualquer valor que não seja "true"/"1"', () => {
+    expect(resolveTrustProxySetting({ TRUST_PROXY: 'false' })).toBe(false);
+    expect(resolveTrustProxySetting({ TRUST_PROXY: 'yes' })).toBe(false);
+  });
+
+  it('ativado (1 hop) com TRUST_PROXY=true ou "1"', () => {
+    expect(resolveTrustProxySetting({ TRUST_PROXY: 'true' })).toBe(1);
+    expect(resolveTrustProxySetting({ TRUST_PROXY: '1' })).toBe(1);
   });
 });

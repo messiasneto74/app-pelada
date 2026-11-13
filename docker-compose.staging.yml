@@ -8,3 +8,9 @@ services:
     environment:
       KC_HOSTNAME: ${KEYCLOAK_PUBLIC_HOSTNAME:?defina KEYCLOAK_PUBLIC_HOSTNAME no .env de staging}
       KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
+
+  api:
+    environment:
+      # Só aqui a API fica de fato atrás de um reverse proxy único — ver
+      # resolveTrustProxySetting em apps/api/src/bootstrap.ts.
+      TRUST_PROXY: ${TRUST_PROXY:-true}

@@ -48,6 +48,19 @@ export function assertKeycloakClientIdConfiguredInProduction(env: {
   }
 }
 
+/**
+ * `trust proxy` só pode ser ativado quando a API realmente está atrás de um
+ * reverse proxy (staging — ver `docs/deploy-staging.md`). Deixar sempre
+ * ativo deixaria qualquer chamador direto (ex.: `dev:api` local, ou uma
+ * exposição direta sem proxy) forjar `X-Forwarded-For` e furar o rate
+ * limit do throttler (M3), que usa `req.ip` (achado P2 do Codex no PR #129).
+ */
+export function resolveTrustProxySetting(env: {
+  TRUST_PROXY?: string;
+}): number | false {
+  return env.TRUST_PROXY === 'true' || env.TRUST_PROXY === '1' ? 1 : false;
+}
+
 /** CORS, validação global e formato de erro — usado em `main` e testes e2e. */
 export function configureNestApp(app: INestApplication): void {
   const config = app.get(ConfigService);
@@ -67,10 +80,12 @@ export function configureNestApp(app: INestApplication): void {
   app.enableCors({ origin, credentials: true });
 
   const expressApp = app as NestExpressApplication;
-  // Staging fica atrás de um único reverse proxy (Caddy/Traefik/Cloudflare
-  // Tunnel — ver docs/deploy-staging.md). Sem isso, `req.ip` do throttler
-  // (M3) seria sempre o IP do proxy, juntando todo mundo no mesmo limite.
-  expressApp.set('trust proxy', 1);
+  // Desativado por padrão (ver resolveTrustProxySetting); só habilitar via
+  // TRUST_PROXY=true no deploy que de fato tem um reverse proxy na frente.
+  expressApp.set(
+    'trust proxy',
+    resolveTrustProxySetting({ TRUST_PROXY: config.get<string>('TRUST_PROXY') }),
+  );
   expressApp.useBodyParser('json', { limit: '1mb' });
   expressApp.useBodyParser('urlencoded', { extended: true, limit: '1mb' });
 
