@@ -1,0 +1,109 @@
+name: Review policy
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: review-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review-policy:
+    name: review-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout da política confiável em main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: trusted-policy
+          fetch-depth: 1
+
+      # Exceção de bootstrap: só acontece no PR que introduz esta política,
+      # enquanto o script ainda não existe em main. Depois do primeiro merge,
+      # todas as execuções usam exclusivamente a cópia confiável de main.
+      - name: Checkout temporário da política no PR de bootstrap
+        if: ${{ hashFiles('trusted-policy/scripts/wait-review-policy.mjs') == '' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: trusted-policy
+          fetch-depth: 1
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Aguardar test:all + R-07
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 180); do
+            checks=$(curl -fsS \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs?per_page=100")
+            status=$(jq -r '[.check_runs[] | select(.name == "test:all + R-07")] | sort_by(.started_at) | last | .status // "missing"' <<<"$checks")
+            conclusion=$(jq -r '[.check_runs[] | select(.name == "test:all + R-07")] | sort_by(.started_at) | last | .conclusion // ""' <<<"$checks")
+            if [ "$status" = "completed" ]; then
+              if [ "$conclusion" = "success" ]; then
+                echo "test:all + R-07 passou."
+                exit 0
+              fi
+              echo "::error title=Review policy::test:all + R-07 terminou com $conclusion."
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "::error title=Review policy::Timeout aguardando test:all + R-07."
+          exit 1
+
+      - name: Disparar revisão Cursor via webhook
+        if: github.event_name == 'pull_request'
+        env:
+          WEBHOOK_URL: ${{ secrets.CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK }}
+          WEBHOOK_KEY: ${{ secrets.CURSOR_AUTOMATION_REVISAR_PR_WEBHOOK_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEBHOOK_URL:-}" ] || [ -z "${WEBHOOK_KEY:-}" ]; then
+            echo "::error title=Review policy::Secrets do webhook Cursor ausentes."
+            exit 1
+          fi
+          auth_value="$(printf '%s' "$WEBHOOK_KEY" | tr -d '\r\n')"
+          case "$auth_value" in
+            Bearer\ *) ;;
+            *) auth_value="Bearer $auth_value" ;;
+          esac
+          payload=$(jq -n \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --argjson pull_request_number "$PR_NUMBER" \
+            --arg head_sha "$HEAD_SHA" \
+            --arg pull_url "$PR_URL" \
+            '{repository:$repository,pull_request_number:$pull_request_number,head_sha:$head_sha,pull_url:$pull_url,instruction:"Revisar este PR e publicar o veredito no formato obrigatório de AGENTS.md. Nunca aprovar nem fazer merge."}')
+          curl -fsS -X POST "$WEBHOOK_URL" \
+            -H "Authorization: $auth_value" \
+            -H "Content-Type: application/json" \
+            --data "$payload"
+
+      - name: Aguardar e validar parecer do Cursor no SHA atual
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node trusted-policy/scripts/wait-review-policy.mjs
