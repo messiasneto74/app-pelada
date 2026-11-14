@@ -183,9 +183,10 @@ jobs:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           prompt-file: .github/codex/prompts/review.md
           effort: high
-          sandbox: workspace-write
+          codex-home: ${{ github.workspace }}/.github/codex
+          permission-profile: pelada-review
           safety-strategy: drop-sudo
-          codex-args: '["--ephemeral", "--config", "sandbox_workspace_write.network_access=true"]'
+          codex-args: '["--ephemeral"]'
 
       - name: Materializar parecer e parser fora do workspace
         id: trusted

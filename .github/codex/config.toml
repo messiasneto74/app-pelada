@@ -1,0 +1,20 @@
+# Trusted permission profile for the Codex PR reviewer.
+# This file is loaded from the base checkout, never from the untrusted PR checkout.
+default_permissions = "pelada-review"
+
+[features]
+network_proxy = true
+
+[permissions.pelada-review]
+description = "Review the PR checkout with workspace writes and restricted review-network access."
+extends = ":workspace"
+
+[permissions.pelada-review.network]
+enabled = true
+
+[permissions.pelada-review.network.domains]
+"api.openai.com" = "allow"
+"github.com" = "allow"
+"*.github.com" = "allow"
+"raw.githubusercontent.com" = "allow"
+"registry.npmjs.org" = "allow"
