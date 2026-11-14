@@ -1,0 +1,10 @@
+# Trusted Codex home for codex-review-policy (base branch checkout only).
+# Network cannot be enabled via codex-args with safety-strategy drop-sudo.
+default_permissions = "pelada-review"
+
+[permissions.pelada-review]
+description = "Workspace writes plus network for npm, DB and browser on the review runner."
+extends = ":workspace"
+
+[permissions.pelada-review.network]
+enabled = true
