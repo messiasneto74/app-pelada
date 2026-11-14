@@ -11,6 +11,12 @@ extends = ":workspace"
 
 [permissions.pelada-review.network]
 enabled = true
+# Com o proxy ativo, Codex bloqueia destinos locais/privados por padrão.
+# A revisão roda com RUN_DB_TESTS=1 contra o Postgres de serviço em
+# localhost:5435 (ver .github/workflows/codex-review.yml) — sem isso, os
+# testes de integração obrigatórios não conseguem conectar (achado P1 do
+# Codex no PR #143).
+allow_local_binding = true
 
 [permissions.pelada-review.network.domains]
 "api.openai.com" = "allow"
@@ -18,3 +24,5 @@ enabled = true
 "*.github.com" = "allow"
 "raw.githubusercontent.com" = "allow"
 "registry.npmjs.org" = "allow"
+"localhost" = "allow"
+"127.0.0.1" = "allow"
