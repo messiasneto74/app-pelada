@@ -3,6 +3,7 @@ import { Component, computed, inject, model, OnInit, signal } from '@angular/cor
 import { RouterLink } from '@angular/router';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
+import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
 import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
 import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
 import {
@@ -265,7 +266,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         overflow-y: auto;
         padding: var(--pelada-space-4);
         border-radius: var(--pelada-radius-lg);
-        background: var(--pelada-surface);
+        background: var(--pelada-paper, #ffffff);
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
       }
       .add-modal__title {
@@ -301,6 +302,7 @@ export class JogadoresListaComponent implements OnInit {
   private readonly peladaContext = inject(PeladaContextService);
   private readonly rosterService = inject(PeladaRosterService);
   private readonly rulesService = inject(PeladaRulesService);
+  private readonly rulesApi = inject(PeladaRulesApiService);
   private readonly orgContext = inject(PeladaOrganizadorContextService);
 
   readonly segmentOptions = ROSTER_SEGMENT_OPTIONS;
@@ -341,8 +343,7 @@ export class JogadoresListaComponent implements OnInit {
       return;
     }
     this.orgContext.refreshMembership(pelada.id);
-    const rules = this.rulesService.getDefaultRules(pelada.id);
-    this.showFixedChip.set(rules.fixedListOnly);
+    this.syncRulesFromApi(pelada.id);
     this.rosterService.loadRoster(pelada, (list, _outcome) => {
       this.players.set(list);
       this.loading.set(false);
@@ -355,12 +356,30 @@ export class JogadoresListaComponent implements OnInit {
   }
 
   openAddPlayerModal(): void {
+    const pelada = this.peladaContext.getActivePelada();
+    if (!pelada) {
+      return;
+    }
     this.addHint.set('');
     this.addModalError.set('');
     this.newPlayerName.set('');
     this.newPlayerGoalkeeper.set(false);
     this.newPlayerFixedList.set(false);
-    this.addModalOpen.set(true);
+    this.syncRulesFromApi(pelada.id, () => this.addModalOpen.set(true));
+  }
+
+  private syncRulesFromApi(peladaId: string, onReady?: () => void): void {
+    this.rulesApi.fetchRules(peladaId).subscribe({
+      next: (dto) => {
+        this.showFixedChip.set(this.rulesApi.mapFromApi(dto).fixedListOnly);
+        onReady?.();
+      },
+      error: () => {
+        const rules = this.rulesService.getDefaultRules(peladaId);
+        this.showFixedChip.set(rules.fixedListOnly);
+        onReady?.();
+      },
+    });
   }
 
   cancelAddPlayerModal(): void {

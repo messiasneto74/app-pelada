@@ -5,6 +5,9 @@ import { of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
+import { peladaRulesFromApi } from '../../core/pelada/pelada-rules-api.mapper';
+import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
+import { DEFAULT_PELADA_RULES } from '../../core/pelada/pelada-rules.model';
 import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
 import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
 import type { RosterPlayer } from '../../core/roster/roster-player.model';
@@ -31,11 +34,28 @@ const mockPlayers: RosterPlayer[] = [
   },
 ];
 
+const rulesApiDto = {
+  peladaId: 'p1',
+  playersPerTeam: DEFAULT_PELADA_RULES.playersPerTeam,
+  teamCount: DEFAULT_PELADA_RULES.teamCount,
+  modality: DEFAULT_PELADA_RULES.modality,
+  goalkeeperMode: 'ROTATING' as const,
+  fixedListOnly: false,
+  allowPlayerSelfEdit: false,
+  drawWeights: {},
+  extra: {},
+};
+
 describe('JogadoresListaComponent', () => {
   let fixture: ComponentFixture<JogadoresListaComponent>;
   let createPlayerSpy: jasmine.Spy;
+  let fetchRulesSpy: jasmine.Spy;
 
   beforeEach(async () => {
+    fetchRulesSpy = jasmine
+      .createSpy('fetchRules')
+      .and.returnValue(of({ ...rulesApiDto }));
+
     createPlayerSpy = jasmine.createSpy('createPlayer').and.returnValue(
       of({
         id: 'n1',
@@ -74,6 +94,13 @@ describe('JogadoresListaComponent', () => {
           useValue: {
             isOrganizador: () => true,
             refreshMembership: jasmine.createSpy('refreshMembership'),
+          },
+        },
+        {
+          provide: PeladaRulesApiService,
+          useValue: {
+            fetchRules: fetchRulesSpy,
+            mapFromApi: peladaRulesFromApi,
           },
         },
       ],
@@ -120,12 +147,13 @@ describe('JogadoresListaComponent', () => {
     expect(link).not.toBeNull();
   });
 
-  it('organizador abre modal e adiciona jogador via API', () => {
+  it('organizador abre modal e adiciona jogador via API', async () => {
     expect(fixture.nativeElement.textContent).toContain('Adicionar jogador');
     const addBtn = fixture.nativeElement.querySelector(
       '[peladaButton]',
     ) as HTMLButtonElement;
     addBtn.click();
+    await fixture.whenStable();
     fixture.detectChanges();
 
     const nameInput = fixture.nativeElement.querySelector(
@@ -150,13 +178,41 @@ describe('JogadoresListaComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('3.7-API');
   });
 
-  it('validação impede nome curto', () => {
+  it('validação impede nome curto', async () => {
     fixture.componentInstance.openAddPlayerModal();
+    await fixture.whenStable();
     fixture.detectChanges();
     fixture.componentInstance.submitNewPlayer(new Event('submit'));
     fixture.detectChanges();
     expect(createPlayerSpy).not.toHaveBeenCalled();
     expect(fixture.componentInstance.addModalError()).toContain('2 caracteres');
+  });
+
+  it('busca fixedListOnly da API antes do modal (sessionStorage vazio)', async () => {
+    sessionStorage.clear();
+    fetchRulesSpy.and.returnValue(
+      of({ ...rulesApiDto, fixedListOnly: true }),
+    );
+
+    fixture.componentInstance.openAddPlayerModal();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fetchRulesSpy).toHaveBeenCalledWith('p1');
+    expect(fixture.nativeElement.textContent).toContain('Fixo na lista');
+
+    fixture.componentInstance.newPlayerName.set('Lista Fixa');
+    fixture.componentInstance.newPlayerFixedList.set(true);
+    fixture.componentInstance.submitNewPlayer(new Event('submit'));
+    fixture.detectChanges();
+
+    expect(createPlayerSpy).toHaveBeenCalledWith(
+      jasmine.objectContaining({ id: 'p1' }),
+      jasmine.objectContaining({
+        displayName: 'Lista Fixa',
+        isFixedList: true,
+      }),
+    );
   });
 
   it('exibe erro da API no modal', () => {
