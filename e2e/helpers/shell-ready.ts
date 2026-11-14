@@ -27,7 +27,7 @@ export async function completeOnboardingIfNeeded(
     await expect(salvar).toBeVisible({ timeout: 30_000 });
     await salvar.scrollIntoViewIfNeeded();
     await salvar.click({ force: true });
-    await expect(page).toHaveURL(/\/inicio/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/inicio$/, { timeout: 30_000 });
   }
   await expect(nav).toBeVisible({ timeout: 30_000 });
 }
