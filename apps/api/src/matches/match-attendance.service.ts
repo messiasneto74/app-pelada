@@ -304,12 +304,15 @@ export class MatchAttendanceService {
   ): Promise<AttendanceRowInput[]> {
     const list = await tx.matchAttendance.findMany({
       where: { matchId },
+      include: { player: { select: { isFixedList: true } } },
+      orderBy: { createdAt: 'asc' },
     });
     return list.map((a) => ({
       playerId: a.playerId,
       status: a.status,
       queuePosition: a.queuePosition,
       isGuest: a.isGuest,
+      isFixedList: a.player.isFixedList,
     }));
   }
 
@@ -342,7 +345,8 @@ export class MatchAttendanceService {
   private async ensureAttendanceRows(match: Match): Promise<void> {
     const players = await this.prisma.player.findMany({
       where: { peladaId: match.peladaId, isGuest: false },
-      orderBy: { createdAt: 'asc' },
+      // A ordem inicial também precisa refletir a prioridade do elenco.
+      orderBy: [{ isFixedList: 'desc' }, { createdAt: 'asc' }],
     });
     const existing = await this.prisma.matchAttendance.findMany({
       where: { matchId: match.id },
@@ -385,6 +389,7 @@ export class MatchAttendanceService {
       status: a.status,
       queuePosition: a.queuePosition,
       isGuest: a.isGuest,
+      isFixedList: a.player.isFixedList,
     }));
     const entries: MatchAttendanceEntryDto[] = attendances.map((a) => ({
       playerId: a.playerId,

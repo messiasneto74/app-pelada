@@ -159,6 +159,35 @@ if (runHarness) {
       expect(bruno.status).toBe('QUEUE');
     });
 
+    it('jogador fixo ultrapassa jogador comum na fila quando a capacidade está cheia', async () => {
+      const { pelada, match, token, p1, p2 } = await seedMatch();
+      await prisma.player.update({
+        where: { id: p2.id },
+        data: { isFixedList: true },
+      });
+
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${p1.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'CONFIRMED' })
+        .expect(200);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${p2.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'CONFIRMED' })
+        .expect(200);
+
+      const fixed = res.body.entries.find(
+        (e: { playerId: string }) => e.playerId === p2.id,
+      );
+      const common = res.body.entries.find(
+        (e: { playerId: string }) => e.playerId === p1.id,
+      );
+      expect(fixed.status).toBe('CONFIRMED');
+      expect(common.status).toBe('QUEUE');
+    });
+
     it('POST /attendance/self confirms linked player in SELF_CONFIRM mode', async () => {
       const sub = 'att-self';
       const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
