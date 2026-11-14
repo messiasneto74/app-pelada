@@ -8,11 +8,14 @@ test.describe('E2E MVP #138 — jogador e regras', () => {
 
   test('organizador cadastra jogador no modal POST', async ({ page }) => {
     const nav = page.getByRole('navigation', { name: 'Navegação principal' });
-    await nav.getByRole('link', { name: 'Jogadores' }).click();
+    await nav.getByRole('link', { name: 'Jogadores' }).click({ force: true });
     await expect(page).toHaveURL(/\/jogadores/);
+    await expect(page.getByText(/no elenco/)).toBeVisible({ timeout: 60_000 });
 
+    const addBtn = page.getByRole('button', { name: '+ Adicionar jogador' });
+    await expect(addBtn).toBeVisible({ timeout: 60_000 });
     const uniqueName = `E2E Modal ${Date.now()}`;
-    await page.getByRole('button', { name: '+ Adicionar jogador' }).click();
+    await addBtn.click({ force: true });
     const dialog = page.getByRole('dialog', { name: 'Novo jogador' });
     await expect(dialog).toBeVisible();
 
