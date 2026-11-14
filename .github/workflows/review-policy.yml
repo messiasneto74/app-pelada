@@ -18,9 +18,13 @@ concurrency:
 
 jobs:
   review-policy:
-    # Revalida eventos de review somente quando o autor é o Cursor. Reviews do
-    # Codex/terceiros não iniciam outro gate com o mesmo nome.
-    if: github.event_name == 'pull_request' || github.event.review.user.login == 'cursor[bot]'
+    # Roda para qualquer evento (não filtra pelo autor da review): um job
+    # pulado por condição reporta sucesso para o check obrigatório mesmo
+    # pulado (GitHub trata job skipped como sucesso), então pular aqui
+    # deixaria uma review de outro bot/humano publicar verde sem revalidar
+    # o parecer do Cursor no SHA atual (achado P1 do Codex no PR #143). O
+    # isolamento contra cancelamento cruzado já vem do `concurrency.group`
+    # acima, que separa `pull_request` de `pull_request_review`.
     name: review-policy
     runs-on: ubuntu-latest
     timeout-minutes: 35
