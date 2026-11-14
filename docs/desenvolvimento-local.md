@@ -214,7 +214,7 @@ npm.cmd run test:e2e
 
 Variáveis opcionais: `PELADA_WEB_URL`, `PELADA_API_URL`, `E2E_KC_USER`, `E2E_KC_PASSWORD` (padrão `dev` / `dev-pelada-local` — ver [credenciais-dev-local.md](credenciais-dev-local.md)).
 
-O fluxo MVP (`e2e/mvp-flow.spec.ts`) cadastra elenco via API (UI de adicionar jogador ainda é hint na #25). Presença, sorteio e campo são na UI. Fechar lista navega para Sorteio logo após persistir `listClosed` (§3.4); a API sincroniza em segundo plano. O teste ainda pode `POST …/close-list` se o servidor não refletir `LIST_CLOSED` antes do draw.
+O fluxo MVP (`e2e/mvp-flow.spec.ts`) pode cadastrar elenco na UI (**Jogadores** → **+ Adicionar jogador**) ou via API. Presença, sorteio e campo são na UI. Fechar lista navega para Sorteio logo após persistir `listClosed` (§3.4); a API sincroniza em segundo plano. O teste ainda pode `POST …/close-list` se o servidor não refletir `LIST_CLOSED` antes do draw.
 
 ## Mobile Capacitor (STORE-1)
 

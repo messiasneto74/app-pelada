@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, model, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
@@ -6,6 +7,7 @@ import {
   type FixedGkRotation,
   type Modality,
   type PaymentModel,
+  mapPeladaRulesApiError,
   validatePeladaRulesForm,
   type PeladaRulesFormValues,
 } from '../../core/pelada/pelada-rules.model';
@@ -145,9 +147,10 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         class="pelada-btn pelada-btn--block"
         peladaButton
         variant="lime"
+        [disabled]="saving()"
         (click)="saveDefault()"
       >
-        Salvar como padrão
+        {{ saving() ? 'Salvando…' : 'Salvar como padrão' }}
       </button>
       <a routerLink="/inicio" class="back-link">Voltar ao Início</a>
     </section>
@@ -183,6 +186,7 @@ export class RegrasPeladaComponent implements OnInit {
   readonly values = signal<PeladaRulesFormValues>({ ...DEFAULT_PELADA_RULES });
   readonly formError = signal<string | null>(null);
   readonly savedMessage = signal<string | null>(null);
+  readonly saving = signal(false);
   readonly peladaName = signal('Pelada');
 
   readonly paymentOptions = [
@@ -207,6 +211,7 @@ export class RegrasPeladaComponent implements OnInit {
   readonly drawUseStyleTags = model(true);
 
   ngOnInit(): void {
+    this.peladaContext.refreshFromStorage();
     const pelada = this.peladaContext.getActivePelada();
     if (!pelada) {
       void this.router.navigate(['/onboarding/pelada']);
@@ -258,8 +263,14 @@ export class RegrasPeladaComponent implements OnInit {
   }
 
   saveDefault(): void {
+    this.peladaContext.refreshFromStorage();
     const pelada = this.peladaContext.getActivePelada();
     if (!pelada) {
+      this.formError.set(
+        'Nenhuma pelada ativa. Crie ou selecione uma pelada para salvar as regras.',
+      );
+      this.savedMessage.set(null);
+      void this.router.navigate(['/onboarding/pelada']);
       return;
     }
     const merged = this.mergeSegmentsIntoValues();
@@ -269,16 +280,21 @@ export class RegrasPeladaComponent implements OnInit {
       this.savedMessage.set(null);
       return;
     }
+    this.saving.set(true);
+    this.formError.set(null);
     this.rulesApi.saveRules(pelada.id, merged).subscribe({
       next: () => {
         this.rulesService.saveDefaultRules(pelada.id, merged);
         this.values.set(merged);
         this.formError.set(null);
         this.savedMessage.set('Regras salvas como padrão do grupo.');
+        this.saving.set(false);
+        void this.router.navigate(['/inicio']);
       },
-      error: () => {
-        this.formError.set('Não foi possível salvar as regras. Tente de novo.');
+      error: (httpErr: HttpErrorResponse) => {
+        this.formError.set(mapPeladaRulesApiError(httpErr));
         this.savedMessage.set(null);
+        this.saving.set(false);
       },
     });
   }
