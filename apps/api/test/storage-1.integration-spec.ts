@@ -90,6 +90,23 @@ if (runHarness) {
         .expect(200);
     });
 
+    it('GET /uploads/* rejeita nome de arquivo fora do padrão (path traversal) com 404', async () => {
+      const token = signTestJwt({
+        sub: 'st-traversal',
+        email: 'traversal@pelada.test',
+      });
+
+      await request(app.getHttpServer())
+        .get('/uploads/..%2f..%2f..%2fetc%2fpasswd')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404);
+
+      await request(app.getHttpServer())
+        .get('/uploads/..%2fphoto-storage.service.ts')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404);
+    });
+
     it('POST /peladas rejeita foto maior que 5 MB com 413', async () => {
       const token = signTestJwt({ sub: 'st-big', email: 'big@pelada.test' });
       const huge = Buffer.alloc(5 * 1024 * 1024 + 1, 1);
