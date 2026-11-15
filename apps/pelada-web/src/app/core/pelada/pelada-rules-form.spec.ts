@@ -1,5 +1,6 @@
 import {
   DEFAULT_PELADA_RULES,
+  mapPeladaRulesApiError,
   toGoalkeeperMode,
   toDrawWeights,
   validateGoalkeeperToggles,
@@ -62,5 +63,11 @@ describe('pelada rules form (3.2)', () => {
     expect(
       validatePeladaRulesForm({ ...DEFAULT_PELADA_RULES, teamCount: 7 }),
     ).toContain('2 e 6');
+  });
+
+  it('mapPeladaRulesApiError traduz 401 e API offline', () => {
+    expect(mapPeladaRulesApiError({ status: 401 })).toContain('Sessão expirada');
+    expect(mapPeladaRulesApiError({ status: 0 })).toContain('contactar a API');
+    expect(mapPeladaRulesApiError({ status: 403 })).toContain('organizador');
   });
 });

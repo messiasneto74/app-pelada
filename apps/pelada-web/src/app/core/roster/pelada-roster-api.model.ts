@@ -14,3 +14,10 @@ export type PeladaRosterDto = {
   peladaId: string;
   players: PeladaRosterPlayerDto[];
 };
+
+/** Body `POST /peladas/:id/players` (3.7-API). */
+export type CreatePeladaPlayerBody = {
+  displayName: string;
+  isGoalkeeper?: boolean;
+  isFixedList?: boolean;
+};

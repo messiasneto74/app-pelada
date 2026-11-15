@@ -1,8 +1,16 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, model, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
+import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
+import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
 import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
 import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
+import {
+  normalizeCreatePlayerName,
+  rosterCreateErrorMessage,
+  validateCreatePlayerName,
+} from '../../core/roster/roster-create.logic';
 import {
   filterRosterList,
   formatRosterRating,
@@ -97,18 +105,96 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           </ul>
         }
 
-        <button
-          type="button"
-          peladaButton
-          variant="lime"
-          [peladaButtonBlock]="true"
-          (click)="onAddPlayer()"
-        >
-          + Adicionar jogador
-        </button>
+        @if (isOrganizador()) {
+          <button
+            type="button"
+            peladaButton
+            variant="lime"
+            [peladaButtonBlock]="true"
+            (click)="openAddPlayerModal()"
+          >
+            + Adicionar jogador
+          </button>
+        }
         @if (addHint()) {
           <p class="pelada-muted add-hint" role="status">{{ addHint() }}</p>
         }
+      }
+
+      @if (addModalOpen()) {
+        <div
+          class="add-modal-backdrop"
+          role="presentation"
+          (click)="cancelAddPlayerModal()"
+        >
+          <div
+            class="add-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-player-title"
+            (click)="$event.stopPropagation()"
+            (keydown.escape)="cancelAddPlayerModal()"
+          >
+            <h2 id="add-player-title" class="add-modal__title">Novo jogador</h2>
+            <form class="add-modal__form" (submit)="submitNewPlayer($event)">
+              <pelada-field label="Nome do jogador" forId="new-player-name">
+                <input
+                  id="new-player-name"
+                  type="text"
+                  peladaInput
+                  name="displayName"
+                  [value]="newPlayerName()"
+                  (input)="onNewPlayerNameInput($event)"
+                  maxlength="60"
+                  autocomplete="name"
+                  required
+                />
+              </pelada-field>
+              <label class="add-modal__check">
+                <input
+                  type="checkbox"
+                  [checked]="newPlayerGoalkeeper()"
+                  (change)="onNewPlayerGoalkeeper($event)"
+                />
+                Goleiro
+              </label>
+              @if (showFixedChip()) {
+                <label class="add-modal__check">
+                  <input
+                    type="checkbox"
+                    [checked]="newPlayerFixedList()"
+                    (change)="onNewPlayerFixedList($event)"
+                  />
+                  Fixo na lista
+                </label>
+              }
+              @if (addModalError()) {
+                <p class="add-modal__error" role="alert">{{ addModalError() }}</p>
+              }
+              <div class="add-modal__actions">
+                <button
+                  type="submit"
+                  peladaButton
+                  variant="lime"
+                  [peladaButtonBlock]="true"
+                  [disabled]="savingPlayer()"
+                >
+                  {{ savingPlayer() ? 'Salvando…' : 'Adicionar jogador' }}
+                </button>
+                <button
+                  type="button"
+                  peladaButton
+                  variant="secondary"
+                  [peladaButtonBlock]="true"
+                  (click)="cancelAddPlayerModal()"
+                  [disabled]="savingPlayer()"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       }
     </section>
   `,
@@ -164,6 +250,51 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       [peladaButton] {
         margin-top: var(--pelada-space-2);
       }
+      .add-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: var(--pelada-space-4);
+        background: rgba(0, 0, 0, 0.55);
+      }
+      .add-modal {
+        width: min(100%, 24rem);
+        max-height: min(90vh, 32rem);
+        overflow-y: auto;
+        padding: var(--pelada-space-4);
+        border-radius: var(--pelada-radius-lg);
+        background: var(--pelada-paper, #ffffff);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      }
+      .add-modal__title {
+        margin: 0 0 var(--pelada-space-4);
+        font-size: 1.125rem;
+      }
+      .add-modal__form pelada-field {
+        margin-bottom: var(--pelada-space-3);
+      }
+      .add-modal__check {
+        display: flex;
+        align-items: center;
+        gap: var(--pelada-space-2);
+        margin: 0 0 var(--pelada-space-3);
+        font-size: 0.9375rem;
+        cursor: pointer;
+      }
+      .add-modal__error {
+        margin: 0 0 var(--pelada-space-3);
+        font-size: 0.875rem;
+        color: var(--pelada-danger, #e85d5d);
+      }
+      .add-modal__actions {
+        display: flex;
+        flex-direction: column;
+        gap: var(--pelada-space-2);
+        margin-top: var(--pelada-space-4);
+      }
     `,
   ],
 })
@@ -171,6 +302,8 @@ export class JogadoresListaComponent implements OnInit {
   private readonly peladaContext = inject(PeladaContextService);
   private readonly rosterService = inject(PeladaRosterService);
   private readonly rulesService = inject(PeladaRulesService);
+  private readonly rulesApi = inject(PeladaRulesApiService);
+  private readonly orgContext = inject(PeladaOrganizadorContextService);
 
   readonly segmentOptions = ROSTER_SEGMENT_OPTIONS;
   readonly segment = model<RosterSegment>('all');
@@ -179,6 +312,12 @@ export class JogadoresListaComponent implements OnInit {
   readonly loading = signal(true);
   readonly addHint = signal('');
   readonly showFixedChip = signal(false);
+  readonly addModalOpen = signal(false);
+  readonly newPlayerName = signal('');
+  readonly newPlayerGoalkeeper = signal(false);
+  readonly newPlayerFixedList = signal(false);
+  readonly addModalError = signal('');
+  readonly savingPlayer = signal(false);
 
   readonly rosterPositionLabel = rosterPositionLabel;
   readonly formatRosterRating = formatRosterRating;
@@ -192,14 +331,19 @@ export class JogadoresListaComponent implements OnInit {
     return n === 1 ? '1 jogador no elenco' : `${n} jogadores no elenco`;
   });
 
+  readonly isOrganizador = computed(() => {
+    const pelada = this.peladaContext.activePelada();
+    return pelada ? this.orgContext.isOrganizador(pelada.id) : false;
+  });
+
   ngOnInit(): void {
     const pelada = this.peladaContext.getActivePelada();
     if (!pelada) {
       this.loading.set(false);
       return;
     }
-    const rules = this.rulesService.getDefaultRules(pelada.id);
-    this.showFixedChip.set(rules.fixedListOnly);
+    this.orgContext.refreshMembership(pelada.id);
+    this.syncRulesFromApi(pelada.id);
     this.rosterService.loadRoster(pelada, (list, _outcome) => {
       this.players.set(list);
       this.loading.set(false);
@@ -211,9 +355,108 @@ export class JogadoresListaComponent implements OnInit {
     this.searchQuery.set(value);
   }
 
-  onAddPlayer(): void {
-    this.addHint.set(
-      'Cadastro e edição completos entram com a API 3.7-API (#25).',
+  openAddPlayerModal(): void {
+    const pelada = this.peladaContext.getActivePelada();
+    if (!pelada) {
+      return;
+    }
+    this.addHint.set('');
+    this.addModalError.set('');
+    this.newPlayerName.set('');
+    this.newPlayerGoalkeeper.set(false);
+    this.newPlayerFixedList.set(false);
+    this.syncRulesFromApi(pelada.id, () => this.addModalOpen.set(true));
+  }
+
+  private syncRulesFromApi(peladaId: string, onReady?: () => void): void {
+    this.rulesApi.fetchRules(peladaId).subscribe({
+      next: (dto) => {
+        this.showFixedChip.set(this.rulesApi.mapFromApi(dto).fixedListOnly);
+        onReady?.();
+      },
+      error: () => {
+        const rules = this.rulesService.getDefaultRules(peladaId);
+        this.showFixedChip.set(rules.fixedListOnly);
+        onReady?.();
+      },
+    });
+  }
+
+  cancelAddPlayerModal(): void {
+    if (this.savingPlayer()) {
+      return;
+    }
+    this.addModalOpen.set(false);
+    this.addModalError.set('');
+  }
+
+  onNewPlayerNameInput(event: Event): void {
+    this.newPlayerName.set((event.target as HTMLInputElement).value);
+    this.addModalError.set('');
+  }
+
+  onNewPlayerGoalkeeper(event: Event): void {
+    this.newPlayerGoalkeeper.set(
+      (event.target as HTMLInputElement).checked,
     );
+  }
+
+  onNewPlayerFixedList(event: Event): void {
+    this.newPlayerFixedList.set((event.target as HTMLInputElement).checked);
+  }
+
+  submitNewPlayer(event: Event): void {
+    event.preventDefault();
+    const pelada = this.peladaContext.getActivePelada();
+    if (!pelada || this.savingPlayer()) {
+      return;
+    }
+
+    const validation = validateCreatePlayerName(this.newPlayerName());
+    if (validation) {
+      this.addModalError.set(validation);
+      return;
+    }
+
+    const displayName = normalizeCreatePlayerName(this.newPlayerName());
+    const body: {
+      displayName: string;
+      isGoalkeeper?: boolean;
+      isFixedList?: boolean;
+    } = {
+      displayName,
+      isGoalkeeper: this.newPlayerGoalkeeper() || undefined,
+    };
+    if (this.showFixedChip() && this.newPlayerFixedList()) {
+      body.isFixedList = true;
+    }
+
+    this.savingPlayer.set(true);
+    this.addModalError.set('');
+
+    this.rosterService.createPlayer(pelada, body).subscribe({
+      next: (created) => {
+        this.players.update((list) =>
+          [...list, created].sort((a, b) =>
+            a.displayName.localeCompare(b.displayName, 'pt-BR'),
+          ),
+        );
+        this.savingPlayer.set(false);
+        this.addModalOpen.set(false);
+        this.addHint.set('');
+      },
+      error: (err: HttpErrorResponse) => {
+        this.savingPlayer.set(false);
+        const apiMsg =
+          typeof err.error === 'object' &&
+          err.error !== null &&
+          'message' in err.error
+            ? String((err.error as { message: unknown }).message)
+            : undefined;
+        this.addModalError.set(
+          rosterCreateErrorMessage(err.status, apiMsg),
+        );
+      },
+    });
   }
 }

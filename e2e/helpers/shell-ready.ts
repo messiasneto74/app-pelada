@@ -27,10 +27,7 @@ export async function completeOnboardingIfNeeded(
     await expect(salvar).toBeVisible({ timeout: 30_000 });
     await salvar.scrollIntoViewIfNeeded();
     await salvar.click({ force: true });
-    await expect(page.getByText('Regras salvas como padrão do grupo.')).toBeVisible({
-      timeout: 15_000,
-    });
-    await page.goto('/inicio');
+    await expect(page).toHaveURL(/\/inicio$/, { timeout: 30_000 });
   }
   await expect(nav).toBeVisible({ timeout: 30_000 });
 }

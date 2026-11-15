@@ -19,6 +19,7 @@ describe('RegrasPeladaComponent', () => {
       imports: [RegrasPeladaComponent],
       providers: [
         provideRouter([
+          { path: 'inicio', component: RegrasPeladaComponent },
           { path: 'inicio/regras', component: RegrasPeladaComponent },
           { path: 'onboarding/pelada', component: RegrasPeladaComponent },
         ]),
@@ -102,6 +103,7 @@ describe('RegrasPeladaComponent', () => {
     fixture.componentInstance.saveDefault();
     expect(rulesService.hasSavedRules('p1')).toBe(true);
     expect(fixture.componentInstance.savedMessage()).toContain('salvas');
+    expect(router.navigate).toHaveBeenCalledWith(['/inicio']);
   });
 
   it('persiste allowPlayerSelfEdit ao salvar', () => {

@@ -51,6 +51,22 @@ export function validateGoalkeeperToggles(
   return null;
 }
 
+/** Mensagem amigável a partir de `PATCH /peladas/:id/rules`. */
+export function mapPeladaRulesApiError(err: unknown): string {
+  const http = err as { status?: number };
+  const status = http?.status;
+  if (status === 401) {
+    return 'Sessão expirada ou sem login. Volte em /entrar e tente de novo.';
+  }
+  if (status === 0) {
+    return 'Não foi possível contactar a API. Confira se dev:api ou stack:up está no ar.';
+  }
+  if (status === 403) {
+    return 'Só o organizador pode alterar as regras padrão do grupo.';
+  }
+  return 'Não foi possível salvar as regras. Tente de novo.';
+}
+
 export function validatePeladaRulesForm(values: PeladaRulesFormValues): string | null {
   const gk = validateGoalkeeperToggles(
     values.goalkeeperPerTeam,
