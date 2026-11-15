@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUserPayload } from '../auth/auth-user';
@@ -9,6 +9,7 @@ import { SelfAttendanceDto } from '../domain/dto/self-attendance.dto';
 import { UpdateAttendanceDto } from '../domain/dto/update-attendance.dto';
 import { PostMatchDrawDto } from '../domain/dto/post-match-draw.dto';
 import { PatchDrawSwapDto } from '../domain/dto/patch-draw-swap.dto';
+import { PlayerCrossDaySummaryQueryDto } from '../domain/dto/player-cross-day-summary-query.dto';
 import { MatchAttendanceService } from './match-attendance.service';
 import { PatchMatchFieldSessionDto } from '../domain/dto/patch-match-field-session.dto';
 import { PostMatchFieldSessionDto } from '../domain/dto/post-match-field-session.dto';
@@ -194,6 +195,20 @@ export class MatchesController {
     @Param('matchId') matchId: string,
   ) {
     return this.fieldSessionService.getSession(user, peladaId, matchId);
+  }
+
+  @Get('peladas/:peladaId/players-summary')
+  @UseGuards(JwtAuthGuard)
+  getPlayerCrossDaySummary(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Query() query: PlayerCrossDaySummaryQueryDto,
+  ) {
+    return this.fieldSessionService.getPlayerCrossDaySummary(
+      user,
+      peladaId,
+      query,
+    );
   }
 
   @Get('peladas/:peladaId/matches/:matchId/field-session/summary')
