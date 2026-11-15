@@ -483,6 +483,52 @@ if (runHarness) {
         playerId: homePlayers[0]!.playerId,
         goals: 2,
       });
+
+      // Sem template configurado, usa o padrão com as variáveis já preenchidas.
+      expect(summary.body.text).toContain('2 rodada(s)');
+      expect(summary.body.text).toContain('3x1');
+      expect(summary.body.text).toContain(homeAgg.name);
+    });
+
+    it('GET field-session/summary renderiza o template livre configurado pelo organizador', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/rules`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ extra: { summaryTemplate: 'Zoação: {artilheiro} comeu bola hoje ({golsArtilheiro} gols)!' } })
+        .expect(200);
+
+      const start = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+      const homeTeamId = start.body.teamsOnField[0].drawTeamId as string;
+      const scorer = await prisma.drawTeamPlayer.findFirstOrThrow({
+        where: { teamId: homeTeamId },
+      });
+
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ addGoal: 'HOME', goalPlayerId: scorer.playerId })
+        .expect(200);
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session/finish`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      const summary = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/field-session/summary`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      const player = await prisma.player.findUniqueOrThrow({
+        where: { id: scorer.playerId },
+      });
+      expect(summary.body.text).toBe(
+        `Zoação: ${player.displayName} comeu bola hoje (1 gols)!`,
+      );
     });
 
     it('GET players-summary agrega por jogador entre dois dias (times diferentes)', async () => {
