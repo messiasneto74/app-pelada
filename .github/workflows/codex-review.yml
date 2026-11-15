@@ -19,7 +19,12 @@ concurrency:
 jobs:
   codex-review:
     name: codex-review-policy
-    runs-on: ubuntu-latest
+    # ubuntu-latest passou a apontar para Ubuntu 26 em 2026-11-14 (migração do
+    # runner GitHub) e a nova imagem quebra o safety-strategy "drop-sudo" da
+    # openai/codex-action (o usuário "runner" deixou de estar no grupo sudo),
+    # fazendo o Codex falhar antes de produzir parecer. Fixar em 24.04 (a
+    # imagem anterior, compatível) até a action ou a imagem corrigirem isso.
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     services:
       postgres-test:
