@@ -402,5 +402,87 @@ if (runHarness) {
       // que a soma — nunca maior que a duração da rodada 1.
       expect(rounds[1]!.durationMs).toBeLessThan(rounds[0]!.durationMs);
     });
+
+    it('GET field-session/summary agrega vitórias, goleada, perdedor e artilheiro do dia', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+      const start = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+
+      const homeTeamId = start.body.teamsOnField[0].drawTeamId as string;
+      const awayTeamId = start.body.teamsOnField[1].drawTeamId as string;
+      const homePlayers = await prisma.drawTeamPlayer.findMany({
+        where: { teamId: homeTeamId },
+        take: 2,
+      });
+      const awayPlayer = await prisma.drawTeamPlayer.findFirstOrThrow({
+        where: { teamId: awayTeamId },
+      });
+
+      // Rodada 1: time da casa 3x1 — mesmo jogador faz 2 dos 3 gols.
+      for (const scorer of [homePlayers[0]!, homePlayers[0]!, homePlayers[1]!]) {
+        await request(app.getHttpServer())
+          .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+          .set('Authorization', `Bearer ${orgToken}`)
+          .send({ addGoal: 'HOME', goalPlayerId: scorer.playerId })
+          .expect(200);
+      }
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ addGoal: 'AWAY', goalPlayerId: awayPlayer.playerId })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post(
+          `/peladas/${pelada.id}/matches/${match.id}/field-session/end-round`,
+        )
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      // Rodada 2: empate 0x0 (não deve mudar goleada nem gerar derrota nova).
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session/finish`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      const summary = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/field-session/summary`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      expect(summary.body.rounds).toBe(2);
+      expect(summary.body.teams).toHaveLength(3);
+
+      const homeAgg = summary.body.teams.find(
+        (t: { drawTeamId: string }) => t.drawTeamId === homeTeamId,
+      );
+      expect(homeAgg).toMatchObject({ wins: 1, losses: 0, goalsFor: 3, goalsAgainst: 1 });
+
+      const awayAgg = summary.body.teams.find(
+        (t: { drawTeamId: string }) => t.drawTeamId === awayTeamId,
+      );
+      expect(awayAgg).toMatchObject({ wins: 0, losses: 1, goalsFor: 1, goalsAgainst: 3 });
+
+      expect(summary.body.biggestWin).toMatchObject({
+        winnerDrawTeamId: homeTeamId,
+        loserDrawTeamId: awayTeamId,
+        scoreWinner: 3,
+        scoreLoser: 1,
+        margin: 2,
+      });
+
+      expect(summary.body.mostLosses).toMatchObject({
+        drawTeamId: awayTeamId,
+        losses: 1,
+      });
+
+      expect(summary.body.topScorer).toMatchObject({
+        playerId: homePlayers[0]!.playerId,
+        goals: 2,
+      });
+    });
   });
 }

@@ -196,6 +196,16 @@ export class MatchesController {
     return this.fieldSessionService.getSession(user, peladaId, matchId);
   }
 
+  @Get('peladas/:peladaId/matches/:matchId/field-session/summary')
+  @UseGuards(JwtAuthGuard)
+  getFieldSessionSummary(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('matchId') matchId: string,
+  ) {
+    return this.fieldSessionService.getDaySummary(user, peladaId, matchId);
+  }
+
   @Post('peladas/:peladaId/matches/:matchId/field-session')
   @HttpCode(201)
   @UseGuards(JwtAuthGuard)
