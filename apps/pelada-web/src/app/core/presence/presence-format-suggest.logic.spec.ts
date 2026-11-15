@@ -14,6 +14,16 @@ describe('presence-format-suggest.logic', () => {
     });
   });
 
+  it('usa capacity nula quando bate com a fórmula padrão (sem ×2)', () => {
+    expect(
+      buildFormatRulesInput({ playersPerTeam: 6, teamCount: 2 }, 12),
+    ).toEqual({
+      playersPerTeam: 6,
+      teamCount: 2,
+      capacity: null,
+    });
+  });
+
   it('detecta mismatch antes de fechar lista', () => {
     const result = evaluateFormatBeforeClose(
       10,
