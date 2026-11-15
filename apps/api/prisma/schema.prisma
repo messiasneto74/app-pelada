@@ -151,6 +151,7 @@ model Match {
   attendances MatchAttendance[]
   draw            Draw?
   fieldSession    MatchFieldSession?
+  fieldRounds     MatchFieldRound[]
   payments        PaymentLedger[]
 
   @@index([peladaId, scheduledAt])
@@ -181,8 +182,33 @@ model MatchFieldSession {
   updatedAt           DateTime            @updatedAt @map("updated_at")
 
   match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  rounds MatchFieldRound[]
 
   @@map("match_field_sessions")
+}
+
+/// Histórico de uma rodada já encerrada (rodízio "em campo"), gravado em
+/// endRound()/finishSession() antes do placar da sessão ser zerado para a
+/// próxima rodada. Base para o resumo "do dia" (por time) e "entre dias"
+/// (por jogador, já que os times são sorteados do zero em cada pelada).
+model MatchFieldRound {
+  id            String   @id @default(cuid())
+  matchId       String   @map("match_id")
+  sessionId     String   @map("session_id")
+  roundNumber   Int      @map("round_number")
+  homeDrawTeamId String  @map("home_draw_team_id")
+  awayDrawTeamId String  @map("away_draw_team_id")
+  scoreHome     Int      @map("score_home")
+  scoreAway     Int      @map("score_away")
+  goals         Json     @default("[]")
+  durationMs    Int      @map("duration_ms")
+  finishedAt    DateTime @default(now()) @map("finished_at")
+
+  match   Match             @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  session MatchFieldSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([matchId])
+  @@map("match_field_rounds")
 }
 
 enum AttendanceStatus {

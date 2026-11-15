@@ -1,4 +1,4 @@
-import { IsBoolean, IsIn, IsOptional } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class PatchMatchFieldSessionDto {
   @IsOptional()
@@ -8,6 +8,11 @@ export class PatchMatchFieldSessionDto {
   @IsOptional()
   @IsIn(['HOME', 'AWAY'])
   addGoal?: 'HOME' | 'AWAY';
+
+  /** Opcional — jogador que fez o gol (pro resumo/artilheiro). */
+  @IsOptional()
+  @IsString()
+  goalPlayerId?: string;
 
   @IsOptional()
   @IsBoolean()

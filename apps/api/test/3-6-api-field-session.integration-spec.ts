@@ -233,5 +233,74 @@ if (runHarness) {
         .send({})
         .expect(403);
     });
+
+    it('registra o jogador que fez o gol e persiste o histórico da rodada', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+      const start = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+
+      const homeTeamId = start.body.teamsOnField[0].drawTeamId as string;
+      const awayTeamId = start.body.teamsOnField[1].drawTeamId as string;
+      const homePlayer = await prisma.drawTeamPlayer.findFirstOrThrow({
+        where: { teamId: homeTeamId },
+      });
+      const awayPlayer = await prisma.drawTeamPlayer.findFirstOrThrow({
+        where: { teamId: awayTeamId },
+      });
+
+      // Jogador de fora do time em campo não pode ser marcado como autor do gol.
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ addGoal: 'HOME', goalPlayerId: awayPlayer.playerId })
+        .expect(400);
+
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ addGoal: 'HOME', goalPlayerId: homePlayer.playerId })
+        .expect(200);
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ addGoal: 'AWAY', goalPlayerId: awayPlayer.playerId })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post(
+          `/peladas/${pelada.id}/matches/${match.id}/field-session/end-round`,
+        )
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      const rounds = await prisma.matchFieldRound.findMany({
+        where: { matchId: match.id },
+      });
+      expect(rounds).toHaveLength(1);
+      expect(rounds[0]).toMatchObject({
+        roundNumber: 1,
+        homeDrawTeamId: homeTeamId,
+        awayDrawTeamId: awayTeamId,
+        scoreHome: 1,
+        scoreAway: 1,
+      });
+      expect(rounds[0]!.goals).toEqual([
+        { side: 'HOME', playerId: homePlayer.playerId },
+        { side: 'AWAY', playerId: awayPlayer.playerId },
+      ]);
+
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session/finish`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      const allRounds = await prisma.matchFieldRound.findMany({
+        where: { matchId: match.id },
+      });
+      expect(allRounds).toHaveLength(2);
+    });
   });
 }
