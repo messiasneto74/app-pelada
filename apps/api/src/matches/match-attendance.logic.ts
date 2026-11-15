@@ -9,6 +9,10 @@ export type AttendanceRowInput = {
   isFixedList: boolean;
 };
 
+/**
+ * Sem `capacity` manual, o padrão é só os titulares de todos os times
+ * (`playersPerTeam × teamCount`) — nem toda pelada tem banco de reserva.
+ */
 export function computeMatchCapacityFromRules(
   rules: {
     capacity: number | null;
@@ -19,7 +23,7 @@ export function computeMatchCapacityFromRules(
   if (typeof rules.capacity === 'number' && rules.capacity > 0) {
     return rules.capacity;
   }
-  return rules.playersPerTeam * rules.teamCount * 2;
+  return rules.playersPerTeam * rules.teamCount;
 }
 
 export function countConfirmed(rows: AttendanceRowInput[]): number {
