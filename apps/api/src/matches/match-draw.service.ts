@@ -29,7 +29,8 @@ import { mapGoalkeeperMode, parseDrawWeights } from './match-draw-map.logic';
 import { mergeEffectiveMatchRules } from './match-rules.merge';
 import type { MatchRulesOverrideJson } from './match-rules.merge';
 
-const ATTENDING: AttendanceStatus[] = ['CONFIRMED', 'QUEUE'];
+/** Fila de espera não entra no sorteio — só quem está CONFIRMED tem vaga na partida. */
+const DRAWABLE: AttendanceStatus[] = ['CONFIRMED'];
 
 export type DrawPlayerSlotDto = {
   playerId: string;
@@ -336,11 +337,11 @@ export class MatchDrawService {
 
   private async loadConfirmedPlayers(match: Match): Promise<Player[]> {
     const rows = await this.prisma.matchAttendance.findMany({
-      where: { matchId: match.id, status: { in: ATTENDING } },
+      where: { matchId: match.id, status: { in: DRAWABLE } },
       include: { player: true },
     });
     if (rows.length === 0) {
-      throw new BadRequestException('Não há jogadores confirmados ou na fila para sortear.');
+      throw new BadRequestException('Não há jogadores confirmados para sortear.');
     }
     return rows.map((r) => r.player);
   }
