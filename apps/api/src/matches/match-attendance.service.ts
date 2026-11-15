@@ -281,8 +281,9 @@ export class MatchAttendanceService {
       const match = await tx.match.findUniqueOrThrow({
         where: { id: matchId },
       });
-      const capacity = this.capacityForMatch(match, defaults);
-      const rows = await this.loadRowInputs(tx, matchId);
+      const effective = this.effectiveRulesForMatch(match, defaults);
+      const capacity = computeMatchCapacity(effective);
+      const rows = await this.loadRowInputs(tx, matchId, effective.fixedListOnly);
       if (!rows.some((r) => r.playerId === playerId)) {
         throw new NotFoundException(
           'Jogador não está na lista desta partida.',
@@ -301,6 +302,7 @@ export class MatchAttendanceService {
   private async loadRowInputs(
     tx: Prisma.TransactionClient,
     matchId: string,
+    fixedListOnly: boolean,
   ): Promise<AttendanceRowInput[]> {
     const list = await tx.matchAttendance.findMany({
       where: { matchId },
@@ -316,7 +318,9 @@ export class MatchAttendanceService {
       status: a.status,
       queuePosition: a.queuePosition,
       isGuest: a.isGuest,
-      isFixedList: a.player.isFixedList,
+      // `fixedListOnly` pode ser suspenso só nesta partida via rulesOverride,
+      // sem afetar o flag permanente do jogador no elenco (ver peladas.service.ts).
+      isFixedList: a.player.isFixedList && fixedListOnly,
     }));
   }
 
@@ -370,12 +374,18 @@ export class MatchAttendanceService {
     });
   }
 
-  private capacityForMatch(match: Match, defaults: PeladaRules): number {
-    const effective = mergeEffectiveMatchRules(
+  private effectiveRulesForMatch(
+    match: Match,
+    defaults: PeladaRules,
+  ): ReturnType<typeof mergeEffectiveMatchRules> {
+    return mergeEffectiveMatchRules(
       defaults,
       match.rulesOverride as MatchRulesOverrideJson | null,
     );
-    return computeMatchCapacity(effective);
+  }
+
+  private capacityForMatch(match: Match, defaults: PeladaRules): number {
+    return computeMatchCapacity(this.effectiveRulesForMatch(match, defaults));
   }
 
   private async buildListDto(
