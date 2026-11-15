@@ -18,6 +18,7 @@ Screenshots anexados nos PRs correspondentes; paths estáveis no repo para revis
 | #41 3.5-SHARE | [3-5-share-41-modal-390.jpg](./3-5-share-41-modal-390.jpg) | **390×844 px** (JPG; `/dev/sorteio-3-5-share`, modal compartilhar + “Ocultar notas”) |
 | #43 3.6 | [3-6-43-campo-390.jpg](./3-6-43-campo-390.jpg) | **390×844 px** (JPG; `/dev/campo-3-6`, placar, cronômetro, descanso) |
 | #46 3.9 | [3-9-46-caixa-390.jpg](./3-9-46-caixa-390.jpg) | **390×844 px** (JPG; `/dev/caixa-3-9`, resumo, segmentos, chips pago/devendo) |
+| #169 Google login | [169-google-login-entrar-390.png](./169-google-login-entrar-390.png) | **390×844 px** (PNG; `/entrar`, botão "Entrar com Google" abaixo do formulário e-mail/senha) |
 
 Validar dimensões antes do PR:
 
