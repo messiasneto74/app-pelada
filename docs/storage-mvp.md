@@ -18,7 +18,7 @@ Ver [.env.example](../.env.example) e [deploy-staging.md](deploy-staging.md) (`P
 | `POST /peladas` | `photo` | JPG/PNG/WebP, 5 MB |
 | `PATCH /peladas/:peladaId/players/:playerId` | `photo` (opcional; JSON no mesmo request) | idem |
 
-Leitura pública: `GET {API}/uploads/<arquivo>` (static em `bootstrap.ts`).
+Leitura autenticada: `GET {API}/uploads/<arquivo>` exige `Authorization: Bearer <token>` válido (`UploadsController`). Qualquer conta logada no app pode ver — não é restrito por pelada.
 
 Erros: tipo inválido `400`; Multer acima de 5 MB `413` (`Foto deve ter no máximo 5 MB.`).
 

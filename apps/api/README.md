@@ -61,7 +61,7 @@ Rota interna `POST /_probe/validate` (corpo `{ "name": "..." }`) existe só para
 
 - `POST /peladas` — `multipart/form-data`: campos `name`, `city`, `state`, `format` (JSON string), opcional `photo` (JPEG/PNG/WebP, até 5 MB).
 - Resposta `201`: `{ id, name, city, state, photoUrl?, role: "ORGANIZADOR" }`.
-- Cria `Pelada`, `PeladaMember` (ORGANIZADOR) e `PeladaRules` padrão; foto em `UPLOAD_DIR` (padrão `./uploads`) servida em `/uploads/...` (`PUBLIC_UPLOAD_BASE_URL` no `.env`).
+- Cria `Pelada`, `PeladaMember` (ORGANIZADOR) e `PeladaRules` padrão; foto em `UPLOAD_DIR` (padrão `./uploads`) servida em `/uploads/...` (`PUBLIC_UPLOAD_BASE_URL` no `.env`) — leitura exige JWT válido (`UploadsController`), qualquer conta logada no app.
 - Arquivo grande demais: `413` (Multer `LIMIT_FILE_SIZE`).
 
 ## Regras (3.2-API)

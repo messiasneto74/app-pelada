@@ -58,7 +58,53 @@ if (runHarness) {
       expect(res.body.photoUrl).toMatch(/\/uploads\/.+\.jpg$/);
 
       const path = uploadPathFromPublicUrl(res.body.photoUrl);
-      await request(app.getHttpServer()).get(path).expect(200);
+      await request(app.getHttpServer())
+        .get(path)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+    });
+
+    it('GET /uploads/* exige autenticação (403/401 sem token)', async () => {
+      const token = signTestJwt({ sub: 'st-auth', email: 'auth@pelada.test' });
+
+      const res = await request(app.getHttpServer())
+        .post('/peladas')
+        .set('Authorization', `Bearer ${token}`)
+        .field('name', 'Pelada auth')
+        .attach('photo', Buffer.from('jpeg-bytes'), {
+          filename: 'capa.jpg',
+          contentType: 'image/jpeg',
+        })
+        .expect(201);
+
+      const path = uploadPathFromPublicUrl(res.body.photoUrl);
+      await request(app.getHttpServer()).get(path).expect(401);
+      // Qualquer conta logada no app pode ver — não é restrito por pelada.
+      const otherToken = signTestJwt({
+        sub: 'st-auth-other',
+        email: 'other@pelada.test',
+      });
+      await request(app.getHttpServer())
+        .get(path)
+        .set('Authorization', `Bearer ${otherToken}`)
+        .expect(200);
+    });
+
+    it('GET /uploads/* rejeita nome de arquivo fora do padrão (path traversal) com 404', async () => {
+      const token = signTestJwt({
+        sub: 'st-traversal',
+        email: 'traversal@pelada.test',
+      });
+
+      await request(app.getHttpServer())
+        .get('/uploads/..%2f..%2f..%2fetc%2fpasswd')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404);
+
+      await request(app.getHttpServer())
+        .get('/uploads/..%2fphoto-storage.service.ts')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404);
     });
 
     it('POST /peladas rejeita foto maior que 5 MB com 413', async () => {
@@ -185,7 +231,10 @@ if (runHarness) {
       expect(patched.body.photoUrl).toMatch(/\/uploads\/player-.+\.jpg$/);
 
       const path = uploadPathFromPublicUrl(patched.body.photoUrl);
-      await request(app.getHttpServer()).get(path).expect(200);
+      await request(app.getHttpServer())
+        .get(path)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
 
       const filename = path.replace(/^\/uploads\//, '');
       await access(join(uploadDir, filename));
