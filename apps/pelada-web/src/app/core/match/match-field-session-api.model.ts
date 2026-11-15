@@ -35,3 +35,31 @@ export type PatchMatchFieldSessionBody = {
 export type PostMatchFieldSessionBody = {
   rotationPolicy?: FieldRotationPolicy;
 };
+
+/** Resumo "do dia" (por time), a partir do histórico de rodadas já encerradas (§3.6/épico histórico). */
+export type MatchDaySummaryDto = {
+  matchId: string;
+  rounds: number;
+  teams: Array<{
+    drawTeamId: string;
+    name: string;
+    played: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    goalsFor: number;
+    goalsAgainst: number;
+  }>;
+  topScorer: { playerId: string; displayName: string; goals: number } | null;
+  biggestWin: {
+    winnerDrawTeamId: string;
+    winnerName: string;
+    loserDrawTeamId: string;
+    loserName: string;
+    scoreWinner: number;
+    scoreLoser: number;
+    margin: number;
+  } | null;
+  mostLosses: { drawTeamId: string; name: string; losses: number } | null;
+  text: string;
+};

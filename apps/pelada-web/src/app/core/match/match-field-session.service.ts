@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import type {
+  MatchDaySummaryDto,
   MatchFieldSessionDto,
   PatchMatchFieldSessionBody,
   PostMatchFieldSessionBody,
@@ -46,6 +47,12 @@ export class MatchFieldSessionService {
     return this.http.post<MatchFieldSessionDto>(
       `${this.base(peladaId, matchId)}/finish`,
       {},
+    );
+  }
+
+  getDaySummary(peladaId: string, matchId: string) {
+    return this.http.get<MatchDaySummaryDto>(
+      `${this.base(peladaId, matchId)}/summary`,
     );
   }
 }

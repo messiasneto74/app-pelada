@@ -41,6 +41,10 @@ export function peladaRulesFromApi(dto: PeladaRulesApiDto): PeladaRulesFormValue
     drawUseRating: draw['useRating'] !== false,
     drawUseAttributes: draw['useAttributes'] !== false,
     drawUseStyleTags: draw['useStyleTags'] !== false,
+    summaryTemplate:
+      typeof extra['summaryTemplate'] === 'string'
+        ? (extra['summaryTemplate'] as string)
+        : DEFAULT_PELADA_RULES.summaryTemplate,
   };
 }
 
@@ -60,6 +64,7 @@ export function peladaRulesToPatchBody(
       fixedGkRotation: values.fixedGkRotation,
       goalkeeperPerTeam: values.goalkeeperPerTeam,
       fixedGoalkeeper: values.fixedGoalkeeper,
+      summaryTemplate: values.summaryTemplate,
     },
   };
 }

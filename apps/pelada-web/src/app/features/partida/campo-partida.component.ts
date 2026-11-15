@@ -192,6 +192,16 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
                 Encerrar partida
               </button>
             </div>
+          } @else if (s.finishedAt) {
+            <a
+              routerLink="/partida/resumo"
+              [queryParams]="{ matchId: matchId() }"
+              peladaButton
+              variant="lime"
+              [peladaButtonBlock]="true"
+            >
+              Ver resumo do dia
+            </a>
           } @else if (!isOrganizador()) {
             <p class="pelada-muted">Somente o organizador altera placar e cronômetro.</p>
           }
