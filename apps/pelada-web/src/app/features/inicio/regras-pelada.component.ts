@@ -142,6 +142,23 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <pelada-switch [(checked)]="drawUseStyleTags">Usar tags de estilo</pelada-switch>
       </pelada-card>
 
+      <pelada-card title="Resumo do dia">
+        <pelada-field
+          label="Texto do resumo"
+          forId="summary-template"
+          hint="Livre — pode ser bem-humorado. Vazio usa o padrão. Variáveis: {{ summaryVariablesHint }}"
+        >
+          <textarea
+            id="summary-template"
+            peladaInput
+            rows="4"
+            placeholder="Deixe em branco pra usar o texto padrão"
+            [value]="values().summaryTemplate"
+            (input)="patchSummaryTemplate($event)"
+          ></textarea>
+        </pelada-field>
+      </pelada-card>
+
       <button
         type="button"
         class="pelada-btn pelada-btn--block"
@@ -260,6 +277,14 @@ export class RegrasPeladaComponent implements OnInit {
     const fixedGkRotation = (event.target as HTMLSelectElement)
       .value as FixedGkRotation;
     this.values.update((v) => ({ ...v, fixedGkRotation }));
+  }
+
+  readonly summaryVariablesHint =
+    '{artilheiro}, {golsArtilheiro}, {timeGoleou}, {timeGoleado}, {margemGol}, {placarGoleada}, {timeQueMaisPerdeu}, {rodadas}';
+
+  patchSummaryTemplate(event: Event): void {
+    const summaryTemplate = (event.target as HTMLTextAreaElement).value;
+    this.values.update((v) => ({ ...v, summaryTemplate }));
   }
 
   saveDefault(): void {

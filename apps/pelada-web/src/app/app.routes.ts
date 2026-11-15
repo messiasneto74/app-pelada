@@ -192,6 +192,14 @@ export const routes: Routes = [
         data: { title: 'Em campo', eyebrow: 'Partida' },
       },
       {
+        path: 'partida/resumo',
+        loadComponent: () =>
+          import('./features/partida/resumo-partida.component').then(
+            (m) => m.ResumoPartidaComponent,
+          ),
+        data: { title: 'Resumo', eyebrow: 'Partida' },
+      },
+      {
         path: 'jogadores',
         loadComponent: () =>
           import('./features/jogadores/jogadores-lista.component').then(

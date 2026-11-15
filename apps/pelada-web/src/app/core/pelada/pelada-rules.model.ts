@@ -23,6 +23,8 @@ export type PeladaRulesFormValues = {
   drawUseStyleTags: boolean;
   /** História 27 — jogador pode editar próprio perfil no elenco. */
   allowPlayerSelfEdit: boolean;
+  /** Texto livre do resumo do dia (épico #156, etapa 4) — vazio usa o padrão da API. */
+  summaryTemplate: string;
 };
 
 export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
@@ -39,6 +41,7 @@ export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
   drawUseAttributes: true,
   drawUseStyleTags: true,
   allowPlayerSelfEdit: false,
+  summaryTemplate: '',
 };
 
 export function validateGoalkeeperToggles(

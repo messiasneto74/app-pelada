@@ -10,7 +10,11 @@ describe('pelada-rules-api.mapper', () => {
       goalkeeperMode: 'FIXED_GLOBAL',
       fixedListOnly: true,
       drawWeights: { mode: 'RANDOM', useAttributes: false },
-      extra: { paymentModel: 'MONTHLY', fixedGkRotation: 'SIDE' },
+      extra: {
+        paymentModel: 'MONTHLY',
+        fixedGkRotation: 'SIDE',
+        summaryTemplate: 'Zoação: {artilheiro}!',
+      },
     });
     expect(form.playersPerTeam).toBe(7);
     expect(form.fixedGoalkeeper).toBe(true);
@@ -18,6 +22,21 @@ describe('pelada-rules-api.mapper', () => {
     expect(form.drawUseAttributes).toBe(false);
     expect(form.paymentModel).toBe('MONTHLY');
     expect(form.allowPlayerSelfEdit).toBe(false);
+    expect(form.summaryTemplate).toBe('Zoação: {artilheiro}!');
+  });
+
+  it('sem summaryTemplate em extra, usa o padrão (string vazia)', () => {
+    const form = peladaRulesFromApi({
+      peladaId: 'p1',
+      playersPerTeam: 6,
+      teamCount: 2,
+      modality: 'campo',
+      goalkeeperMode: 'ROTATING',
+      fixedListOnly: false,
+      drawWeights: {},
+      extra: {},
+    });
+    expect(form.summaryTemplate).toBe('');
   });
 
   it('mapeia allowPlayerSelfEdit da API', () => {
@@ -50,10 +69,13 @@ describe('pelada-rules-api.mapper', () => {
       drawUseAttributes: true,
       drawUseStyleTags: false,
       allowPlayerSelfEdit: true,
+      summaryTemplate: 'Hoje foi animal!',
     });
     expect(body['goalkeeperMode']).toBe('FIXED_PER_TEAM');
     expect(body['allowPlayerSelfEdit']).toBe(true);
     const weights = body['drawWeights'] as Record<string, unknown>;
     expect(weights['useStyleTags']).toBe(false);
+    const extra = body['extra'] as Record<string, unknown>;
+    expect(extra['summaryTemplate']).toBe('Hoje foi animal!');
   });
 });
