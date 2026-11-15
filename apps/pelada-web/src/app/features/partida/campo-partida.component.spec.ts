@@ -152,4 +152,20 @@ describe('CampoPartidaComponent §3.6', () => {
     expect(text).toContain('Iniciar jogo em campo');
     f2.destroy();
   }));
+
+  it('partida encerrada mostra link "Ver resumo do dia" com matchId na query', fakeAsync(() => {
+    fieldSpy.getSession.and.returnValue(
+      of({ ...fieldSession, finishedAt: new Date().toISOString() }),
+    );
+    const f2 = TestBed.createComponent(CampoPartidaComponent);
+    f2.detectChanges();
+    tick();
+    f2.detectChanges();
+    const text = f2.nativeElement.textContent as string;
+    expect(text).toContain('Ver resumo do dia');
+    const link = f2.nativeElement.querySelector('a[href^="/partida/resumo"]') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toContain('matchId=m1');
+    f2.destroy();
+  }));
 });
