@@ -161,6 +161,10 @@ if (runHarness) {
 
     it('jogador fixo ultrapassa jogador comum na fila quando a capacidade está cheia', async () => {
       const { pelada, match, token, p1, p2 } = await seedMatch();
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { fixedListOnly: true },
+      });
       await prisma.player.update({
         where: { id: p2.id },
         data: { isFixedList: true },
@@ -209,13 +213,13 @@ if (runHarness) {
         peladaId: pelada.id,
         displayName: 'Carla',
       });
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { capacity: 2, fixedListOnly: true },
+      });
       await prisma.player.update({
         where: { id: p3Fixed.id },
         data: { isFixedList: true },
-      });
-      await prisma.peladaRules.update({
-        where: { peladaId: pelada.id },
-        data: { capacity: 2 },
       });
 
       await request(app.getHttpServer())
@@ -243,6 +247,64 @@ if (runHarness) {
       expect(byId(p1.id)?.status).toBe('QUEUE');
       expect(byId(p2.id)?.status).toBe('CONFIRMED');
       expect(byId(p3Fixed.id)?.status).toBe('CONFIRMED');
+    });
+
+    it('rulesOverride.fixedListOnly=false numa partida específica suspende a prioridade do fixo só nela', async () => {
+      const sub = `att-fixed-override-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const pelada = await createPelada(prisma, { owner: org });
+      const token = signTestJwt({
+        sub: `${sub}-org`,
+        email: org.email ?? 'o@y.z',
+      });
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { capacity: 1, fixedListOnly: true },
+      });
+      const p1 = await createPlayer(prisma, { peladaId: pelada.id, displayName: 'Ana' });
+      const p2Fixed = await createPlayer(prisma, {
+        peladaId: pelada.id,
+        displayName: 'Bruno',
+      });
+      await prisma.player.update({
+        where: { id: p2Fixed.id },
+        data: { isFixedList: true },
+      });
+      // A regra geral da pelada mantém o fixo; só esta partida desativa a
+      // prioridade (ex.: amistoso avulso), sem apagar o flag no elenco.
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-10-01T19:00:00Z'),
+        rulesOverride: { fixedListOnly: false },
+      });
+
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${p1.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'CONFIRMED' })
+        .expect(200);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${p2Fixed.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'CONFIRMED' })
+        .expect(200);
+
+      const fixed = res.body.entries.find(
+        (e: { playerId: string }) => e.playerId === p2Fixed.id,
+      );
+      const common = res.body.entries.find(
+        (e: { playerId: string }) => e.playerId === p1.id,
+      );
+      // Sem a prioridade de fixo nesta partida, quem confirmou primeiro
+      // (comum) mantém a vaga; o fixo vai para a fila como qualquer um.
+      expect(common.status).toBe('CONFIRMED');
+      expect(fixed.status).toBe('QUEUE');
+
+      const player = await prisma.player.findUniqueOrThrow({
+        where: { id: p2Fixed.id },
+      });
+      expect(player.isFixedList).toBe(true);
     });
 
     it('POST /attendance/self confirms linked player in SELF_CONFIRM mode', async () => {
