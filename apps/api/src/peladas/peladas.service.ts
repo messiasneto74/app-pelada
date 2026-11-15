@@ -137,34 +137,50 @@ export class PeladasService {
     const nextGoalkeeperMode = dto.goalkeeperMode ?? existing.goalkeeperMode;
     assertGoalkeeperExclusive(nextGoalkeeperMode, mergedExtra);
 
-    const updated = await this.prisma.peladaRules.update({
-      where: { peladaId },
-      data: {
-        ...(dto.playersPerTeam !== undefined && {
-          playersPerTeam: dto.playersPerTeam,
-        }),
-        ...(dto.teamCount !== undefined && { teamCount: dto.teamCount }),
-        ...(dto.modality !== undefined && { modality: dto.modality }),
-        ...(dto.goalkeeperMode !== undefined && {
-          goalkeeperMode: dto.goalkeeperMode,
-        }),
-        ...(dto.presenceMode !== undefined && {
-          presenceMode: dto.presenceMode,
-        }),
-        ...(dto.capacity !== undefined && { capacity: dto.capacity }),
-        ...(dto.allowPlayerSelfEdit !== undefined && {
-          allowPlayerSelfEdit: dto.allowPlayerSelfEdit,
-        }),
-        ...(dto.fixedListOnly !== undefined && {
-          fixedListOnly: dto.fixedListOnly,
-        }),
-        ...(dto.drawWeights !== undefined && {
-          drawWeights: dto.drawWeights as Prisma.InputJsonValue,
-        }),
-        ...(dto.extra !== undefined && {
-          extra: mergedExtra as Prisma.InputJsonValue,
-        }),
-      },
+    // Desativar "lista fixa" (fixedListOnly) sem limpar `isFixedList` dos
+    // jogadores já marcados deixaria flags órfãs: um jogador continuaria
+    // recebendo prioridade de fixo na fila mesmo com a regra desligada
+    // (achado do Codex no PR #142, issue #141). `isFixedList` só pode existir
+    // com a regra ativa (ver pelada-roster.logic.ts: assertFixedListAllowed).
+    const disablingFixedList =
+      dto.fixedListOnly === false && existing.fixedListOnly === true;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (disablingFixedList) {
+        await tx.player.updateMany({
+          where: { peladaId, isFixedList: true },
+          data: { isFixedList: false },
+        });
+      }
+      return tx.peladaRules.update({
+        where: { peladaId },
+        data: {
+          ...(dto.playersPerTeam !== undefined && {
+            playersPerTeam: dto.playersPerTeam,
+          }),
+          ...(dto.teamCount !== undefined && { teamCount: dto.teamCount }),
+          ...(dto.modality !== undefined && { modality: dto.modality }),
+          ...(dto.goalkeeperMode !== undefined && {
+            goalkeeperMode: dto.goalkeeperMode,
+          }),
+          ...(dto.presenceMode !== undefined && {
+            presenceMode: dto.presenceMode,
+          }),
+          ...(dto.capacity !== undefined && { capacity: dto.capacity }),
+          ...(dto.allowPlayerSelfEdit !== undefined && {
+            allowPlayerSelfEdit: dto.allowPlayerSelfEdit,
+          }),
+          ...(dto.fixedListOnly !== undefined && {
+            fixedListOnly: dto.fixedListOnly,
+          }),
+          ...(dto.drawWeights !== undefined && {
+            drawWeights: dto.drawWeights as Prisma.InputJsonValue,
+          }),
+          ...(dto.extra !== undefined && {
+            extra: mergedExtra as Prisma.InputJsonValue,
+          }),
+        },
+      });
     });
 
     return this.toRulesResponse(updated);

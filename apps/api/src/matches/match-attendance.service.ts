@@ -305,7 +305,11 @@ export class MatchAttendanceService {
     const list = await tx.matchAttendance.findMany({
       where: { matchId },
       include: { player: { select: { isFixedList: true } } },
-      orderBy: { createdAt: 'asc' },
+      // updatedAt (não createdAt) reflete a última mudança de status: a lógica de
+      // despromoção em applyAttendanceStatusChange reverte esta lista e pega o
+      // primeiro CONFIRMED comum, que precisa ser o último a confirmar, não o
+      // primeiro a entrar na lista de presença.
+      orderBy: { updatedAt: 'asc' },
     });
     return list.map((a) => ({
       playerId: a.playerId,
