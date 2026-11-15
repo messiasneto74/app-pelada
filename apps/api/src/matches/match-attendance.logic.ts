@@ -5,6 +5,8 @@ export type AttendanceRowInput = {
   status: AttendanceStatus;
   queuePosition: number | null;
   isGuest: boolean;
+  /** Jogador fixo tem prioridade sobre jogador comum na fila. */
+  isFixedList: boolean;
 };
 
 export function computeMatchCapacityFromRules(
@@ -53,6 +55,9 @@ export function pickNextQueuedPlayerId(rows: AttendanceRowInput[]): string | nul
   const queued = rows
     .filter((r) => r.status === 'QUEUE')
     .sort((a, b) => {
+      if (a.isFixedList !== b.isFixedList) {
+        return Number(b.isFixedList) - Number(a.isFixedList);
+      }
       const pa = a.queuePosition ?? Number.MAX_SAFE_INTEGER;
       const pb = b.queuePosition ?? Number.MAX_SAFE_INTEGER;
       if (pa !== pb) {
@@ -75,6 +80,33 @@ export function applyAttendanceStatusChange(
   }
   const confirmedBefore = countConfirmed(rows);
   const wasConfirmed = target.status === 'CONFIRMED';
+
+  // Um jogador fixo não pode ficar atrás de um jogador comum já confirmado.
+  // Quando a lista está cheia, a confirmação do fixo ocupa a vaga e o último
+  // jogador comum confirmado vai para o fim da fila.
+  if (
+    requested === 'CONFIRMED' &&
+    target.isFixedList &&
+    !wasConfirmed &&
+    confirmedBefore >= capacity
+  ) {
+    const demote = [...rows]
+      .reverse()
+      .find((row) => row.status === 'CONFIRMED' && !row.isFixedList);
+    if (demote) {
+      const queuePosition = nextQueuePosition(rows);
+      return rows.map((row) => {
+        if (row.playerId === playerId) {
+          return { ...row, status: 'CONFIRMED' as const, queuePosition: null };
+        }
+        if (row.playerId === demote.playerId) {
+          return { ...row, status: 'QUEUE' as const, queuePosition };
+        }
+        return row;
+      });
+    }
+  }
+
   let next = resolveNextStatus(requested, confirmedBefore, capacity);
 
   let updated = rows.map((row) => {

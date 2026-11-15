@@ -131,6 +131,37 @@ if (runHarness) {
       expect(res.body.isFixedList).toBe(true);
     });
 
+    it('PATCH rules fixedListOnly=false limpa isFixedList dos jogadores já marcados (achado Codex PR #142)', async () => {
+      const sub = 'roster-fixed-clear';
+      const user = await createUser(prisma, { keycloakSub: sub });
+      const pelada = await createPelada(prisma, { owner: user });
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { fixedListOnly: true },
+      });
+      const token = signTestJwt({ sub, email: user.email ?? 'x@y.z' });
+
+      const created = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/players`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ displayName: 'Mensalista', isFixedList: true })
+        .expect(201);
+      expect(created.body.isFixedList).toBe(true);
+
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/rules`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ fixedListOnly: false })
+        .expect(200);
+
+      const player = await prisma.player.findUniqueOrThrow({
+        where: { id: created.body.id },
+      });
+      // Sem isso, o jogador continuaria furando a fila com prioridade de fixo
+      // mesmo com a regra "lista fixa" desligada.
+      expect(player.isFixedList).toBe(false);
+    });
+
     it('POST /players returns 403 for non-organizador member', async () => {
       const orgSub = 'roster-post-org';
       const jogSub = 'roster-post-jog';

@@ -159,6 +159,92 @@ if (runHarness) {
       expect(bruno.status).toBe('QUEUE');
     });
 
+    it('jogador fixo ultrapassa jogador comum na fila quando a capacidade está cheia', async () => {
+      const { pelada, match, token, p1, p2 } = await seedMatch();
+      await prisma.player.update({
+        where: { id: p2.id },
+        data: { isFixedList: true },
+      });
+
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${p1.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'CONFIRMED' })
+        .expect(200);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${p2.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'CONFIRMED' })
+        .expect(200);
+
+      const fixed = res.body.entries.find(
+        (e: { playerId: string }) => e.playerId === p2.id,
+      );
+      const common = res.body.entries.find(
+        (e: { playerId: string }) => e.playerId === p1.id,
+      );
+      expect(fixed.status).toBe('CONFIRMED');
+      expect(common.status).toBe('QUEUE');
+    });
+
+    it('ao confirmar um fixo com lista cheia, desloca o comum confirmado mais recentemente (não o mais antigo na lista)', async () => {
+      const sub = `att-fixed-order-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const pelada = await createPelada(prisma, { owner: org });
+      const token = signTestJwt({
+        sub: `${sub}-org`,
+        email: org.email ?? 'o@y.z',
+      });
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-10-01T19:00:00Z'),
+      });
+      // Jogadores criados nesta ordem: p1, p2, p3 — então as linhas de presença
+      // também nascem nesta ordem (createdAt), mas a confirmação acontece na
+      // ordem inversa (p2 primeiro, depois p1), para diferenciar das duas regras.
+      const p1 = await createPlayer(prisma, { peladaId: pelada.id, displayName: 'Ana' });
+      const p2 = await createPlayer(prisma, { peladaId: pelada.id, displayName: 'Bruno' });
+      const p3Fixed = await createPlayer(prisma, {
+        peladaId: pelada.id,
+        displayName: 'Carla',
+      });
+      await prisma.player.update({
+        where: { id: p3Fixed.id },
+        data: { isFixedList: true },
+      });
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { capacity: 2 },
+      });
+
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${p2.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'CONFIRMED' })
+        .expect(200);
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${p1.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'CONFIRMED' })
+        .expect(200);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${p3Fixed.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'CONFIRMED' })
+        .expect(200);
+
+      const entries = res.body.entries as { playerId: string; status: string }[];
+      const byId = (id: string) => entries.find((e) => e.playerId === id);
+      // p1 confirmou por último (depois de p2), então é quem deve ir pra fila.
+      // Se a ordenação usasse createdAt (ordem de criação dos jogadores), o
+      // código antigo derrubaria p2 por engano.
+      expect(byId(p1.id)?.status).toBe('QUEUE');
+      expect(byId(p2.id)?.status).toBe('CONFIRMED');
+      expect(byId(p3Fixed.id)?.status).toBe('CONFIRMED');
+    });
+
     it('POST /attendance/self confirms linked player in SELF_CONFIRM mode', async () => {
       const sub = 'att-self';
       const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
