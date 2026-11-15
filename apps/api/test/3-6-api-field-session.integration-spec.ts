@@ -233,5 +233,174 @@ if (runHarness) {
         .send({})
         .expect(403);
     });
+
+    it('registra o jogador que fez o gol e persiste o histórico da rodada', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+      const start = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+
+      const homeTeamId = start.body.teamsOnField[0].drawTeamId as string;
+      const awayTeamId = start.body.teamsOnField[1].drawTeamId as string;
+      const homePlayer = await prisma.drawTeamPlayer.findFirstOrThrow({
+        where: { teamId: homeTeamId },
+      });
+      const awayPlayer = await prisma.drawTeamPlayer.findFirstOrThrow({
+        where: { teamId: awayTeamId },
+      });
+
+      // Jogador de fora do time em campo não pode ser marcado como autor do gol.
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ addGoal: 'HOME', goalPlayerId: awayPlayer.playerId })
+        .expect(400);
+
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ addGoal: 'HOME', goalPlayerId: homePlayer.playerId })
+        .expect(200);
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ addGoal: 'AWAY', goalPlayerId: awayPlayer.playerId })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post(
+          `/peladas/${pelada.id}/matches/${match.id}/field-session/end-round`,
+        )
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      const rounds = await prisma.matchFieldRound.findMany({
+        where: { matchId: match.id },
+      });
+      expect(rounds).toHaveLength(1);
+      expect(rounds[0]).toMatchObject({
+        roundNumber: 1,
+        homeDrawTeamId: homeTeamId,
+        awayDrawTeamId: awayTeamId,
+        scoreHome: 1,
+        scoreAway: 1,
+      });
+      expect(rounds[0]!.goals).toEqual([
+        { side: 'HOME', playerId: homePlayer.playerId },
+        { side: 'AWAY', playerId: awayPlayer.playerId },
+      ]);
+
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session/finish`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      const allRounds = await prisma.matchFieldRound.findMany({
+        where: { matchId: match.id },
+      });
+      expect(allRounds).toHaveLength(2);
+    });
+
+    it('gol concorrente com end-round não se perde do histórico (C4)', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ addGoal: 'HOME' })
+        .expect(200);
+
+      // Dispara um gol e o fim da rodada ao mesmo tempo (dois celulares).
+      // O lock FOR UPDATE serializa os dois — o gol cai na rodada 1 (e é
+      // gravado no histórico) ou já na rodada 2 (placar da sessão), nunca
+      // some das duas.
+      const [goalRes, endRoundRes] = await Promise.all([
+        request(app.getHttpServer())
+          .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+          .set('Authorization', `Bearer ${orgToken}`)
+          .send({ addGoal: 'HOME' }),
+        request(app.getHttpServer())
+          .post(
+            `/peladas/${pelada.id}/matches/${match.id}/field-session/end-round`,
+          )
+          .set('Authorization', `Bearer ${orgToken}`),
+      ]);
+      expect(goalRes.status).toBe(200);
+      expect(endRoundRes.status).toBe(200);
+
+      const rounds = await prisma.matchFieldRound.findMany({
+        where: { matchId: match.id },
+        orderBy: { roundNumber: 'asc' },
+      });
+      expect(rounds).toHaveLength(1);
+
+      const session = await prisma.matchFieldSession.findUniqueOrThrow({
+        where: { matchId: match.id },
+      });
+
+      // O gol concorrente caiu na rodada 1 (histórico 2x0, sessão zerada) ou
+      // já na rodada 2 (histórico 1x0, sessão com o gol) — nunca se perde
+      // das duas, e nunca é contado duas vezes.
+      const landedInRound1 = rounds[0]!.scoreHome === 2 && session.scoreHome === 0;
+      const landedInRound2 = rounds[0]!.scoreHome === 1 && session.scoreHome === 1;
+      expect(landedInRound1 || landedInRound2).toBe(true);
+    });
+
+    it('grava a duração de cada rodada, não o tempo acumulado da sessão', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+
+      // Rodada 1: cronômetro correndo por ~300ms.
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ timer: 'start' })
+        .expect(200);
+      await new Promise((r) => setTimeout(r, 300));
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ timer: 'pause' })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post(
+          `/peladas/${pelada.id}/matches/${match.id}/field-session/end-round`,
+        )
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      // Rodada 2: cronômetro correndo por ~50ms — bem menos que a rodada 1.
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ timer: 'start' })
+        .expect(200);
+      await new Promise((r) => setTimeout(r, 50));
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session/finish`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      const rounds = await prisma.matchFieldRound.findMany({
+        where: { matchId: match.id },
+        orderBy: { roundNumber: 'asc' },
+      });
+      expect(rounds).toHaveLength(2);
+      // Se a rodada 2 acumulasse o tempo da sessão (bug), ficaria perto de
+      // 300+50=350ms. Deve ficar perto dos ~50ms próprios dela, bem menor
+      // que a soma — nunca maior que a duração da rodada 1.
+      expect(rounds[1]!.durationMs).toBeLessThan(rounds[0]!.durationMs);
+    });
   });
 }
