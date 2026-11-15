@@ -58,6 +58,32 @@ type DrawWithTeams = {
 
 type GoalEntry = { side: 'HOME' | 'AWAY'; playerId?: string };
 
+export type MatchDaySummaryDto = {
+  matchId: string;
+  rounds: number;
+  teams: Array<{
+    drawTeamId: string;
+    name: string;
+    played: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    goalsFor: number;
+    goalsAgainst: number;
+  }>;
+  topScorer: { playerId: string; displayName: string; goals: number } | null;
+  biggestWin: {
+    winnerDrawTeamId: string;
+    winnerName: string;
+    loserDrawTeamId: string;
+    loserName: string;
+    scoreWinner: number;
+    scoreLoser: number;
+    margin: number;
+  } | null;
+  mostLosses: { drawTeamId: string; name: string; losses: number } | null;
+};
+
 @Injectable()
 export class MatchFieldSessionService {
   constructor(
@@ -80,6 +106,143 @@ export class MatchFieldSessionService {
       throw new NotFoundException('Sessão em campo ainda não iniciada.');
     }
     return this.toDto(session, draw.teams);
+  }
+
+  /** Resumo "do dia": agregação por time a partir das rodadas já persistidas desta partida. */
+  async getDaySummary(
+    auth: AuthUserPayload,
+    peladaId: string,
+    matchId: string,
+  ): Promise<MatchDaySummaryDto> {
+    const user = await this.meService.getOrCreateUser(auth);
+    await this.assertMember(peladaId, user.id);
+
+    const match = await this.prisma.match.findFirst({
+      where: { id: matchId, peladaId },
+    });
+    if (!match) {
+      throw new NotFoundException('Partida não encontrada.');
+    }
+
+    const rounds = await this.prisma.matchFieldRound.findMany({
+      where: { matchId },
+      orderBy: { roundNumber: 'asc' },
+    });
+
+    const draw = await this.prisma.draw.findUnique({
+      where: { matchId },
+      include: { teams: true },
+    });
+    const teamNameById = new Map(
+      (draw?.teams ?? []).map((t) => [t.id, t.name]),
+    );
+
+    type TeamAgg = {
+      drawTeamId: string;
+      name: string;
+      played: number;
+      wins: number;
+      losses: number;
+      draws: number;
+      goalsFor: number;
+      goalsAgainst: number;
+    };
+    const teamAgg = new Map<string, TeamAgg>();
+    const ensureTeam = (drawTeamId: string): TeamAgg => {
+      let agg = teamAgg.get(drawTeamId);
+      if (!agg) {
+        agg = {
+          drawTeamId,
+          name: teamNameById.get(drawTeamId) ?? drawTeamId,
+          played: 0,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+        };
+        teamAgg.set(drawTeamId, agg);
+      }
+      return agg;
+    };
+
+    const goalsByPlayer = new Map<string, number>();
+    let biggestWin: MatchDaySummaryDto['biggestWin'] = null;
+
+    for (const round of rounds) {
+      const home = ensureTeam(round.homeDrawTeamId);
+      const away = ensureTeam(round.awayDrawTeamId);
+      home.played += 1;
+      away.played += 1;
+      home.goalsFor += round.scoreHome;
+      home.goalsAgainst += round.scoreAway;
+      away.goalsFor += round.scoreAway;
+      away.goalsAgainst += round.scoreHome;
+
+      if (round.scoreHome > round.scoreAway) {
+        home.wins += 1;
+        away.losses += 1;
+      } else if (round.scoreAway > round.scoreHome) {
+        away.wins += 1;
+        home.losses += 1;
+      } else {
+        home.draws += 1;
+        away.draws += 1;
+      }
+
+      const margin = Math.abs(round.scoreHome - round.scoreAway);
+      if (margin > 0 && (!biggestWin || margin > biggestWin.margin)) {
+        const winnerIsHome = round.scoreHome > round.scoreAway;
+        biggestWin = {
+          winnerDrawTeamId: winnerIsHome ? home.drawTeamId : away.drawTeamId,
+          winnerName: winnerIsHome ? home.name : away.name,
+          loserDrawTeamId: winnerIsHome ? away.drawTeamId : home.drawTeamId,
+          loserName: winnerIsHome ? away.name : home.name,
+          scoreWinner: winnerIsHome ? round.scoreHome : round.scoreAway,
+          scoreLoser: winnerIsHome ? round.scoreAway : round.scoreHome,
+          margin,
+        };
+      }
+
+      for (const goal of this.parseGoalHistory(round.goals)) {
+        if (goal.playerId) {
+          goalsByPlayer.set(
+            goal.playerId,
+            (goalsByPlayer.get(goal.playerId) ?? 0) + 1,
+          );
+        }
+      }
+    }
+
+    let topScorer: MatchDaySummaryDto['topScorer'] = null;
+    for (const [playerId, goals] of goalsByPlayer) {
+      if (!topScorer || goals > topScorer.goals) {
+        topScorer = { playerId, displayName: playerId, goals };
+      }
+    }
+    if (topScorer) {
+      const player = await this.prisma.player.findUnique({
+        where: { id: topScorer.playerId },
+        select: { displayName: true },
+      });
+      topScorer = { ...topScorer, displayName: player?.displayName ?? topScorer.playerId };
+    }
+
+    let mostLosses: MatchDaySummaryDto['mostLosses'] = null;
+    for (const agg of teamAgg.values()) {
+      if (agg.losses > 0 && (!mostLosses || agg.losses > mostLosses.losses)) {
+        mostLosses = { drawTeamId: agg.drawTeamId, name: agg.name, losses: agg.losses };
+      }
+    }
+
+    return {
+      matchId,
+      rounds: rounds.length,
+      teams: Array.from(teamAgg.values()),
+      topScorer,
+      biggestWin,
+      mostLosses,
+    };
   }
 
   async startSession(
