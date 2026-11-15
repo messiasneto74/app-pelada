@@ -12,11 +12,19 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: review-policy-${{ github.event.pull_request.number }}
+  # Reviews de outros agentes não podem cancelar o fluxo que dispara o Cursor.
+  group: review-policy-${{ github.event.pull_request.number }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
   review-policy:
+    # Roda para qualquer evento (não filtra pelo autor da review): um job
+    # pulado por condição reporta sucesso para o check obrigatório mesmo
+    # pulado (GitHub trata job skipped como sucesso), então pular aqui
+    # deixaria uma review de outro bot/humano publicar verde sem revalidar
+    # o parecer do Cursor no SHA atual (achado P1 do Codex no PR #143). O
+    # isolamento contra cancelamento cruzado já vem do `concurrency.group`
+    # acima, que separa `pull_request` de `pull_request_review`.
     name: review-policy
     runs-on: ubuntu-latest
     timeout-minutes: 35
