@@ -302,5 +302,54 @@ if (runHarness) {
       });
       expect(allRounds).toHaveLength(2);
     });
+
+    it('gol concorrente com end-round não se perde do histórico (C4)', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ addGoal: 'HOME' })
+        .expect(200);
+
+      // Dispara um gol e o fim da rodada ao mesmo tempo (dois celulares).
+      // O lock FOR UPDATE serializa os dois — o gol cai na rodada 1 (e é
+      // gravado no histórico) ou já na rodada 2 (placar da sessão), nunca
+      // some das duas.
+      const [goalRes, endRoundRes] = await Promise.all([
+        request(app.getHttpServer())
+          .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+          .set('Authorization', `Bearer ${orgToken}`)
+          .send({ addGoal: 'HOME' }),
+        request(app.getHttpServer())
+          .post(
+            `/peladas/${pelada.id}/matches/${match.id}/field-session/end-round`,
+          )
+          .set('Authorization', `Bearer ${orgToken}`),
+      ]);
+      expect(goalRes.status).toBe(200);
+      expect(endRoundRes.status).toBe(200);
+
+      const rounds = await prisma.matchFieldRound.findMany({
+        where: { matchId: match.id },
+        orderBy: { roundNumber: 'asc' },
+      });
+      expect(rounds).toHaveLength(1);
+
+      const session = await prisma.matchFieldSession.findUniqueOrThrow({
+        where: { matchId: match.id },
+      });
+
+      // O gol concorrente caiu na rodada 1 (histórico 2x0, sessão zerada) ou
+      // já na rodada 2 (histórico 1x0, sessão com o gol) — nunca se perde
+      // das duas, e nunca é contado duas vezes.
+      const landedInRound1 = rounds[0]!.scoreHome === 2 && session.scoreHome === 0;
+      const landedInRound2 = rounds[0]!.scoreHome === 1 && session.scoreHome === 1;
+      expect(landedInRound1 || landedInRound2).toBe(true);
+    });
   });
 }

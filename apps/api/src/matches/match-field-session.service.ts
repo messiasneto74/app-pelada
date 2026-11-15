@@ -155,19 +155,12 @@ export class MatchFieldSessionService {
       throw new BadRequestException('Nenhuma alteração informada.');
     }
 
-    if (body.addGoal && body.goalPlayerId) {
-      this.assertPlayerOnFieldSide(
-        draw.teams,
-        body.addGoal === 'HOME'
-          ? existing.homeTeamSortOrder
-          : existing.awayTeamSortOrder,
-        body.goalPlayerId,
-      );
-    }
-
     // Lock a linha da sessão em campo (SELECT ... FOR UPDATE) para que gols/timer
     // concorrentes (dois toques rápidos, dois celulares) sejam serializados em vez
-    // de se perderem num read-modify-write sem controle (C4).
+    // de se perderem num read-modify-write sem controle (C4). A validação do
+    // goleador também precisa rodar sob esse lock, lendo os times em campo
+    // atuais — um end-round concorrente pode trocar quem está em campo entre
+    // a validação e a gravação (achado B1 do Cursor na PR #158).
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT 1 FROM match_field_sessions WHERE id = ${existing.id} FOR UPDATE`;
       const session = await tx.matchFieldSession.findUniqueOrThrow({
@@ -175,6 +168,16 @@ export class MatchFieldSessionService {
       });
       if (session.finishedAt) {
         throw new BadRequestException('Partida já encerrada.');
+      }
+
+      if (body.addGoal && body.goalPlayerId) {
+        this.assertPlayerOnFieldSide(
+          draw.teams,
+          body.addGoal === 'HOME'
+            ? session.homeTeamSortOrder
+            : session.awayTeamSortOrder,
+          body.goalPlayerId,
+        );
       }
 
       let goalHistory = this.parseGoalHistory(session.goalHistory);
@@ -238,7 +241,7 @@ export class MatchFieldSessionService {
     await this.assertOrganizador(peladaId, user.id);
     const { match, defaults } = await this.loadMatch(peladaId, matchId);
     const { draw, teamCount } = await this.loadDrawContext(peladaId, matchId);
-    const session = await this.requireOpenSession(matchId);
+    const existing = await this.requireOpenSession(matchId);
 
     const effective = mergeEffectiveMatchRules(
       defaults,
@@ -246,35 +249,47 @@ export class MatchFieldSessionService {
     );
     const fixedGkRotation = readFixedGkRotation(effective.extra);
 
-    const elapsedMs = snapshotElapsedMs(
-      session.elapsedMs,
-      session.timerRunningSince,
-    );
+    // Lock + relê a sessão sob FOR UPDATE: um gol concorrente entre o load
+    // acima e este ponto não pode ser perdido do histórico da rodada que
+    // está sendo encerrada (achado B1 do Cursor na PR #158).
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT 1 FROM match_field_sessions WHERE id = ${existing.id} FOR UPDATE`;
+      const session = await tx.matchFieldSession.findUniqueOrThrow({
+        where: { id: existing.id },
+      });
+      if (session.finishedAt) {
+        throw new BadRequestException('Partida já encerrada.');
+      }
 
-    const next = computeNextRoundSides({
-      policy: session.rotationPolicy as FieldRotationPolicy,
-      teamCount,
-      roundNumber: session.roundNumber,
-      homeTeamSortOrder: session.homeTeamSortOrder,
-      awayTeamSortOrder: session.awayTeamSortOrder,
-      scoreHome: session.scoreHome,
-      scoreAway: session.scoreAway,
-    });
+      const elapsedMs = snapshotElapsedMs(
+        session.elapsedMs,
+        session.timerRunningSince,
+      );
 
-    const fixedGkMeta = updateFixedGkMeta(
-      (session.fixedGkMeta ?? {}) as Record<string, unknown>,
-      {
-        goalkeeperMode: effective.goalkeeperMode,
-        fixedGkRotation,
+      const next = computeNextRoundSides({
+        policy: session.rotationPolicy as FieldRotationPolicy,
+        teamCount,
+        roundNumber: session.roundNumber,
         homeTeamSortOrder: session.homeTeamSortOrder,
         awayTeamSortOrder: session.awayTeamSortOrder,
         scoreHome: session.scoreHome,
         scoreAway: session.scoreAway,
-      },
-    );
+      });
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+      const fixedGkMeta = updateFixedGkMeta(
+        (session.fixedGkMeta ?? {}) as Record<string, unknown>,
+        {
+          goalkeeperMode: effective.goalkeeperMode,
+          fixedGkRotation,
+          homeTeamSortOrder: session.homeTeamSortOrder,
+          awayTeamSortOrder: session.awayTeamSortOrder,
+          scoreHome: session.scoreHome,
+          scoreAway: session.scoreAway,
+        },
+      );
+
       await this.persistRoundHistory(tx, session, draw.teams, elapsedMs);
+
       return tx.matchFieldSession.update({
         where: { id: session.id },
         data: {
@@ -302,16 +317,28 @@ export class MatchFieldSessionService {
     const user = await this.meService.getOrCreateUser(auth);
     await this.assertOrganizador(peladaId, user.id);
     const { draw } = await this.loadDrawContext(peladaId, matchId);
-    const session = await this.requireOpenSession(matchId);
+    const existing = await this.requireOpenSession(matchId);
     const now = new Date();
-    const elapsedMs = snapshotElapsedMs(
-      session.elapsedMs,
-      session.timerRunningSince,
-      now,
-    );
 
+    // Lock + relê sob FOR UPDATE, mesmo motivo do endRound: um gol
+    // concorrente não pode ficar de fora da última rodada persistida.
     const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT 1 FROM match_field_sessions WHERE id = ${existing.id} FOR UPDATE`;
+      const session = await tx.matchFieldSession.findUniqueOrThrow({
+        where: { id: existing.id },
+      });
+      if (session.finishedAt) {
+        throw new BadRequestException('Partida já encerrada.');
+      }
+
+      const elapsedMs = snapshotElapsedMs(
+        session.elapsedMs,
+        session.timerRunningSince,
+        now,
+      );
+
       await this.persistRoundHistory(tx, session, draw.teams, elapsedMs);
+
       const row = await tx.matchFieldSession.update({
         where: { id: session.id },
         data: {
