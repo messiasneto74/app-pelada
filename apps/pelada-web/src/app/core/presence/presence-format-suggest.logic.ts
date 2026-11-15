@@ -9,7 +9,7 @@ export function buildFormatRulesInput(
   values: Pick<PeladaRulesFormValues, 'playersPerTeam' | 'teamCount'>,
   matchCapacity: number,
 ): FormatRulesInput {
-  const formula = values.playersPerTeam * values.teamCount * 2;
+  const formula = values.playersPerTeam * values.teamCount;
   return {
     playersPerTeam: values.playersPerTeam,
     teamCount: values.teamCount,

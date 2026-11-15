@@ -21,14 +21,19 @@ export type PeladaDashboardResponse = {
   };
 };
 
-/** Capacidade ideal da partida (vagas) a partir das regras efetivas. */
+/**
+ * Capacidade ideal da partida (vagas) a partir das regras efetivas.
+ * Sem `capacity` manual, o padrão é só os titulares de todos os times
+ * (`playersPerTeam × teamCount`) — nem toda pelada tem banco de reserva, e
+ * quem quiser vagas extras para reservas define `capacity` manualmente.
+ */
 export function computeMatchCapacity(
   rules: Pick<PeladaRules, 'capacity' | 'playersPerTeam' | 'teamCount'>,
 ): number {
   if (typeof rules.capacity === 'number' && rules.capacity > 0) {
     return rules.capacity;
   }
-  return rules.playersPerTeam * rules.teamCount * 2;
+  return rules.playersPerTeam * rules.teamCount;
 }
 
 /**

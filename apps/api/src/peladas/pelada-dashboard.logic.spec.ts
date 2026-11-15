@@ -18,7 +18,7 @@ describe('pelada-dashboard.logic', () => {
         playersPerTeam: 6,
         teamCount: 2,
       }),
-    ).toBe(24);
+    ).toBe(12);
   });
 
   it('monthUtcBounds cobre o mês civil no fuso de Brasília (UTC-3)', () => {

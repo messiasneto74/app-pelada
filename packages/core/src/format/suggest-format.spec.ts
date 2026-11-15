@@ -15,47 +15,47 @@ describe('computeIdealCapacity', () => {
     ).toBe(14);
   });
 
-  it('calcula fallback playersPerTeam × teamCount × 2', () => {
-    expect(computeIdealCapacity(defaultRules)).toBe(24);
+  it('calcula fallback playersPerTeam × teamCount', () => {
+    expect(computeIdealCapacity(defaultRules)).toBe(12);
   });
 });
 
 describe('suggestFormat', () => {
   it('não alerta quando confirmados = capacidade ideal', () => {
-    const result = suggestFormat(24, defaultRules);
+    const result = suggestFormat(12, defaultRules);
     expect(result.mismatch).toBe(false);
     expect(result.delta).toBe(0);
     expect(result.options).toHaveLength(0);
   });
 
   it('sugere partida parcial quando vier menos gente', () => {
-    const result = suggestFormat(18, defaultRules);
+    const result = suggestFormat(9, defaultRules);
     expect(result.mismatch).toBe(true);
-    expect(result.delta).toBe(-6);
+    expect(result.delta).toBe(-3);
     expect(result.options[0]?.id).toBe('partial-keep-rules');
     const nearest = result.options.find((o) => o.id.startsWith('nearest-'));
     expect(nearest?.proposedRules).toEqual({
       playersPerTeam: 5,
       teamCount: 2,
-      capacity: 20,
+      capacity: 10,
     });
   });
 
   it('sugere fila quando vier mais gente sem combinação exata', () => {
-    const result = suggestFormat(26, defaultRules);
+    const result = suggestFormat(13, defaultRules);
     expect(result.mismatch).toBe(true);
-    expect(result.delta).toBe(2);
+    expect(result.delta).toBe(1);
     expect(result.options[0]?.id).toBe('queue-keep-rules');
     expect(result.options.some((o) => o.id.startsWith('nearest-'))).toBe(false);
   });
 
   it('inclui ajuste exato quando existe combinação para o elenco', () => {
-    const result = suggestFormat(20, defaultRules);
+    const result = suggestFormat(10, defaultRules);
     const adjust = result.options.find((o) => o.id.startsWith('adjust-'));
     expect(adjust?.proposedRules).toEqual({
       playersPerTeam: 5,
       teamCount: 2,
-      capacity: 20,
+      capacity: 10,
     });
   });
 
@@ -110,7 +110,7 @@ describe('suggestFormat', () => {
       const effective =
         typeof pr.capacity === 'number' && pr.capacity > 0
           ? pr.capacity
-          : pr.playersPerTeam * pr.teamCount * 2;
+          : pr.playersPerTeam * pr.teamCount;
       expect(effective).toBeLessThanOrEqual(40);
     }
     expect(

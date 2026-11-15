@@ -56,7 +56,7 @@ describe('match-attendance.logic', () => {
         playersPerTeam: 6,
         teamCount: 2,
       }),
-    ).toBe(24);
+    ).toBe(12);
   });
 
   it('pickNextQueuedPlayerId respeita queuePosition', () => {
