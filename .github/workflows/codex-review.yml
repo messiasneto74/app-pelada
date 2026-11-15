@@ -188,10 +188,16 @@ jobs:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           prompt-file: .github/codex/prompts/review.md
           effort: high
-          codex-home: ${{ github.workspace }}/.github/codex
-          permission-profile: pelada-review
+          # O perfil de permissão nomeado "pelada-review" (.github/codex/config.toml,
+          # PR #143) passou a falhar com "default_permissions requires a
+          # [permissions] table" depois que o Codex CLI (instalado sem versão
+          # fixa) recebeu uma atualização — mesmo o TOML seguindo a sintaxe
+          # atual da doc oficial. Voltando temporariamente ao sandbox legado
+          # (suportado oficialmente, era o que rodava antes da #143) até
+          # investigar a mudança de schema do CLI com calma.
+          sandbox: workspace-write
           safety-strategy: drop-sudo
-          codex-args: '["--ephemeral"]'
+          codex-args: '["--ephemeral", "--config", "sandbox_workspace_write.network_access=true"]'
 
       - name: Materializar parecer e parser fora do workspace
         id: trusted
