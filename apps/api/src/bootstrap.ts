@@ -5,7 +5,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
-import { resolve } from 'node:path';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 function parseCorsOrigins(raw: string | undefined): string | string[] {
@@ -99,11 +98,6 @@ export function configureNestApp(app: INestApplication): void {
   );
 
   app.useGlobalFilters(new AllExceptionsFilter());
-
-  const uploadDir = config.get<string>('UPLOAD_DIR');
-  if (uploadDir?.trim()) {
-    expressApp.useStaticAssets(resolve(process.cwd(), uploadDir), {
-      prefix: '/uploads/',
-    });
-  }
+  // `/uploads/*` não é mais servido como arquivo estático público — ver
+  // UploadsController (exige login; achado da auditoria, 2026-11-15).
 }
