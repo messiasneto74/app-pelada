@@ -20,6 +20,10 @@ import { MeService } from '../me/me.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { mergeEffectiveMatchRules } from './match-rules.merge';
 import {
+  readSummaryTemplate,
+  renderSummaryTemplate,
+} from './match-summary-template.logic';
+import {
   applyTimerAction,
   computeNextRoundSides,
   readFixedGkRotation,
@@ -83,6 +87,8 @@ export type MatchDaySummaryDto = {
     margin: number;
   } | null;
   mostLosses: { drawTeamId: string; name: string; losses: number } | null;
+  /** Texto do resumo renderizado a partir do template da pelada (livre, editável pelo organizador). */
+  text: string;
 };
 
 /**
@@ -258,14 +264,24 @@ export class MatchFieldSessionService {
       }
     }
 
-    return {
+    const rules = await this.prisma.peladaRules.findUnique({
+      where: { peladaId },
+    });
+
+    const summary: MatchDaySummaryDto = {
       matchId,
       rounds: rounds.length,
       teams: Array.from(teamAgg.values()),
       topScorer,
       biggestWin,
       mostLosses,
+      text: '',
     };
+    summary.text = renderSummaryTemplate(
+      readSummaryTemplate(rules?.extra),
+      summary,
+    );
+    return summary;
   }
 
   /**
