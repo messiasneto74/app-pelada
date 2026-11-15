@@ -14,6 +14,7 @@ import type {
 } from '@prisma/client';
 import type { AuthUserPayload } from '../auth/auth-user';
 import type { PatchMatchFieldSessionDto } from '../domain/dto/patch-match-field-session.dto';
+import type { PlayerCrossDaySummaryQueryDto } from '../domain/dto/player-cross-day-summary-query.dto';
 import type { PostMatchFieldSessionDto } from '../domain/dto/post-match-field-session.dto';
 import { MeService } from '../me/me.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -82,6 +83,28 @@ export type MatchDaySummaryDto = {
     margin: number;
   } | null;
   mostLosses: { drawTeamId: string; name: string; losses: number } | null;
+};
+
+/**
+ * Resumo "entre dias": times são sorteados do zero em cada pelada, então a
+ * comparação entre dias nunca é por time — só por jogador (épico #156).
+ */
+export type PlayerCrossDaySummaryDto = {
+  peladaId: string;
+  matches: number;
+  since: string | null;
+  until: string | null;
+  players: Array<{
+    playerId: string;
+    displayName: string;
+    played: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    goals: number;
+  }>;
+  topScorer: { playerId: string; displayName: string; goals: number } | null;
+  mostWins: { playerId: string; displayName: string; wins: number } | null;
 };
 
 @Injectable()
@@ -242,6 +265,154 @@ export class MatchFieldSessionService {
       topScorer,
       biggestWin,
       mostLosses,
+    };
+  }
+
+  /**
+   * Resumo "entre dias" (uma pelada, intervalo opcional): agregação só por
+   * jogador. Times são sorteados do zero em cada dia, então não são
+   * entidades estáveis entre peladas — a comparação não pode ser por time.
+   */
+  async getPlayerCrossDaySummary(
+    auth: AuthUserPayload,
+    peladaId: string,
+    query: PlayerCrossDaySummaryQueryDto,
+  ): Promise<PlayerCrossDaySummaryDto> {
+    const user = await this.meService.getOrCreateUser(auth);
+    await this.assertMember(peladaId, user.id);
+
+    const since = query.since ?? null;
+    const until = query.until ?? null;
+
+    const matches = await this.prisma.match.findMany({
+      where: {
+        peladaId,
+        ...((since || until) && {
+          scheduledAt: {
+            ...(since && { gte: new Date(since) }),
+            ...(until && { lte: new Date(until) }),
+          },
+        }),
+      },
+      select: { id: true },
+    });
+    const matchIds = matches.map((m) => m.id);
+    if (matchIds.length === 0) {
+      return {
+        peladaId,
+        matches: 0,
+        since,
+        until,
+        players: [],
+        topScorer: null,
+        mostWins: null,
+      };
+    }
+
+    const rounds = await this.prisma.matchFieldRound.findMany({
+      where: { matchId: { in: matchIds } },
+    });
+
+    const teamIds = new Set<string>();
+    for (const round of rounds) {
+      teamIds.add(round.homeDrawTeamId);
+      teamIds.add(round.awayDrawTeamId);
+    }
+    const teamPlayers = await this.prisma.drawTeamPlayer.findMany({
+      where: { teamId: { in: Array.from(teamIds) } },
+      select: { teamId: true, playerId: true },
+    });
+    const playersByTeam = new Map<string, string[]>();
+    for (const tp of teamPlayers) {
+      const list = playersByTeam.get(tp.teamId) ?? [];
+      list.push(tp.playerId);
+      playersByTeam.set(tp.teamId, list);
+    }
+
+    type PlayerAgg = {
+      playerId: string;
+      played: number;
+      wins: number;
+      losses: number;
+      draws: number;
+      goals: number;
+    };
+    const agg = new Map<string, PlayerAgg>();
+    const ensurePlayer = (playerId: string): PlayerAgg => {
+      let a = agg.get(playerId);
+      if (!a) {
+        a = { playerId, played: 0, wins: 0, losses: 0, draws: 0, goals: 0 };
+        agg.set(playerId, a);
+      }
+      return a;
+    };
+
+    const distinctMatchIds = new Set<string>();
+    for (const round of rounds) {
+      distinctMatchIds.add(round.matchId);
+      const homePlayers = playersByTeam.get(round.homeDrawTeamId) ?? [];
+      const awayPlayers = playersByTeam.get(round.awayDrawTeamId) ?? [];
+
+      let outcome: 'HOME' | 'AWAY' | 'DRAW';
+      if (round.scoreHome > round.scoreAway) {
+        outcome = 'HOME';
+      } else if (round.scoreAway > round.scoreHome) {
+        outcome = 'AWAY';
+      } else {
+        outcome = 'DRAW';
+      }
+
+      for (const playerId of homePlayers) {
+        const a = ensurePlayer(playerId);
+        a.played += 1;
+        if (outcome === 'HOME') a.wins += 1;
+        else if (outcome === 'AWAY') a.losses += 1;
+        else a.draws += 1;
+      }
+      for (const playerId of awayPlayers) {
+        const a = ensurePlayer(playerId);
+        a.played += 1;
+        if (outcome === 'AWAY') a.wins += 1;
+        else if (outcome === 'HOME') a.losses += 1;
+        else a.draws += 1;
+      }
+
+      for (const goal of this.parseGoalHistory(round.goals)) {
+        if (goal.playerId) {
+          ensurePlayer(goal.playerId).goals += 1;
+        }
+      }
+    }
+
+    const playerRows = await this.prisma.player.findMany({
+      where: { id: { in: Array.from(agg.keys()) } },
+      select: { id: true, displayName: true },
+    });
+    const nameById = new Map(playerRows.map((p) => [p.id, p.displayName]));
+
+    const players = Array.from(agg.values())
+      .map((a) => ({ ...a, displayName: nameById.get(a.playerId) ?? a.playerId }))
+      .sort((a, b) => b.goals - a.goals || b.wins - a.wins);
+
+    let topScorer: PlayerCrossDaySummaryDto['topScorer'] = null;
+    let mostWins: PlayerCrossDaySummaryDto['mostWins'] = null;
+    for (const p of players) {
+      if (p.goals > 0 && (!topScorer || p.goals > topScorer.goals)) {
+        topScorer = { playerId: p.playerId, displayName: p.displayName, goals: p.goals };
+      }
+      if (p.wins > 0 && (!mostWins || p.wins > mostWins.wins)) {
+        mostWins = { playerId: p.playerId, displayName: p.displayName, wins: p.wins };
+      }
+    }
+
+    return {
+      peladaId,
+      matches: distinctMatchIds.size,
+      since,
+      until,
+      players,
+      topScorer,
+      mostWins,
     };
   }
 

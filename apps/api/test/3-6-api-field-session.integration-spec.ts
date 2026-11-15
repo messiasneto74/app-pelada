@@ -484,5 +484,117 @@ if (runHarness) {
         goals: 2,
       });
     });
+
+    it('GET players-summary agrega por jogador entre dois dias (times diferentes)', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+
+      const start1 = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+      const home1Id = start1.body.teamsOnField[0].drawTeamId as string;
+      const away1Id = start1.body.teamsOnField[1].drawTeamId as string;
+      const scorerDay1 = await prisma.drawTeamPlayer.findFirstOrThrow({
+        where: { teamId: home1Id },
+      });
+      const loserDay1 = await prisma.drawTeamPlayer.findFirstOrThrow({
+        where: { teamId: away1Id },
+      });
+
+      // Dia 1: time da casa vence 2x0 — artilheiro marca os 2 gols.
+      for (const _ of [0, 1]) {
+        await request(app.getHttpServer())
+          .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+          .set('Authorization', `Bearer ${orgToken}`)
+          .send({ addGoal: 'HOME', goalPlayerId: scorerDay1.playerId })
+          .expect(200);
+      }
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session/finish`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      // Dia 2: segunda partida da mesma pelada — sorteio novo, times diferentes.
+      // Só 2 times neste dia (sem time de descanso), pra garantir que todo
+      // jogador confirmado entra em campo e a asserção de derrota é determinística.
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { teamCount: 2 },
+      });
+      const match2 = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-12-08T19:00:00Z'),
+      });
+      const allPlayers = await prisma.player.findMany({
+        where: { peladaId: pelada.id },
+      });
+      for (const p of allPlayers) {
+        await request(app.getHttpServer())
+          .patch(`/peladas/${pelada.id}/matches/${match2.id}/attendance/${p.id}`)
+          .set('Authorization', `Bearer ${orgToken}`)
+          .send({ status: 'CONFIRMED' })
+          .expect(200);
+      }
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match2.id}/attendance/close-list`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match2.id}/draw`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ mode: 'BALANCED', seed: 22 })
+        .expect(201);
+
+      const start2 = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match2.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+      const home2Id = start2.body.teamsOnField[0].drawTeamId as string;
+
+      // No dia 2, o mesmo artilheiro do dia 1 pode estar em outro time (sorteio
+      // novo) — busca o time em que ele caiu desta vez pra marcar o gol certo.
+      const scorerTeamDay2 = await prisma.drawTeamPlayer.findFirst({
+        where: {
+          playerId: scorerDay1.playerId,
+          teamId: { in: [home2Id, start2.body.teamsOnField[1].drawTeamId] },
+        },
+      });
+      const scorerSideDay2 = scorerTeamDay2?.teamId === home2Id ? 'HOME' : 'AWAY';
+
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match2.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ addGoal: scorerSideDay2, goalPlayerId: scorerDay1.playerId })
+        .expect(200);
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match2.id}/field-session/finish`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      const summary = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/players-summary`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      expect(summary.body.matches).toBe(2);
+      expect(summary.body.topScorer).toMatchObject({
+        playerId: scorerDay1.playerId,
+        goals: 3,
+      });
+
+      const scorerAgg = summary.body.players.find(
+        (p: { playerId: string }) => p.playerId === scorerDay1.playerId,
+      );
+      expect(scorerAgg).toMatchObject({ played: 2, goals: 3 });
+
+      // No dia 2 o sorteio é novo — loserDay1 pode cair em qualquer time (inclusive
+      // o time que folga naquela rodada), então só a derrota do dia 1 é garantida.
+      const loserAgg = summary.body.players.find(
+        (p: { playerId: string }) => p.playerId === loserDay1.playerId,
+      );
+      expect(loserAgg.losses).toBeGreaterThanOrEqual(1);
+    });
   });
 }
