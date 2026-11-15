@@ -1,12 +1,14 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { PeladaApiService } from '../core/pelada/pelada-api.service';
 import { PeladaContextService } from '../core/pelada/pelada-context.service';
-import { buildAuthConfig } from './auth.config';
+import { buildAuthConfig, NATIVE_REDIRECT_URI } from './auth.config';
+import { nativeBridge } from './native-bridge';
 
 export type MeProfile = {
   id: string;
@@ -79,6 +81,7 @@ export class AuthService {
 
   private configured = false;
   private oauthSideEffectsBound = false;
+  private nativeDeepLinkListenerBound = false;
   private continueAfterLoginInFlight: Promise<void> | null = null;
 
   async init(): Promise<void> {
@@ -87,6 +90,7 @@ export class AuthService {
       this.configured = true;
     }
     this.bindOAuthSideEffects();
+    this.bindNativeDeepLinkListener();
     try {
       const login = this.oauth.loadDiscoveryDocumentAndTryLogin();
       void login.finally(() => {
@@ -132,6 +136,38 @@ export class AuthService {
   }
 
   /**
+   * No app empacotado (Capacitor), o fluxo de código roda no navegador do
+   * sistema (ver `openUri` em {@link buildAuthConfig}); o retorno chega via
+   * deep link (`com.pelada.app://callback`) e não por `window.location`.
+   */
+  private bindNativeDeepLinkListener(): void {
+    if (this.nativeDeepLinkListenerBound || !Capacitor.isNativePlatform()) {
+      return;
+    }
+    this.nativeDeepLinkListenerBound = true;
+    nativeBridge.onAppUrlOpen((event) => {
+      if (!event.url.startsWith(NATIVE_REDIRECT_URI)) {
+        return;
+      }
+      void nativeBridge.closeSystemBrowser().catch(() => {
+        /* já pode estar fechado pelo usuário */
+      });
+      const query = event.url.slice(NATIVE_REDIRECT_URI.length);
+      this.oauth
+        .tryLoginCodeFlow({ customHashFragment: `?${query.replace(/^[?]/, '')}` })
+        .then(() => {
+          this.peladaContext.refreshFromStorage();
+          if (this.isLoggedIn()) {
+            void this.continueAfterLogin();
+          }
+        })
+        .catch(() => {
+          /* erro vira evento OAuthErrorEvent, tratado em bindOAuthSideEffects se necessário */
+        });
+    });
+  }
+
+  /**
    * Login in-app (Resource Owner Password / Direct Access Grants).
    * Não redireciona para a UI do Keycloak.
    */
@@ -162,6 +198,15 @@ export class AuthService {
    */
   loginWithRedirect(): void {
     this.oauth.initLoginFlow();
+  }
+
+  /**
+   * Login/cadastro via Google, com o Keycloak como IdP broker
+   * (`kc_idp_hint` pula a tela própria do Keycloak e vai direto pro Google).
+   */
+  async loginWithGoogle(): Promise<void> {
+    await this.ensureDiscovery();
+    this.oauth.initLoginFlow('', { kc_idp_hint: 'google' });
   }
 
   /** @deprecated Use {@link loginWithPassword} ou {@link loginWithRedirect}. */

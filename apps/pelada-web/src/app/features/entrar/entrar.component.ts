@@ -131,6 +131,19 @@ type EntrarMode = 'login' | 'register';
             }}
           </button>
         </form>
+
+        <div class="divider" role="separator">ou</div>
+
+        <button
+          type="button"
+          peladaButton
+          variant="secondary"
+          [peladaButtonBlock]="true"
+          [disabled]="googleSubmitting()"
+          (click)="loginWithGoogle()"
+        >
+          {{ googleSubmitting() ? 'Abrindo o Google…' : 'Entrar com Google' }}
+        </button>
       }
 
       <p class="hint pelada-muted">
@@ -168,6 +181,15 @@ type EntrarMode = 'login' | 'register';
         flex-direction: column;
         gap: var(--pelada-space-4);
       }
+      .divider {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: var(--pelada-space-4) 0;
+        color: var(--pelada-muted);
+        font-size: 0.8125rem;
+        text-transform: uppercase;
+      }
       .hint {
         margin-top: var(--pelada-space-6);
         font-size: 0.85rem;
@@ -182,6 +204,7 @@ export class EntrarComponent implements OnInit {
   readonly auth = inject(AuthService);
   readonly loading = signal(true);
   readonly submitting = signal(false);
+  readonly googleSubmitting = signal(false);
   readonly error = signal<string | null>(null);
   readonly fieldError = signal<string | null>(null);
   readonly mode = signal<EntrarMode>('login');
@@ -246,6 +269,19 @@ export class EntrarComponent implements OnInit {
     } finally {
       this.submitting.set(false);
     }
+  }
+
+  async loginWithGoogle(): Promise<void> {
+    this.error.set(null);
+    this.googleSubmitting.set(true);
+    try {
+      await this.auth.loginWithGoogle();
+    } catch {
+      this.error.set('Não foi possível abrir o login do Google. Tente novamente.');
+      this.googleSubmitting.set(false);
+    }
+    // Em caso de sucesso, a navegação sai da tela (redirect/navegador externo);
+    // não há "finally" que reseta o estado aqui.
   }
 
   async continue(): Promise<void> {

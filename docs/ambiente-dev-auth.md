@@ -34,9 +34,9 @@ Copie [.env.example](../.env.example) para `.env` na raiz (Compose: `npm run sta
 | Client authentication | **OFF** (público + PKCE) |
 | Standard flow | ON (legado / IdP Google via redirect) |
 | Direct access grants | **ON** (login in-app Resenha — Resource Owner Password) |
-| Valid redirect URIs | `http://localhost:4200/*` |
+| Valid redirect URIs | `http://localhost:4200/*`, `com.pelada.app://callback` (app empacotado) |
 | Valid post logout redirect URIs | `http://localhost:4200/entrar` (ou `…/*` — o app usa `/entrar` como `redirectUri`; ver `auth.config.ts`) |
-| Web origins | `http://localhost:4200` |
+| Web origins | `http://localhost:4200`, `http://localhost`, `capacitor://localhost` |
 | PKCE | S256 (obrigatório para client público) |
 
 ### Endpoints OIDC usados pelo Angular
@@ -60,6 +60,16 @@ O realm importado (**F0-4**) traz o provider **Google** **desligado** (`enabled:
 3. Admin Keycloak → Realm **pelada** → Identity providers → **Google** → colar Client ID/Secret → **Save** → **Enable**.
 
 Redirect do Google aponta para o Keycloak, não para o Angular.
+
+Botão "Entrar com Google" em `/entrar` chama `AuthService.loginWithGoogle()`, que inicia o
+authorization code flow com `kc_idp_hint=google` (pula a tela própria do Keycloak). No
+**navegador**, é um redirect normal (`window.location.href`). No **app empacotado**
+(Capacitor), a Google recusa login OAuth dentro de WebView embutida
+(`disallowed_useragent`) — por isso `buildAuthConfig()` detecta `Capacitor.isNativePlatform()`
+e abre o fluxo no **navegador do sistema** via `@capacitor/browser`; o retorno chega pelo
+deep link `com.pelada.app://callback` (`AndroidManifest.xml` / `Info.plist`), capturado por
+`App.addListener('appUrlOpen', …)` em `AuthService`, que completa o code flow com
+`tryLoginCodeFlow` e fecha o navegador.
 
 ---
 

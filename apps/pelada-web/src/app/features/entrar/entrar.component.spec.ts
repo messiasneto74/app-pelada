@@ -12,6 +12,7 @@ describe('EntrarComponent (UX-AUTH)', () => {
     continueAfterLogin: jasmine.createSpy('continueAfterLogin').and.resolveTo(undefined),
     loginWithPassword: jasmine.createSpy('loginWithPassword').and.resolveTo(undefined),
     registerAccount: jasmine.createSpy('registerAccount').and.resolveTo(undefined),
+    loginWithGoogle: jasmine.createSpy('loginWithGoogle').and.resolveTo(undefined),
     logout: jasmine.createSpy('logout'),
   };
 
@@ -21,6 +22,8 @@ describe('EntrarComponent (UX-AUTH)', () => {
     auth.continueAfterLogin.calls.reset();
     auth.loginWithPassword.calls.reset();
     auth.registerAccount.calls.reset();
+    auth.loginWithGoogle.calls.reset();
+    auth.loginWithGoogle.and.resolveTo(undefined);
     auth.isLoggedIn.and.returnValue(false);
 
     await TestBed.configureTestingModule({
@@ -88,5 +91,18 @@ describe('EntrarComponent (UX-AUTH)', () => {
       password: 'senha-valida',
       name: 'Ana Silva',
     });
+  });
+
+  it('botão "Entrar com Google" chama AuthService.loginWithGoogle', async () => {
+    await component.loginWithGoogle();
+    expect(auth.loginWithGoogle).toHaveBeenCalledTimes(1);
+    expect(component.error()).toBeNull();
+  });
+
+  it('erro ao abrir o Google mostra mensagem e libera o botão', async () => {
+    auth.loginWithGoogle.and.rejectWith(new Error('boom'));
+    await component.loginWithGoogle();
+    expect(component.error()).toMatch(/Google/);
+    expect(component.googleSubmitting()).toBe(false);
   });
 });
