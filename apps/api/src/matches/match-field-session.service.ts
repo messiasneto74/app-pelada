@@ -459,17 +459,31 @@ export class MatchFieldSessionService {
   }
 
   /** Grava a rodada corrente em `MatchFieldRound` antes do placar ser zerado/encerrado. */
+  /**
+   * `elapsedMs` da sessão é cumulativo (nunca é zerado entre rodadas — só o
+   * placar/goalHistory são). `cumulativeElapsedMs` é esse valor no fim da
+   * rodada corrente; subtraímos a soma das rodadas já persistidas pra gravar
+   * só a duração desta rodada (achado P2 do Codex na PR #158).
+   */
   private async persistRoundHistory(
     tx: Prisma.TransactionClient,
     session: MatchFieldSession,
     teams: DrawWithTeams['teams'],
-    durationMs: number,
+    cumulativeElapsedMs: number,
   ): Promise<void> {
     const home = teams.find((t) => t.sortOrder === session.homeTeamSortOrder);
     const away = teams.find((t) => t.sortOrder === session.awayTeamSortOrder);
     if (!home || !away) {
       throw new BadRequestException('Times em campo inconsistentes com o sorteio.');
     }
+    const priorRounds = await tx.matchFieldRound.aggregate({
+      where: { sessionId: session.id },
+      _sum: { durationMs: true },
+    });
+    const durationMs = Math.max(
+      0,
+      cumulativeElapsedMs - (priorRounds._sum.durationMs ?? 0),
+    );
     await tx.matchFieldRound.create({
       data: {
         matchId: session.matchId,
