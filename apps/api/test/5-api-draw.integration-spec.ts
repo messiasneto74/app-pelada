@@ -140,6 +140,65 @@ if (runHarness) {
       expect(get.body.metrics.maxAverageDiff).toBeGreaterThanOrEqual(0);
     });
 
+    it('jogador na fila de espera não entra no sorteio', async () => {
+      const sub = `draw-queue-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const pelada = await createPelada(prisma, { owner: org });
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { teamCount: 2, playersPerTeam: 2, capacity: 4 },
+      });
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-12-02T19:00:00Z'),
+      });
+      const token = signTestJwt({
+        sub: `${sub}-org`,
+        email: org.email ?? 'o@y.z',
+      });
+
+      const players = [];
+      for (let i = 0; i < 5; i++) {
+        players.push(
+          await prisma.player.create({
+            data: { peladaId: pelada.id, displayName: `P${i}`, rating: 6 },
+          }),
+        );
+      }
+      for (const p of players) {
+        await request(app.getHttpServer())
+          .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${p.id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ status: 'CONFIRMED' })
+          .expect(200);
+      }
+      const list = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/attendance`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      const queued = list.body.entries.find(
+        (e: { status: string }) => e.status === 'QUEUE',
+      );
+      expect(queued).toBeDefined();
+
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/close-list`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+
+      const res = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/draw`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ mode: 'BALANCED', seed: 1 })
+        .expect(201);
+
+      const drawnIds = res.body.teams.flatMap(
+        (t: { playerIds: string[] }) => t.playerIds,
+      );
+      expect(drawnIds).toHaveLength(4);
+      expect(drawnIds).not.toContain(queued.playerId);
+    });
+
     it('PATCH /draw/swap troca jogadores entre times', async () => {
       const { pelada, match, token } = await seedDrawableMatch();
 
