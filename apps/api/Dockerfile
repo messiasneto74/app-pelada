@@ -14,11 +14,12 @@ RUN npm ci --ignore-scripts
 FROM deps AS build
 COPY packages/core packages/core
 COPY apps/api apps/api
+RUN npm run build -w @pelada/core
 RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
 RUN npm run build -w @pelada/api
 
 FROM build AS prod-deps
-RUN npm prune --omit=dev
+RUN npm prune --omit=dev --ignore-scripts
 
 FROM base AS runner
 ENV NODE_ENV=production
