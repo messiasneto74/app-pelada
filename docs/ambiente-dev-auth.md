@@ -36,7 +36,7 @@ Copie [.env.example](../.env.example) para `.env` na raiz (Compose: `npm run sta
 | Direct access grants | **ON** (login in-app Resenha — Resource Owner Password) |
 | Valid redirect URIs | `http://localhost:4200/*`, `com.pelada.app://callback` (app empacotado) |
 | Valid post logout redirect URIs | `http://localhost:4200/entrar` (ou `…/*` — o app usa `/entrar` como `redirectUri`; ver `auth.config.ts`) |
-| Web origins | `http://localhost:4200`, `http://localhost`, `capacitor://localhost` |
+| Web origins | `http://localhost:4200`, `http://localhost`, `https://localhost` (origem real da WebView Android — `androidScheme: 'https'` em `capacitor.config.ts`), `capacitor://localhost` |
 | PKCE | S256 (obrigatório para client público) |
 
 ### Endpoints OIDC usados pelo Angular

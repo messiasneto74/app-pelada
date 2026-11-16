@@ -1,15 +1,20 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 import {
   AuthService,
   mapPasswordLoginError,
   mapRegisterError,
 } from '../../auth/auth.service';
+import { nativeBridge } from '../../auth/native-bridge';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaFieldComponent } from '../../ui/field.component';
 import { PeladaInputDirective } from '../../ui/input.directive';
 import { ScreenHeaderComponent } from '../../ui/screen-header.component';
+
+/** Tempo dado pro deep link de retorno do navegador do sistema chegar antes de considerar que o usuário cancelou. */
+const GOOGLE_CANCEL_GRACE_MS = 1500;
 
 type EntrarMode = 'login' | 'register';
 
@@ -213,12 +218,38 @@ export class EntrarComponent implements OnInit {
   password = '';
   name = '';
 
+  private appActiveListenerBound = false;
+
   async ngOnInit(): Promise<void> {
+    this.bindAppActiveReset();
     await this.auth.init();
     this.loading.set(false);
     if (this.auth.isLoggedIn()) {
       await this.auth.continueAfterLogin();
     }
+  }
+
+  /**
+   * No app empacotado, se o usuário fechar o navegador do sistema sem
+   * concluir o login do Google, nenhum callback chega — sem isso o botão
+   * ficaria "Abrindo o Google…" travado pra sempre (achado do Codex na
+   * revisão da PR #170).
+   */
+  private bindAppActiveReset(): void {
+    if (this.appActiveListenerBound || !Capacitor.isNativePlatform()) {
+      return;
+    }
+    this.appActiveListenerBound = true;
+    nativeBridge.onAppActive((state) => {
+      if (!state.isActive || !this.googleSubmitting()) {
+        return;
+      }
+      setTimeout(() => {
+        if (this.googleSubmitting() && !this.auth.isLoggedIn()) {
+          this.googleSubmitting.set(false);
+        }
+      }, GOOGLE_CANCEL_GRACE_MS);
+    });
   }
 
   setMode(next: EntrarMode): void {

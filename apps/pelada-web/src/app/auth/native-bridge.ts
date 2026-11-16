@@ -1,4 +1,4 @@
-import { App, type URLOpenListenerEvent } from '@capacitor/app';
+import { App, type AppState, type URLOpenListenerEvent } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 
 /**
@@ -16,5 +16,9 @@ export const nativeBridge = {
   },
   onAppUrlOpen(callback: (event: URLOpenListenerEvent) => void): void {
     void App.addListener('appUrlOpen', callback);
+  },
+  /** Disparado quando o app volta pro primeiro plano (ex.: usuário fechou o navegador do sistema sem concluir o login). */
+  onAppActive(callback: (event: AppState) => void): void {
+    void App.addListener('appStateChange', callback);
   },
 };
