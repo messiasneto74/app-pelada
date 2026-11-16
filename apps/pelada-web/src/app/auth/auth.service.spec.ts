@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { Capacitor } from '@capacitor/core';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { of, throwError } from 'rxjs';
 import {
@@ -8,6 +9,7 @@ import {
   mapPasswordLoginError,
   mapRegisterError,
 } from './auth.service';
+import { nativeBridge } from './native-bridge';
 import { PeladaApiService } from '../core/pelada/pelada-api.service';
 import { PeladaContextService } from '../core/pelada/pelada-context.service';
 
@@ -55,6 +57,7 @@ describe('AuthService.loginWithPassword', () => {
     tokenEndpoint: string;
     getIdentityClaims: jasmine.Spy;
     configure: jasmine.Spy;
+    initLoginFlow: jasmine.Spy;
   };
   let peladaContext: { refreshFromStorage: jasmine.Spy };
 
@@ -71,6 +74,7 @@ describe('AuthService.loginWithPassword', () => {
         .createSpy('getIdentityClaims')
         .and.returnValue({ sub: 'keycloak-sub-login' }),
       configure: jasmine.createSpy('configure'),
+      initLoginFlow: jasmine.createSpy('initLoginFlow'),
     };
     peladaContext = {
       refreshFromStorage: jasmine.createSpy('refreshFromStorage'),
@@ -113,6 +117,89 @@ describe('AuthService.loginWithPassword', () => {
       jasmine.objectContaining({ sub: 'keycloak-sub-login' }),
     );
     expect(peladaContext.refreshFromStorage).toHaveBeenCalled();
+  });
+
+  it('loginWithGoogle inicia o code flow com kc_idp_hint=google', async () => {
+    await service.loginWithGoogle();
+    expect(oauth.initLoginFlow).toHaveBeenCalledWith('', { kc_idp_hint: 'google' });
+  });
+});
+
+describe('AuthService — deep link nativo (Capacitor)', () => {
+  let service: AuthService;
+  let oauth: {
+    tryLoginCodeFlow: jasmine.Spy;
+    loadDiscoveryDocumentAndTryLogin: jasmine.Spy;
+    hasValidAccessToken: jasmine.Spy;
+    getIdentityClaims: jasmine.Spy;
+    configure: jasmine.Spy;
+    events: { subscribe: jasmine.Spy };
+  };
+  let peladaContext: { refreshFromStorage: jasmine.Spy };
+  let appUrlOpenCallback: ((event: { url: string }) => void) | undefined;
+  const originalIsNativePlatform = Capacitor.isNativePlatform;
+
+  beforeEach(() => {
+    appUrlOpenCallback = undefined;
+    Capacitor.isNativePlatform = () => true;
+    spyOn(nativeBridge, 'onAppUrlOpen').and.callFake((cb) => {
+      appUrlOpenCallback = cb;
+    });
+    spyOn(nativeBridge, 'closeSystemBrowser').and.resolveTo();
+
+    oauth = {
+      tryLoginCodeFlow: jasmine.createSpy('tryLoginCodeFlow').and.resolveTo(),
+      loadDiscoveryDocumentAndTryLogin: jasmine
+        .createSpy('loadDiscoveryDocumentAndTryLogin')
+        .and.resolveTo(),
+      hasValidAccessToken: jasmine.createSpy('hasValidAccessToken').and.returnValue(true),
+      getIdentityClaims: jasmine.createSpy('getIdentityClaims').and.returnValue({}),
+      configure: jasmine.createSpy('configure'),
+      events: { subscribe: jasmine.createSpy('subscribe') },
+    };
+    peladaContext = {
+      refreshFromStorage: jasmine.createSpy('refreshFromStorage'),
+    };
+
+    TestBed.configureTestingModule({
+      providers: [
+        AuthService,
+        { provide: OAuthService, useValue: oauth },
+        { provide: HttpClient, useValue: { get: jasmine.createSpy('get') } },
+        { provide: Router, useValue: { navigateByUrl: jasmine.createSpy('navigateByUrl').and.resolveTo(true) } },
+        { provide: PeladaContextService, useValue: peladaContext },
+        { provide: PeladaApiService, useValue: { listMyPeladas: jasmine.createSpy('listMyPeladas') } },
+      ],
+    });
+    service = TestBed.inject(AuthService);
+  });
+
+  afterEach(() => {
+    Capacitor.isNativePlatform = originalIsNativePlatform;
+  });
+
+  it('captura o retorno do navegador do sistema e completa o code flow', async () => {
+    await service.init();
+    expect(nativeBridge.onAppUrlOpen).toHaveBeenCalledWith(jasmine.any(Function));
+
+    appUrlOpenCallback?.({
+      url: 'com.pelada.app://callback?code=abc123&state=xyz',
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(nativeBridge.closeSystemBrowser).toHaveBeenCalled();
+    expect(oauth.tryLoginCodeFlow).toHaveBeenCalledWith({
+      customHashFragment: '?code=abc123&state=xyz',
+    });
+    expect(peladaContext.refreshFromStorage).toHaveBeenCalled();
+  });
+
+  it('ignora URLs que não são o callback OIDC', async () => {
+    await service.init();
+    appUrlOpenCallback?.({ url: 'com.pelada.app://outra-coisa' });
+    await Promise.resolve();
+    expect(oauth.tryLoginCodeFlow).not.toHaveBeenCalled();
   });
 });
 

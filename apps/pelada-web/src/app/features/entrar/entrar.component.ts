@@ -1,15 +1,20 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 import {
   AuthService,
   mapPasswordLoginError,
   mapRegisterError,
 } from '../../auth/auth.service';
+import { nativeBridge } from '../../auth/native-bridge';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaFieldComponent } from '../../ui/field.component';
 import { PeladaInputDirective } from '../../ui/input.directive';
 import { ScreenHeaderComponent } from '../../ui/screen-header.component';
+
+/** Tempo dado pro deep link de retorno do navegador do sistema chegar antes de considerar que o usuário cancelou. */
+const GOOGLE_CANCEL_GRACE_MS = 1500;
 
 type EntrarMode = 'login' | 'register';
 
@@ -131,6 +136,19 @@ type EntrarMode = 'login' | 'register';
             }}
           </button>
         </form>
+
+        <div class="divider" role="separator">ou</div>
+
+        <button
+          type="button"
+          peladaButton
+          variant="secondary"
+          [peladaButtonBlock]="true"
+          [disabled]="googleSubmitting()"
+          (click)="loginWithGoogle()"
+        >
+          {{ googleSubmitting() ? 'Abrindo o Google…' : 'Entrar com Google' }}
+        </button>
       }
 
       <p class="hint pelada-muted">
@@ -168,6 +186,15 @@ type EntrarMode = 'login' | 'register';
         flex-direction: column;
         gap: var(--pelada-space-4);
       }
+      .divider {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: var(--pelada-space-4) 0;
+        color: var(--pelada-muted);
+        font-size: 0.8125rem;
+        text-transform: uppercase;
+      }
       .hint {
         margin-top: var(--pelada-space-6);
         font-size: 0.85rem;
@@ -182,6 +209,7 @@ export class EntrarComponent implements OnInit {
   readonly auth = inject(AuthService);
   readonly loading = signal(true);
   readonly submitting = signal(false);
+  readonly googleSubmitting = signal(false);
   readonly error = signal<string | null>(null);
   readonly fieldError = signal<string | null>(null);
   readonly mode = signal<EntrarMode>('login');
@@ -190,12 +218,38 @@ export class EntrarComponent implements OnInit {
   password = '';
   name = '';
 
+  private appActiveListenerBound = false;
+
   async ngOnInit(): Promise<void> {
+    this.bindAppActiveReset();
     await this.auth.init();
     this.loading.set(false);
     if (this.auth.isLoggedIn()) {
       await this.auth.continueAfterLogin();
     }
+  }
+
+  /**
+   * No app empacotado, se o usuário fechar o navegador do sistema sem
+   * concluir o login do Google, nenhum callback chega — sem isso o botão
+   * ficaria "Abrindo o Google…" travado pra sempre (achado do Codex na
+   * revisão da PR #170).
+   */
+  private bindAppActiveReset(): void {
+    if (this.appActiveListenerBound || !Capacitor.isNativePlatform()) {
+      return;
+    }
+    this.appActiveListenerBound = true;
+    nativeBridge.onAppActive((state) => {
+      if (!state.isActive || !this.googleSubmitting()) {
+        return;
+      }
+      setTimeout(() => {
+        if (this.googleSubmitting() && !this.auth.isLoggedIn()) {
+          this.googleSubmitting.set(false);
+        }
+      }, GOOGLE_CANCEL_GRACE_MS);
+    });
   }
 
   setMode(next: EntrarMode): void {
@@ -246,6 +300,19 @@ export class EntrarComponent implements OnInit {
     } finally {
       this.submitting.set(false);
     }
+  }
+
+  async loginWithGoogle(): Promise<void> {
+    this.error.set(null);
+    this.googleSubmitting.set(true);
+    try {
+      await this.auth.loginWithGoogle();
+    } catch {
+      this.error.set('Não foi possível abrir o login do Google. Tente novamente.');
+      this.googleSubmitting.set(false);
+    }
+    // Em caso de sucesso, a navegação sai da tela (redirect/navegador externo);
+    // não há "finally" que reseta o estado aqui.
   }
 
   async continue(): Promise<void> {
