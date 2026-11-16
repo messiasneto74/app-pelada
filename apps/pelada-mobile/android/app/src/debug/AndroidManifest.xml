@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Build debug apenas: liga o network_security_config que libera cleartext
+     HTTP pra API/Keycloak locais (validação manual em device/emulador). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>
