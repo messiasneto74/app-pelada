@@ -36,7 +36,7 @@ import type {
   PresenceRow,
 } from '../../core/presence/presence-attendance.model';
 import type { Observable } from 'rxjs';
-import { catchError, concatMap, forkJoin, of, Subject, switchMap } from 'rxjs';
+import { catchError, concatMap, map, of, Subject } from 'rxjs';
 import { PresenceSessionService } from '../../core/presence/presence-session.service';
 import { evaluateFormatBeforeClose } from '../../core/presence/presence-format-suggest.logic';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
@@ -633,7 +633,7 @@ export class PresencaPartidaComponent implements OnInit {
   }
 
   /** Toques rápidos: uma gravação por vez, na ordem, pra resposta velha não sobrescrever a nova. */
-  private readonly syncQueue = new Subject<Observable<MatchAttendanceListApiDto>>();
+  private readonly syncQueue = new Subject<Observable<MatchAttendanceListApiDto | null>>();
   private readonly syncSubscription = this.syncQueue
     .pipe(
       concatMap((req) =>
@@ -752,24 +752,18 @@ export class PresencaPartidaComponent implements OnInit {
     if (!pelada || !mid || !this.isOrganizador()) {
       return;
     }
-    const playerRows = this.rows().filter(
-      (r): r is Extract<PresenceRow, { kind: 'player' }> => r.kind === 'player',
+    // Cada toque já foi gravado na hora (syncWithApi). Reenviar todos os status
+    // aqui não é idempotente com a lista cheia (o servidor reordenava a fila),
+    // então só fecha a lista — na mesma fila, depois das gravações pendentes.
+    this.syncQueue.next(
+      this.attendanceApi.closeList(pelada.id, mid).pipe(
+        map(() => null),
+        catchError(() => {
+          /* §3.4: já na tela Sorteio; sorteio pode reenviar close-list se draw falhar */
+          return of(null);
+        }),
+      ),
     );
-    const sync: Observable<unknown> =
-      playerRows.length > 0
-        ? forkJoin(
-            playerRows.map((r) =>
-              this.attendanceApi.patchPlayer(pelada.id, mid, r.player.id, {
-                status: this.presenceStatusToApi(r.status),
-              }),
-            ),
-          )
-        : of(undefined);
-    sync.pipe(switchMap(() => this.attendanceApi.closeList(pelada.id, mid))).subscribe({
-      error: () => {
-        /* §3.4: já na tela Sorteio; sorteio pode reenviar close-list se draw falhar */
-      },
-    });
   }
 
   reopenList(): void {

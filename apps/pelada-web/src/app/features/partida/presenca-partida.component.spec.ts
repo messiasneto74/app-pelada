@@ -14,7 +14,7 @@ import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
 import { DEFAULT_PELADA_RULES } from '../../core/pelada/pelada-rules.model';
 import { PresencaPartidaComponent } from './presenca-partida.component';
 import { PeladaMatchAttendanceService } from '../../core/match/pelada-match-attendance.service';
-import { of, throwError } from 'rxjs';
+import { defer, of, Subject, throwError } from 'rxjs';
 import type { MatchAttendanceListApiDto } from '../../core/match/pelada-match-attendance.service';
 
 const players: RosterPlayer[] = [
@@ -267,6 +267,34 @@ describe('PresencaPartidaComponent §3.4', () => {
       .rows()
       .find((r) => r.kind === 'player' && r.player.id === 'b1');
     expect(b1?.status).toBe('confirmed');
+  });
+
+  it('fechar a lista não reenvia os status (só close-list, depois das gravações pendentes)', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const pendingPatch = new Subject<MatchAttendanceListApiDto>();
+    const calls: string[] = [];
+    api['getList'] = () => of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }));
+    api['patchPlayer'] = jasmine.createSpy('patchPlayer').and.callFake(() => {
+      calls.push('patch');
+      return pendingPatch;
+    });
+    // Observable frio, como o HttpClient: a requisição só sai na inscrição.
+    api['closeList'] = jasmine.createSpy('closeList').and.callFake(() =>
+      defer(() => {
+        calls.push('close');
+        return of({});
+      }),
+    );
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onOrgToggle('b1');
+    fixture.componentInstance.confirmCloseDespiteFormat();
+    expect(calls).toEqual(['patch']);
+
+    pendingPatch.next(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' }));
+    pendingPatch.complete();
+    expect(calls).toEqual(['patch', 'close']);
   });
 
   it('jogador "Vou" no modo SELF_CONFIRM chama POST attendance/self', async () => {
