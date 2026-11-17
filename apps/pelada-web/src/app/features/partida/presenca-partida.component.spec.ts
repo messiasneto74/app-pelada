@@ -379,6 +379,38 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(status('b1')).toBe('confirmed');
   });
 
+  it('falha de uma gravação com outra na fila não recarrega por cima da seguinte', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const responses = new Map<string, Subject<MatchAttendanceListApiDto>>();
+    const getList = jasmine
+      .createSpy('getList')
+      .and.returnValue(of(serverList({ a1: 'PENDING', b1: 'PENDING' })));
+    api['getList'] = getList;
+    api['patchPlayer'] = (_p: string, _m: string, id: string) => {
+      const res = new Subject<MatchAttendanceListApiDto>();
+      responses.set(id, res);
+      return res;
+    };
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    getList.calls.reset();
+    const status = (id: string) =>
+      fixture.componentInstance
+        .rows()
+        .find((r) => r.kind === 'player' && r.player.id === id)?.status;
+
+    fixture.componentInstance.onOrgToggle('a1');
+    fixture.componentInstance.onOrgToggle('b1');
+    responses.get('a1')!.error(new Error('offline'));
+    expect(getList).not.toHaveBeenCalled();
+    expect(status('b1')).toBe('confirmed');
+
+    responses.get('b1')!.next(serverList({ a1: 'PENDING', b1: 'CONFIRMED' }));
+    responses.get('b1')!.complete();
+    expect(status('a1')).toBe('pending');
+    expect(status('b1')).toBe('confirmed');
+  });
+
   it('gravação pendente que responde depois de fechar não reabre a lista', () => {
     const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
     const pendingPatch = new Subject<MatchAttendanceListApiDto>();

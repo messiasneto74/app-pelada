@@ -640,14 +640,27 @@ export class PresencaPartidaComponent implements OnInit {
     this.pendingWrites++;
     this.syncQueue.next(
       defer(write).pipe(
-        tap(() => this.clearUnsaved(key, write)),
-        catchError(() => {
-          this.refreshFromApi(() => this.clearUnsaved(key, write));
-          return of(null);
+        map((dto) => ({ ok: true as const, dto })),
+        catchError(() => of({ ok: false as const, dto: null })),
+        map((res) => {
+          if (res.ok) {
+            this.clearUnsaved(key, write);
+          }
+          // Com outra gravação ainda na fila, esta resposta (ou uma recarga
+          // agora) não sabe dela e desfaria o toque otimista seguinte: só a
+          // última da fila reconcilia com o servidor.
+          if (--this.pendingWrites > 0) {
+            return null;
+          }
+          if (res.ok) {
+            // A lista do servidor passa a ser a da tela: o que falhou antes
+            // aparece desfeito, então não há mais nada pra reenviar.
+            this.unsaved.clear();
+            return res.dto;
+          }
+          this.refreshFromApi(() => this.unsaved.clear());
+          return null;
         }),
-        // Com outra gravação ainda na fila, esta resposta não sabe dela e
-        // desfaria o toque otimista seguinte: só a última resposta é aplicada.
-        map((dto) => (--this.pendingWrites === 0 ? dto : null)),
       ),
     );
   }
