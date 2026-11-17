@@ -36,7 +36,7 @@ import type {
   PresenceRow,
 } from '../../core/presence/presence-attendance.model';
 import type { Observable } from 'rxjs';
-import { catchError, concatMap, map, of, Subject } from 'rxjs';
+import { catchError, concat, concatMap, defer, last, map, of, Subject, switchMap, tap } from 'rxjs';
 import { PresenceSessionService } from '../../core/presence/presence-session.service';
 import { evaluateFormatBeforeClose } from '../../core/presence/presence-format-suggest.logic';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
@@ -585,7 +585,7 @@ export class PresencaPartidaComponent implements OnInit {
     const pelada = this.peladaContext.getActivePelada();
     const mid = this.matchId();
     if (pelada && mid) {
-      this.syncWithApi(
+      this.syncWithApi(`self:${playerId}`, () =>
         this.attendanceApi.setSelf(pelada.id, mid, accept ? 'confirm' : 'decline'),
       );
     }
@@ -615,10 +615,9 @@ export class PresencaPartidaComponent implements OnInit {
     const pelada = this.peladaContext.getActivePelada();
     const mid = this.matchId();
     if (pelada && mid && next?.kind === 'player') {
-      this.syncWithApi(
-        this.attendanceApi.patchPlayer(pelada.id, mid, playerId, {
-          status: this.presenceStatusToApi(next.status),
-        }),
+      const status = this.presenceStatusToApi(next.status);
+      this.syncWithApi(`org:${playerId}`, () =>
+        this.attendanceApi.patchPlayer(pelada.id, mid, playerId, { status }),
       );
     }
   }
@@ -627,38 +626,68 @@ export class PresencaPartidaComponent implements OnInit {
    * Grava a mudança na API (otimista) e adota a lista devolvida como verdade —
    * a fila/promoção é decidida no servidor. Sem isso a lista só existia no
    * sessionStorage e se perdia ao fechar o app ou entrar de novo.
+   *
+   * A gravação fica em `unsaved` até dar certo (ou até a lista do servidor ser
+   * recarregada no lugar dela), pra ser reenviada antes do close-list se a
+   * conexão caiu no meio.
    */
-  private syncWithApi(request: Observable<MatchAttendanceListApiDto>): void {
-    this.syncQueue.next(request);
+  private syncWithApi(
+    key: string,
+    write: () => Observable<MatchAttendanceListApiDto>,
+  ): void {
+    this.unsaved.set(key, write);
+    this.mutationSeq++;
+    this.syncQueue.next(
+      defer(write).pipe(
+        tap(() => this.clearUnsaved(key, write)),
+        catchError(() => {
+          this.refreshFromApi(() => this.clearUnsaved(key, write));
+          return of(null);
+        }),
+      ),
+    );
   }
+
+  private clearUnsaved(
+    key: string,
+    write: () => Observable<MatchAttendanceListApiDto>,
+  ): void {
+    if (this.unsaved.get(key) === write) {
+      this.unsaved.delete(key);
+    }
+  }
+
+  /** Gravações que falharam e ainda aparecem na tela (por jogador). */
+  private readonly unsaved = new Map<string, () => Observable<MatchAttendanceListApiDto>>();
+
+  /** Sobe a cada gravação: leitura iniciada antes dela é descartada (resposta velha). */
+  private mutationSeq = 0;
 
   /** Toques rápidos: uma gravação por vez, na ordem, pra resposta velha não sobrescrever a nova. */
   private readonly syncQueue = new Subject<Observable<MatchAttendanceListApiDto | null>>();
   private readonly syncSubscription = this.syncQueue
-    .pipe(
-      concatMap((req) =>
-        req.pipe(
-          catchError(() => {
-            this.refreshFromApi();
-            return of(null);
-          }),
-        ),
-      ),
-    )
+    .pipe(concatMap((req) => req))
     .subscribe((dto) => {
       if (dto) {
         this.applyServerAttendance(dto);
       }
     });
 
-  private refreshFromApi(): void {
+  private refreshFromApi(onApplied?: () => void): void {
     const pelada = this.peladaContext.getActivePelada();
     const mid = this.matchId();
     if (!pelada || !mid) {
       return;
     }
+    const seq = this.mutationSeq;
     this.attendanceApi.getList(pelada.id, mid).subscribe({
-      next: (dto) => this.applyServerAttendance(dto),
+      next: (dto) => {
+        if (seq !== this.mutationSeq) {
+          return; // uma gravação começou depois desta leitura: a resposta dela manda
+        }
+        this.applyServerAttendance(dto);
+        onApplied?.();
+      },
       error: () => {
         /* API fora: mantém a lista local (sessionStorage) */
       },
@@ -754,10 +783,22 @@ export class PresencaPartidaComponent implements OnInit {
     }
     // Cada toque já foi gravado na hora (syncWithApi). Reenviar todos os status
     // aqui não é idempotente com a lista cheia (o servidor reordenava a fila),
-    // então só fecha a lista — na mesma fila, depois das gravações pendentes.
+    // então só reenvia o que falhou e fecha — na mesma fila, depois das
+    // gravações pendentes. Se algum reenvio falhar, não fecha no servidor (o
+    // Sorteio reenvia close-list).
     this.syncQueue.next(
-      this.attendanceApi.closeList(pelada.id, mid).pipe(
-        map(() => null),
+      defer(() => {
+        const retries = [...this.unsaved.entries()].map(([key, write]) =>
+          defer(write).pipe(tap(() => this.clearUnsaved(key, write))),
+        );
+        this.mutationSeq++;
+        // Não aplica a lista dos reenvios: ela ainda vem com listClosed=false.
+        return concat(...retries, of(null)).pipe(
+          last(),
+          switchMap(() => this.attendanceApi.closeList(pelada.id, mid)),
+          map(() => null),
+        );
+      }).pipe(
         catchError(() => {
           /* §3.4: já na tela Sorteio; sorteio pode reenviar close-list se draw falhar */
           return of(null);

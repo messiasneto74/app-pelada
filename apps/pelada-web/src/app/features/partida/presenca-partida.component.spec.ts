@@ -297,6 +297,60 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(calls).toEqual(['patch', 'close']);
   });
 
+  it('gravação que falhou (API e recarga fora) é reenviada antes do close-list', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const calls: string[] = [];
+    let online = true;
+    api['getList'] = () =>
+      online
+        ? of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }))
+        : throwError(() => new Error('offline'));
+    api['patchPlayer'] = jasmine
+      .createSpy('patchPlayer')
+      .and.callFake((_p: string, _m: string, id: string) =>
+        defer(() => {
+          calls.push(`patch:${id}`);
+          return online
+            ? of(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' }))
+            : throwError(() => new Error('offline'));
+        }),
+      );
+    api['closeList'] = () =>
+      defer(() => {
+        calls.push('close');
+        return of({});
+      });
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+
+    online = false;
+    fixture.componentInstance.onOrgToggle('b1');
+    const b1 = () =>
+      fixture.componentInstance.rows().find((r) => r.kind === 'player' && r.player.id === 'b1');
+    expect(b1()?.status).toBe('confirmed');
+
+    online = true;
+    fixture.componentInstance.confirmCloseDespiteFormat();
+    expect(calls).toEqual(['patch:b1', 'patch:b1', 'close']);
+  });
+
+  it('leitura lenta não desfaz uma gravação que terminou depois dela', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const slowGet = new Subject<MatchAttendanceListApiDto>();
+    api['getList'] = () => slowGet;
+    api['patchPlayer'] = () => of(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' }));
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onOrgToggle('b1');
+    slowGet.next(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }));
+
+    const b1 = fixture.componentInstance
+      .rows()
+      .find((r) => r.kind === 'player' && r.player.id === 'b1');
+    expect(b1?.status).toBe('confirmed');
+  });
+
   it('jogador "Vou" no modo SELF_CONFIRM chama POST attendance/self', async () => {
     const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
     const setSelf = jasmine
