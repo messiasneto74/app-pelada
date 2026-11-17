@@ -100,6 +100,13 @@ export class PeladaInvitesService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.peladaInvite.updateMany({
+        where: { id: invite.id, usedAt: null },
+        data: { usedAt: new Date(), usedByUserId: user.id },
+      });
+      if (claimed.count !== 1) {
+        throw new GoneException('Este convite já foi usado.');
+      }
       await tx.peladaMember.create({
         data: { peladaId: invite.peladaId, userId: user.id, role: 'JOGADOR' },
       });
@@ -110,10 +117,6 @@ export class PeladaInvitesService {
           displayName: displayNameFromEmail(auth.email),
           isGuest: true,
         },
-      });
-      await tx.peladaInvite.update({
-        where: { id: invite.id },
-        data: { usedAt: new Date(), usedByUserId: user.id },
       });
     });
 

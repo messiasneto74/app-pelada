@@ -18,7 +18,7 @@ describe('PeladaInvitesService (issue #172 — fase 1)', () => {
     peladaInvite: {
       create: jest.Mock;
       findUnique: jest.Mock;
-      update: jest.Mock;
+      updateMany: jest.Mock;
     };
     player: { create: jest.Mock };
     $transaction: jest.Mock;
@@ -41,7 +41,7 @@ describe('PeladaInvitesService (issue #172 — fase 1)', () => {
       peladaInvite: {
         create: jest.fn(),
         findUnique: jest.fn(),
-        update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       player: { create: jest.fn() },
       $transaction: jest.fn(async (cb) => cb(prisma)),
@@ -181,8 +181,8 @@ describe('PeladaInvitesService (issue #172 — fase 1)', () => {
           isGuest: true,
         }),
       });
-      expect(prisma.peladaInvite.update).toHaveBeenCalledWith({
-        where: { id: 'inv-1' },
+      expect(prisma.peladaInvite.updateMany).toHaveBeenCalledWith({
+        where: { id: 'inv-1', usedAt: null },
         data: expect.objectContaining({ usedByUserId: 'u1' }),
       });
       expect(result).toEqual({
@@ -211,6 +211,20 @@ describe('PeladaInvitesService (issue #172 — fase 1)', () => {
 
       await expect(service.redeemInvite(auth, 'tok-1')).rejects.toThrow(
         ConflictException,
+      );
+      expect(prisma.peladaMember.create).not.toHaveBeenCalled();
+      expect(prisma.player.create).not.toHaveBeenCalled();
+    });
+
+    it('resgate concorrente (uso único perdido na corrida) recebe 410 e não cria nada', async () => {
+      mockValidInvite();
+      prisma.peladaMember.findUnique.mockResolvedValue(null);
+      // Simula outro resgate que já marcou usedAt dentro da mesma janela:
+      // o UPDATE condicional (WHERE usedAt IS NULL) não afeta nenhuma linha.
+      prisma.peladaInvite.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.redeemInvite(auth, 'tok-1')).rejects.toThrow(
+        GoneException,
       );
       expect(prisma.peladaMember.create).not.toHaveBeenCalled();
       expect(prisma.player.create).not.toHaveBeenCalled();
