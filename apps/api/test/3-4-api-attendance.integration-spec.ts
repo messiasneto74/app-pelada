@@ -563,6 +563,13 @@ if (runHarness) {
         .send({})
         .expect(201);
 
+      // #182: lista sorteada continua "fechada" pro app (guard Sorteio/Em campo).
+      await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/attendance`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+        .expect((res) => expect(res.body.listClosed).toBe(true));
+
       // Depois do sorteio (DRAWN), close-list não pode mais agir.
       await request(app.getHttpServer())
         .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/close-list`)
@@ -574,6 +581,12 @@ if (runHarness) {
         .set('Authorization', `Bearer ${token}`)
         .send({})
         .expect(201);
+
+      await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/attendance`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+        .expect((res) => expect(res.body.listClosed).toBe(true));
 
       // Partida IN_PROGRESS: nem close-list nem reopen-list podem regredir o status.
       await request(app.getHttpServer())
