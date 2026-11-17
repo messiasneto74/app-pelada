@@ -5,7 +5,6 @@ import type { MatchDaySummaryDto } from '../../core/match/match-field-session-ap
 import { MatchFieldSessionService } from '../../core/match/match-field-session.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import {
-  DEFAULT_PELADA_RULES,
   mapPeladaRulesApiError,
   type PeladaRulesFormValues,
 } from '../../core/pelada/pelada-rules.model';
@@ -43,7 +42,11 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       } @else if (summary(); as s) {
         <pelada-card title="Texto do resumo">
           <p class="summary-text">{{ s.text }}</p>
-          @if (!editingTemplate()) {
+          @if (rulesLoadError()) {
+            <p class="pelada-field__error" role="alert">{{ rulesLoadError() }}</p>
+          } @else if (!rulesReady()) {
+            <p class="pelada-muted">Carregando regras…</p>
+          } @else if (!editingTemplate()) {
             <button
               type="button"
               class="pelada-btn"
@@ -189,7 +192,9 @@ export class ResumoPartidaComponent implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
 
-  private loadedRules: PeladaRulesFormValues = { ...DEFAULT_PELADA_RULES };
+  private loadedRules: PeladaRulesFormValues | null = null;
+  readonly rulesReady = signal(false);
+  readonly rulesLoadError = signal<string | null>(null);
   readonly editingTemplate = signal(false);
   readonly templateDraft = signal('');
   readonly savingTemplate = signal(false);
@@ -220,14 +225,20 @@ export class ResumoPartidaComponent implements OnInit {
     this.rulesApi.fetchRules(pelada.id).subscribe({
       next: (dto) => {
         this.loadedRules = this.rulesApi.mapFromApi(dto);
+        this.rulesReady.set(true);
       },
       error: () => {
-        /* edição do template fica indisponível; resto da tela segue normal */
+        this.rulesLoadError.set(
+          'Não foi possível carregar as regras da pelada. Edição do texto do resumo fica indisponível por enquanto.',
+        );
       },
     });
   }
 
   startEditingTemplate(): void {
+    if (!this.loadedRules) {
+      return;
+    }
     this.templateDraft.set(this.loadedRules.summaryTemplate);
     this.templateError.set(null);
     this.templateSavedMessage.set(null);
@@ -246,6 +257,12 @@ export class ResumoPartidaComponent implements OnInit {
     const pelada = this.peladaContext.getActivePelada();
     if (!pelada) {
       this.templateError.set('Nenhuma pelada ativa.');
+      return;
+    }
+    if (!this.loadedRules) {
+      this.templateError.set(
+        'As regras da pelada ainda não foram carregadas. Tente de novo em instantes.',
+      );
       return;
     }
     const merged: PeladaRulesFormValues = {

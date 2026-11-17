@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import type { MatchDaySummaryDto } from '../../core/match/match-field-session-api.model';
 import { MatchFieldSessionService } from '../../core/match/match-field-session.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
@@ -176,5 +176,57 @@ describe('ResumoPartidaComponent', () => {
 
     expect(fixture.componentInstance.templateError()).toContain('organizador');
     expect(fixture.componentInstance.editingTemplate()).toBe(true);
+  });
+
+  it('não permite editar/salvar antes do fetchRules terminar (issue #171 / B1)', () => {
+    const fieldSpy = jasmine.createSpyObj('MatchFieldSessionService', ['getDaySummary']);
+    fieldSpy.getDaySummary.and.returnValue(of(summary));
+
+    const rulesApiSpy = jasmine.createSpyObj('PeladaRulesApiService', [
+      'fetchRules',
+      'saveRules',
+      'mapFromApi',
+    ]);
+    const pending$ = new Subject<PeladaRulesApiDto>();
+    rulesApiSpy.fetchRules.and.returnValue(pending$.asObservable());
+    rulesApiSpy.saveRules.and.returnValue(of({} as PeladaRulesApiDto));
+    rulesApiSpy.mapFromApi.and.returnValue({ ...DEFAULT_PELADA_RULES });
+
+    const fixture = setup(fieldSpy, 'm1', rulesApiSpy);
+
+    expect(fixture.componentInstance.rulesReady()).toBe(false);
+    expect(fixture.nativeElement.textContent).not.toContain('Editar texto do resumo');
+
+    fixture.componentInstance.startEditingTemplate();
+    fixture.componentInstance.templateDraft.set('Tentativa antes de carregar');
+    fixture.componentInstance.saveTemplate();
+
+    expect(rulesApiSpy.saveRules).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.editingTemplate()).toBe(false);
+  });
+
+  it('bloqueia edição/salvamento quando fetchRules falha (issue #171 / B1)', () => {
+    const fieldSpy = jasmine.createSpyObj('MatchFieldSessionService', ['getDaySummary']);
+    fieldSpy.getDaySummary.and.returnValue(of(summary));
+
+    const rulesApiSpy = jasmine.createSpyObj('PeladaRulesApiService', [
+      'fetchRules',
+      'saveRules',
+      'mapFromApi',
+    ]);
+    rulesApiSpy.fetchRules.and.returnValue(throwError(() => new Error('boom')));
+    rulesApiSpy.saveRules.and.returnValue(of({} as PeladaRulesApiDto));
+    rulesApiSpy.mapFromApi.and.returnValue({ ...DEFAULT_PELADA_RULES });
+
+    const fixture = setup(fieldSpy, 'm1', rulesApiSpy);
+
+    expect(fixture.componentInstance.rulesLoadError()).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('Editar texto do resumo');
+
+    fixture.componentInstance.startEditingTemplate();
+    fixture.componentInstance.saveTemplate();
+
+    expect(rulesApiSpy.saveRules).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.editingTemplate()).toBe(false);
   });
 });
