@@ -3,6 +3,11 @@ apply plugin: 'com.android.application'
 android {
     namespace "com.pelada.app"
     compileSdk rootProject.ext.compileSdkVersion
+    buildFeatures {
+        // AGP 8+ não gera BuildConfig por padrão; MainActivity usa
+        // BuildConfig.DEBUG pra limitar o mixed content ao build debug.
+        buildConfig true
+    }
     defaultConfig {
         applicationId "com.pelada.app"
         minSdkVersion rootProject.ext.minSdkVersion
