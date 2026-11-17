@@ -48,6 +48,7 @@
     "keycloak:down": "docker compose stop keycloak postgres-keycloak",
     "keycloak:reset": "node scripts/keycloak-reset.mjs",
     "smoke:keycloak": "node scripts/keycloak-smoke.mjs",
+    "keycloak:configure": "node scripts/keycloak-disable-review-profile.mjs",
     "test:e2e": "node scripts/run-e2e.mjs",
     "test:e2e:install": "playwright install chromium",
     "test:e2e:playwright": "playwright test --config e2e/playwright.config.ts"
