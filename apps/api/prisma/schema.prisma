@@ -39,8 +39,29 @@ model Pelada {
   players  Player[]
   matches  Match[]
   payments PaymentLedger[]
+  invites  PeladaInvite[]
 
   @@map("peladas")
+}
+
+/// Convite de entrada (issue #172, fase 1 — link/QR). Token de uso único,
+/// validade de 5h a partir da geração; ao ser resgatado, cria PeladaMember +
+/// Player (isGuest: true) pro usuário autenticado, sem passar pelo
+/// onboarding de "criar pelada".
+model PeladaInvite {
+  id              String    @id @default(cuid())
+  peladaId        String    @map("pelada_id")
+  token           String    @unique
+  createdByUserId String    @map("created_by_user_id")
+  expiresAt       DateTime  @map("expires_at")
+  usedAt          DateTime? @map("used_at")
+  usedByUserId    String?   @map("used_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  pelada Pelada @relation(fields: [peladaId], references: [id], onDelete: Cascade)
+
+  @@index([peladaId])
+  @@map("pelada_invites")
 }
 
 enum PeladaRole {

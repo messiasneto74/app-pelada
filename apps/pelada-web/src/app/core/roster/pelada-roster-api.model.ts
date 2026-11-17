@@ -8,6 +8,7 @@ export type PeladaRosterPlayerDto = {
   tags: string[];
   isFixedList: boolean;
   userId?: string | null;
+  isGuest?: boolean;
 };
 
 export type PeladaRosterDto = {

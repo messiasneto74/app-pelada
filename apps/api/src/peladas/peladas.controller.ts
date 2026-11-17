@@ -135,6 +135,26 @@ export class PeladasController {
     return this.peladaPlayersService.listPlayers(user, peladaId);
   }
 
+  @Get('peladas/:peladaId/guests')
+  @UseGuards(JwtAuthGuard)
+  listPeladaGuests(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+  ) {
+    return this.peladaPlayersService.listGuests(user, peladaId);
+  }
+
+  @Post('peladas/:peladaId/players/:playerId/promote')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  promotePeladaGuest(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('playerId') playerId: string,
+  ) {
+    return this.peladaPlayersService.promoteGuest(user, peladaId, playerId);
+  }
+
   @Get('peladas/:peladaId/players/:playerId')
   @UseGuards(JwtAuthGuard)
   getPeladaPlayer(

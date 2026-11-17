@@ -12,6 +12,7 @@ import {
 import { nativeBridge } from './native-bridge';
 import { PeladaApiService } from '../core/pelada/pelada-api.service';
 import { PeladaContextService } from '../core/pelada/pelada-context.service';
+import { PendingInviteService } from '../core/pelada/pending-invite.service';
 
 describe('mapPasswordLoginError', () => {
   it('credenciais inválidas', () => {
@@ -313,6 +314,55 @@ describe('AuthService.continueAfterLogin', () => {
     await service.continueAfterLogin();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/inicio', {
       replaceUrl: true,
+    });
+  });
+
+  describe('convite pendente (issue #172)', () => {
+    let pendingInvite: PendingInviteService;
+
+    beforeEach(() => {
+      pendingInvite = TestBed.inject(PendingInviteService);
+      http.get.and.returnValue(
+        of({ id: '1', keycloakSub: 'sub', email: 'a@b.com', phone: '11999990000' }),
+      );
+    });
+
+    it('resgata o convite pendente após login e entra direto na pelada', async () => {
+      pendingInvite.set('tok-1');
+      (peladaApi as unknown as { redeemInvite: jasmine.Spy }).redeemInvite =
+        jasmine.createSpy('redeemInvite').and.resolveTo({
+          peladaId: 'pel-convite',
+          name: 'Pelada Convidada',
+          photoUrl: null,
+          defaultWeekday: 3,
+          defaultLocation: 'Quadra Y',
+        });
+
+      await service.continueAfterLogin();
+
+      expect(
+        (peladaApi as unknown as { redeemInvite: jasmine.Spy }).redeemInvite,
+      ).toHaveBeenCalledWith('tok-1');
+      expect(peladaContext.setActivePelada).toHaveBeenCalledWith(
+        jasmine.objectContaining({ id: 'pel-convite', name: 'Pelada Convidada' }),
+      );
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/inicio', {
+        replaceUrl: true,
+      });
+      expect(pendingInvite.consume()).toBeNull();
+    });
+
+    it('convite inválido durante o login volta pra tela do convite', async () => {
+      pendingInvite.set('tok-x');
+      (peladaApi as unknown as { redeemInvite: jasmine.Spy }).redeemInvite =
+        jasmine.createSpy('redeemInvite').and.rejectWith({ status: 410 });
+
+      await service.continueAfterLogin();
+
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/convite/tok-x', {
+        replaceUrl: true,
+      });
+      expect(peladaContext.setActivePelada).not.toHaveBeenCalled();
     });
   });
 });

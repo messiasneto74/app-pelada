@@ -47,4 +47,28 @@ export class PeladaRosterService {
       )
       .pipe(map((dto) => mapRosterPlayerDto(dto)));
   }
+
+  /** Lista "Convidados" (issue #172) — jogadores entrados por convite. */
+  loadGuests(
+    pelada: ActivePelada,
+    onResult: (players: RosterPlayer[], outcome: RosterLoadOutcome) => void,
+  ): void {
+    this.http
+      .get<PeladaRosterDto>(`${environment.apiUrl}/peladas/${pelada.id}/guests`)
+      .subscribe({
+        next: (dto) => onResult(mapRosterDto(dto), 'api'),
+        error: () =>
+          onResult(mapRosterDto(buildEmptyRosterDto(pelada.id)), 'fallback'),
+      });
+  }
+
+  /** Promove um Convidado pra Jogador (issue #172 — fase 1: só manual). */
+  promoteGuest(pelada: ActivePelada, playerId: string): Observable<RosterPlayer> {
+    return this.http
+      .post<PeladaRosterPlayerDto>(
+        `${environment.apiUrl}/peladas/${pelada.id}/players/${playerId}/promote`,
+        {},
+      )
+      .pipe(map((dto) => mapRosterPlayerDto(dto)));
+  }
 }

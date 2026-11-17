@@ -36,6 +36,7 @@ describe('pelada roster logic (3.7-API)', () => {
       rating: 8,
       tags: ['passe'],
       isFixedList: true,
+      isGuest: false,
       userId: null,
       photoUrl: null,
     });

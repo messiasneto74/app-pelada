@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { PeladaApiService } from '../core/pelada/pelada-api.service';
 import { PeladaContextService } from '../core/pelada/pelada-context.service';
+import { PendingInviteService } from '../core/pelada/pending-invite.service';
 import { buildAuthConfig, NATIVE_REDIRECT_URI } from './auth.config';
 import { nativeBridge } from './native-bridge';
 
@@ -78,6 +79,7 @@ export class AuthService {
   private readonly router = inject(Router);
   private readonly peladaContext = inject(PeladaContextService);
   private readonly peladaApi = inject(PeladaApiService);
+  private readonly pendingInvite = inject(PendingInviteService);
 
   private configured = false;
   private oauthSideEffectsBound = false;
@@ -275,6 +277,25 @@ export class AuthService {
 
   /** Mesma decisão que `peladaOnboardingGuard` — evita ping-pong via `/inicio`. */
   private async resolveAppEntryAfterProfile(): Promise<string> {
+    const pendingInviteToken = this.pendingInvite.consume();
+    if (pendingInviteToken) {
+      try {
+        const joined = await this.peladaApi.redeemInvite(pendingInviteToken);
+        this.peladaContext.setActivePelada({
+          id: joined.peladaId,
+          name: joined.name,
+          defaultWeekday: joined.defaultWeekday,
+          defaultLocation: joined.defaultLocation ?? '',
+          photoPreviewUrl: joined.photoUrl,
+        });
+        return '/inicio';
+      } catch {
+        // Convite ficou inválido durante o login (expirou/já usado/etc.) —
+        // volta pra tela do convite, que mostra o motivo (L1 do onboarding
+        // normal não se aplica aqui: entrada direta é o objetivo da #172).
+        return `/convite/${pendingInviteToken}`;
+      }
+    }
     if (this.peladaContext.hasActivePelada()) {
       return '/inicio';
     }

@@ -3,6 +3,7 @@ import { provideRouter, Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
+import { PeladaApiService } from '../../core/pelada/pelada-api.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import { peladaRulesFromApi } from '../../core/pelada/pelada-rules-api.mapper';
@@ -87,6 +88,11 @@ describe('JogadoresListaComponent', () => {
               onResult: (list: RosterPlayer[]) => void,
             ) => onResult(mockPlayers),
             createPlayer: createPlayerSpy,
+            loadGuests: (
+              _p: unknown,
+              onResult: (list: RosterPlayer[]) => void,
+            ) => onResult([]),
+            promoteGuest: jasmine.createSpy('promoteGuest'),
           },
         },
         {
@@ -101,6 +107,14 @@ describe('JogadoresListaComponent', () => {
           useValue: {
             fetchRules: fetchRulesSpy,
             mapFromApi: peladaRulesFromApi,
+          },
+        },
+        {
+          provide: PeladaApiService,
+          useValue: {
+            createInvite: jasmine
+              .createSpy('createInvite')
+              .and.resolveTo({ token: 'tok-1', peladaId: 'p1', expiresAt: '' }),
           },
         },
       ],
@@ -230,5 +244,82 @@ describe('JogadoresListaComponent', () => {
     fixture.componentInstance.submitNewPlayer(new Event('submit'));
     fixture.detectChanges();
     expect(fixture.componentInstance.addModalError()).toContain('organizador');
+  });
+
+  describe('convite de jogador (issue #172)', () => {
+    it('botão "Convidar jogador" gera link e QR code', async () => {
+      expect(fixture.nativeElement.textContent).toContain('Convidar jogador');
+
+      fixture.componentInstance.openInviteModal();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.inviteLink()).toBe(
+        `${window.location.origin}/convite/tok-1`,
+      );
+      expect(fixture.nativeElement.querySelector('pelada-qr-code')).not.toBeNull();
+      const linkInput = fixture.nativeElement.querySelector(
+        '#invite-link',
+      ) as HTMLInputElement;
+      expect(linkInput.value).toContain('/convite/tok-1');
+    });
+
+    it('fecha o modal de convite', async () => {
+      fixture.componentInstance.openInviteModal();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.inviteModalOpen()).toBe(true);
+
+      fixture.componentInstance.closeInviteModal();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.inviteModalOpen()).toBe(false);
+    });
+  });
+
+  describe('lista Convidados (issue #172)', () => {
+    it('mostra convidados e promove um deles', () => {
+      const promoteSpy = jasmine.createSpy('promoteGuest').and.returnValue(
+        of({
+          id: 'g2',
+          displayName: 'Convidado Fulano',
+          isGoalkeeper: false,
+          position: null,
+          rating: null,
+          tags: [],
+          isFixedList: false,
+          isGuest: false,
+        } satisfies RosterPlayer),
+      );
+      const rosterService = TestBed.inject(PeladaRosterService) as unknown as {
+        promoteGuest: jasmine.Spy;
+      };
+      rosterService.promoteGuest = promoteSpy;
+
+      fixture.componentInstance.guests.set([
+        {
+          id: 'g2',
+          displayName: 'Convidado Fulano',
+          isGoalkeeper: false,
+          position: null,
+          rating: null,
+          tags: [],
+          isFixedList: false,
+          isGuest: true,
+        },
+      ]);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('Convidados');
+      expect(fixture.nativeElement.textContent).toContain('Convidado Fulano');
+
+      fixture.componentInstance.promoteGuest('g2');
+      fixture.detectChanges();
+
+      expect(promoteSpy).toHaveBeenCalledWith(
+        jasmine.objectContaining({ id: 'p1' }),
+        'g2',
+      );
+      expect(fixture.componentInstance.guests()).toEqual([]);
+    });
   });
 });
