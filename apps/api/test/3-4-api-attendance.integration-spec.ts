@@ -249,6 +249,58 @@ if (runHarness) {
       expect(byId(p3Fixed.id)?.status).toBe('CONFIRMED');
     });
 
+    it('lista nova já nasce com os fixos confirmados (até a capacidade) quando fixedListOnly está ligado', async () => {
+      const sub = `att-fixed-init-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const pelada = await createPelada(prisma, { owner: org });
+      const token = signTestJwt({
+        sub: `${sub}-org`,
+        email: org.email ?? 'o@y.z',
+      });
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { capacity: 2, fixedListOnly: true },
+      });
+      const common = await createPlayer(prisma, { peladaId: pelada.id, displayName: 'Ana' });
+      const fixed = [];
+      for (const name of ['Bruno', 'Carla', 'Davi']) {
+        const p = await createPlayer(prisma, { peladaId: pelada.id, displayName: name });
+        await prisma.player.update({ where: { id: p.id }, data: { isFixedList: true } });
+        fixed.push(p);
+      }
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-10-01T19:00:00Z'),
+      });
+
+      const res = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/attendance`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      const entries = res.body.entries as { playerId: string; status: string }[];
+      const status = (id: string) => entries.find((e) => e.playerId === id)?.status;
+      expect(status(common.id)).toBe('PENDING');
+      expect(fixed.filter((p) => status(p.id) === 'CONFIRMED')).toHaveLength(2);
+      expect(res.body.counts.confirmed).toBe(2);
+
+      // Organizador tira um fixo: próxima leitura não o reconfirma.
+      const removed = fixed.find((p) => status(p.id) === 'CONFIRMED')!;
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${removed.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'PENDING' })
+        .expect(200);
+      const again = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/attendance`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(
+        (again.body.entries as { playerId: string; status: string }[]).find(
+          (e) => e.playerId === removed.id,
+        )?.status,
+      ).toBe('PENDING');
+    });
+
     it('rulesOverride.fixedListOnly=false numa partida específica suspende a prioridade do fixo só nela', async () => {
       const sub = `att-fixed-override-${Math.random().toString(36).slice(2, 8)}`;
       const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
