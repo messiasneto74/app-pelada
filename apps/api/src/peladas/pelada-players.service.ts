@@ -45,6 +45,52 @@ export class PeladaPlayersService {
     };
   }
 
+  /** Lista "Convidados" (issue #172) — jogadores entrados por convite, ainda não promovidos. */
+  async listGuests(
+    auth: AuthUserPayload,
+    peladaId: string,
+  ): Promise<PeladaRosterDto> {
+    const user = await this.meService.getOrCreateUser(auth);
+    await this.assertMember(peladaId, user.id);
+
+    const players = await this.prisma.player.findMany({
+      where: { peladaId, isGuest: true },
+      orderBy: [{ displayName: 'asc' }, { id: 'asc' }],
+    });
+
+    return {
+      peladaId,
+      players: players.map(toRosterPlayerDto),
+    };
+  }
+
+  /** Promove um Convidado pra Jogador (issue #172 — fase 1: só manual). */
+  async promoteGuest(
+    auth: AuthUserPayload,
+    peladaId: string,
+    playerId: string,
+  ) {
+    const user = await this.meService.getOrCreateUser(auth);
+    await this.assertOrganizadorWithRules(peladaId, user.id);
+
+    const existing = await this.prisma.player.findFirst({
+      where: { id: playerId, peladaId },
+    });
+    if (!existing) {
+      throw new NotFoundException('Jogador não encontrado nesta pelada.');
+    }
+    if (!existing.isGuest) {
+      throw new ForbiddenException('Este jogador já não é um convidado.');
+    }
+
+    const player = await this.prisma.player.update({
+      where: { id: playerId },
+      data: { isGuest: false },
+    });
+
+    return toRosterPlayerDto(player);
+  }
+
   async getPlayer(
     auth: AuthUserPayload,
     peladaId: string,

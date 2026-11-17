@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, model, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { PeladaApiService } from '../../core/pelada/pelada-api.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
@@ -26,6 +27,7 @@ import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaCardComponent } from '../../ui/card.component';
 import { PeladaFieldComponent } from '../../ui/field.component';
 import { PeladaInputDirective } from '../../ui/input.directive';
+import { PeladaQrCodeComponent } from '../../ui/qr-code.component';
 import { PeladaSegmentComponent } from '../../ui/segment.component';
 import { ScreenHeaderComponent } from '../../ui/screen-header.component';
 
@@ -41,6 +43,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
     PeladaSegmentComponent,
     PeladaButtonComponent,
     PeladaAvatarComponent,
+    PeladaQrCodeComponent,
   ],
   template: `
     <section class="pelada-shell">
@@ -115,9 +118,45 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           >
             + Adicionar jogador
           </button>
+          <button
+            type="button"
+            peladaButton
+            variant="secondary"
+            [peladaButtonBlock]="true"
+            (click)="openInviteModal()"
+          >
+            Convidar jogador (link/QR)
+          </button>
         }
         @if (addHint()) {
           <p class="pelada-muted add-hint" role="status">{{ addHint() }}</p>
+        }
+
+        @if (isOrganizador() && guests().length > 0) {
+          <pelada-card title="Convidados" class="guests-card">
+            <p class="pelada-muted hint">
+              Entraram por convite. Promova pra Jogador quando fizer sentido pro grupo.
+            </p>
+            <ul class="roster-list">
+              @for (g of guests(); track g.id) {
+                <li class="guest-row">
+                  <pelada-avatar [name]="g.displayName" size="small" tone="lime" />
+                  <span class="roster-row__main">
+                    <span class="roster-row__name">{{ g.displayName }}</span>
+                  </span>
+                  <button
+                    type="button"
+                    peladaButton
+                    variant="ghost"
+                    [disabled]="promotingId() === g.id"
+                    (click)="promoteGuest(g.id)"
+                  >
+                    {{ promotingId() === g.id ? 'Promovendo…' : 'Promover' }}
+                  </button>
+                </li>
+              }
+            </ul>
+          </pelada-card>
         }
       }
 
@@ -193,6 +232,66 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      }
+
+      @if (inviteModalOpen()) {
+        <div
+          class="add-modal-backdrop"
+          role="presentation"
+          (click)="closeInviteModal()"
+        >
+          <div
+            class="add-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="invite-title"
+            (click)="$event.stopPropagation()"
+            (keydown.escape)="closeInviteModal()"
+          >
+            <h2 id="invite-title" class="add-modal__title">Convidar jogador</h2>
+            @if (inviteLoading()) {
+              <p class="pelada-muted">Gerando convite…</p>
+            } @else if (inviteError()) {
+              <p class="add-modal__error" role="alert">{{ inviteError() }}</p>
+            } @else if (inviteLink()) {
+              <p class="pelada-muted hint">
+                Válido por 5 horas, uso único. Compartilhe o link ou mostre o QR code.
+              </p>
+              <pelada-qr-code [value]="inviteLink()!" [pixelSize]="200" />
+              <pelada-field label="Link do convite" forId="invite-link">
+                <input
+                  id="invite-link"
+                  type="text"
+                  peladaInput
+                  readonly
+                  [value]="inviteLink()!"
+                  (click)="copyInviteLink()"
+                />
+              </pelada-field>
+              @if (inviteCopied()) {
+                <p class="pelada-text-ok" role="status">Link copiado!</p>
+              }
+              <button
+                type="button"
+                peladaButton
+                variant="lime"
+                [peladaButtonBlock]="true"
+                (click)="copyInviteLink()"
+              >
+                Copiar link
+              </button>
+            }
+            <button
+              type="button"
+              peladaButton
+              variant="secondary"
+              [peladaButtonBlock]="true"
+              (click)="closeInviteModal()"
+            >
+              Fechar
+            </button>
           </div>
         </div>
       }
@@ -295,6 +394,22 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         gap: var(--pelada-space-2);
         margin-top: var(--pelada-space-4);
       }
+      .guests-card {
+        display: block;
+        margin-top: var(--pelada-space-4);
+      }
+      .guest-row {
+        display: flex;
+        align-items: center;
+        gap: var(--pelada-space-3);
+        padding: var(--pelada-space-2) 0;
+        border-bottom: 1px solid var(--pelada-line);
+      }
+      pelada-qr-code {
+        display: block;
+        text-align: center;
+        margin: 0 0 var(--pelada-space-4);
+      }
     `,
   ],
 })
@@ -304,6 +419,7 @@ export class JogadoresListaComponent implements OnInit {
   private readonly rulesService = inject(PeladaRulesService);
   private readonly rulesApi = inject(PeladaRulesApiService);
   private readonly orgContext = inject(PeladaOrganizadorContextService);
+  private readonly peladaApi = inject(PeladaApiService);
 
   readonly segmentOptions = ROSTER_SEGMENT_OPTIONS;
   readonly segment = model<RosterSegment>('all');
@@ -318,6 +434,15 @@ export class JogadoresListaComponent implements OnInit {
   readonly newPlayerFixedList = signal(false);
   readonly addModalError = signal('');
   readonly savingPlayer = signal(false);
+
+  readonly guests = signal<RosterPlayer[]>([]);
+  readonly promotingId = signal<string | null>(null);
+
+  readonly inviteModalOpen = signal(false);
+  readonly inviteLoading = signal(false);
+  readonly inviteLink = signal<string | null>(null);
+  readonly inviteError = signal('');
+  readonly inviteCopied = signal(false);
 
   readonly rosterPositionLabel = rosterPositionLabel;
   readonly formatRosterRating = formatRosterRating;
@@ -347,6 +472,9 @@ export class JogadoresListaComponent implements OnInit {
     this.rosterService.loadRoster(pelada, (list, _outcome) => {
       this.players.set(list);
       this.loading.set(false);
+    });
+    this.rosterService.loadGuests(pelada, (list, _outcome) => {
+      this.guests.set(list);
     });
   }
 
@@ -458,5 +586,65 @@ export class JogadoresListaComponent implements OnInit {
         );
       },
     });
+  }
+
+  promoteGuest(playerId: string): void {
+    const pelada = this.peladaContext.getActivePelada();
+    if (!pelada || this.promotingId()) {
+      return;
+    }
+    this.promotingId.set(playerId);
+    this.rosterService.promoteGuest(pelada, playerId).subscribe({
+      next: () => {
+        this.guests.update((list) => list.filter((g) => g.id !== playerId));
+        this.promotingId.set(null);
+        this.rosterService.loadRoster(pelada, (list) => this.players.set(list));
+      },
+      error: () => {
+        this.promotingId.set(null);
+      },
+    });
+  }
+
+  openInviteModal(): void {
+    const pelada = this.peladaContext.getActivePelada();
+    if (!pelada) {
+      return;
+    }
+    this.inviteModalOpen.set(true);
+    this.inviteLoading.set(true);
+    this.inviteError.set('');
+    this.inviteLink.set(null);
+    this.inviteCopied.set(false);
+
+    this.peladaApi
+      .createInvite(pelada.id)
+      .then((created) => {
+        this.inviteLink.set(`${window.location.origin}/convite/${created.token}`);
+        this.inviteLoading.set(false);
+      })
+      .catch(() => {
+        this.inviteError.set('Não foi possível gerar o convite. Tente de novo.');
+        this.inviteLoading.set(false);
+      });
+  }
+
+  closeInviteModal(): void {
+    this.inviteModalOpen.set(false);
+  }
+
+  copyInviteLink(): void {
+    const link = this.inviteLink();
+    if (!link || !navigator.clipboard) {
+      return;
+    }
+    navigator.clipboard
+      .writeText(link)
+      .then(() => {
+        this.inviteCopied.set(true);
+      })
+      .catch(() => {
+        /* clipboard indisponível (ex.: contexto não seguro) — link já está visível no campo */
+      });
   }
 }

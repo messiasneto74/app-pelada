@@ -9,6 +9,8 @@ export type RosterPlayer = {
   isFixedList: boolean;
   /** Vínculo app ↔ elenco (lista §3.7-API); ausente em mocks antigos. */
   userId?: string | null;
+  /** Issue #172 — entrou por convite e ainda não foi promovido a jogador. */
+  isGuest?: boolean;
 };
 
 export type RosterSegment = 'all' | 'gk' | 'line';

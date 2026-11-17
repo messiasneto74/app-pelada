@@ -16,6 +16,11 @@ export const routes: Routes = [
       import('./features/entrar/entrar.component').then((m) => m.EntrarComponent),
   },
   {
+    path: 'convite/:token',
+    loadComponent: () =>
+      import('./features/convite/convite.component').then((m) => m.ConviteComponent),
+  },
+  {
     path: 'entrar/completar',
     canActivate: [authGuard],
     loadComponent: () =>

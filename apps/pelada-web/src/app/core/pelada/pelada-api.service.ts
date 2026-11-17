@@ -19,6 +19,27 @@ export interface PeladaCreatedApi {
   defaultLocation: string | null;
 }
 
+/** Issue #172 (fase 1) — convite de entrada por link/QR, uso único, validade 5h. */
+export interface CreatedInviteApi {
+  token: string;
+  peladaId: string;
+  expiresAt: string;
+}
+
+export interface InvitePreviewApi {
+  peladaId: string;
+  peladaName: string;
+  expiresAt: string;
+}
+
+export interface RedeemedInviteApi {
+  peladaId: string;
+  name: string;
+  photoUrl: string | null;
+  defaultWeekday: number | null;
+  defaultLocation: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PeladaApiService {
   private readonly http = inject(HttpClient);
@@ -42,6 +63,30 @@ export class PeladaApiService {
   listMyPeladas(): Promise<MyPeladaSummary[]> {
     return firstValueFrom(
       this.http.get<MyPeladaSummary[]>(`${environment.apiUrl}/me/peladas`),
+    );
+  }
+
+  createInvite(peladaId: string): Promise<CreatedInviteApi> {
+    return firstValueFrom(
+      this.http.post<CreatedInviteApi>(
+        `${environment.apiUrl}/peladas/${peladaId}/invites`,
+        {},
+      ),
+    );
+  }
+
+  previewInvite(token: string): Promise<InvitePreviewApi> {
+    return firstValueFrom(
+      this.http.get<InvitePreviewApi>(`${environment.apiUrl}/invites/${token}`),
+    );
+  }
+
+  redeemInvite(token: string): Promise<RedeemedInviteApi> {
+    return firstValueFrom(
+      this.http.post<RedeemedInviteApi>(
+        `${environment.apiUrl}/invites/${token}/redeem`,
+        {},
+      ),
     );
   }
 }
