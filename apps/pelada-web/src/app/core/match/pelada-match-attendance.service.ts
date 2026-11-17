@@ -6,20 +6,50 @@ import { environment } from '../../../environments/environment';
  * Presença / lista — endpoints usados pela aba Partida (§3.4, 3.4-API).
  * Fechar lista na API é necessário antes do POST /draw (status LIST_CLOSED).
  */
+export type MatchAttendanceStatusApi = 'CONFIRMED' | 'PENDING' | 'DECLINED' | 'QUEUE';
+
+/** `GET/PATCH .../attendance` e `POST .../attendance/self` — fonte de verdade da lista. */
+export type MatchAttendanceListApiDto = {
+  matchId: string;
+  peladaId: string;
+  listClosed: boolean;
+  capacity: number;
+  presenceMode: string | null;
+  entries: {
+    playerId: string;
+    status: MatchAttendanceStatusApi;
+    queuePosition: number | null;
+    isGuest: boolean;
+  }[];
+};
+
 @Injectable({ providedIn: 'root' })
 export class PeladaMatchAttendanceService {
   private readonly http = inject(HttpClient);
+
+  getList(peladaId: string, matchId: string) {
+    return this.http.get<MatchAttendanceListApiDto>(
+      `${environment.apiUrl}/peladas/${peladaId}/matches/${matchId}/attendance`,
+    );
+  }
 
   patchPlayer(
     peladaId: string,
     matchId: string,
     playerId: string,
-    body: { status: 'CONFIRMED' | 'PENDING' | 'DECLINED' | 'QUEUE'; queuePosition?: number },
+    body: { status: MatchAttendanceStatusApi; queuePosition?: number },
   ) {
-    return this.http.patch<{ playerId: string; status: string }>(
+    return this.http.patch<MatchAttendanceListApiDto>(
       `${environment.apiUrl}/peladas/${peladaId}/matches/${matchId}/attendance/${playerId}`,
       body,
       { observe: 'body' },
+    );
+  }
+
+  setSelf(peladaId: string, matchId: string, action: 'confirm' | 'decline') {
+    return this.http.post<MatchAttendanceListApiDto>(
+      `${environment.apiUrl}/peladas/${peladaId}/matches/${matchId}/attendance/self`,
+      { action },
     );
   }
 

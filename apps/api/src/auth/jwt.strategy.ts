@@ -9,9 +9,28 @@ type KeycloakAccessToken = {
   sub: string;
   email?: string;
   preferred_username?: string;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
   azp?: string;
   aud?: string | string[];
 };
+
+/**
+ * Nome digitado no cadastro (ou vindo do Google). `POST /register` grava
+ * sobrenome "Pelada" como placeholder quando a pessoa digita só um nome
+ * (`splitDisplayName`), então nesse caso usamos só o primeiro nome.
+ */
+export function displayNameFromClaims(
+  payload: Pick<KeycloakAccessToken, 'name' | 'given_name' | 'family_name'>,
+): string | undefined {
+  const given = payload.given_name?.trim();
+  if (given && payload.family_name?.trim() === 'Pelada') {
+    return given;
+  }
+  const full = payload.name?.trim();
+  return full || given || undefined;
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -59,9 +78,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         'Token emitido para um client não autorizado.',
       );
     }
+    const name = displayNameFromClaims(payload);
     return {
       sub: payload.sub,
       email: payload.email,
+      ...(name ? { name } : {}),
     };
   }
 

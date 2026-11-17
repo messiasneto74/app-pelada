@@ -49,6 +49,9 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <p class="pelada-text-ok" role="status">{{ savedMessage() }}</p>
       }
 
+      @if (!rulesReady()) {
+        <p class="pelada-muted">Carregando regras…</p>
+      } @else {
       <pelada-card title="Formato">
         <pelada-field label="Jogadores de linha por time" forId="players-per-team">
           <input
@@ -152,6 +155,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       >
         {{ saving() ? 'Salvando…' : 'Salvar como padrão' }}
       </button>
+      }
       <a routerLink="/inicio" class="back-link">Voltar ao Início</a>
     </section>
   `,
@@ -188,6 +192,11 @@ export class RegrasPeladaComponent implements OnInit {
   readonly savedMessage = signal<string | null>(null);
   readonly saving = signal(false);
   readonly peladaName = signal('Pelada');
+  /**
+   * Só mostra o formulário depois do GET das regras: antes, o que a pessoa
+   * mexia era sobrescrito em silêncio quando a resposta chegava (rede lenta).
+   */
+  readonly rulesReady = signal(false);
 
   readonly paymentOptions = [
     { value: 'PER_MATCH', label: 'Por jogo' },
@@ -232,6 +241,7 @@ export class RegrasPeladaComponent implements OnInit {
   private applyLoadedRules(loaded: PeladaRulesFormValues): void {
     this.values.set(loaded);
     this.syncSegmentsFromValues(loaded);
+    this.rulesReady.set(true);
   }
 
   patchNumber(field: 'playersPerTeam' | 'teamCount', event: Event): void {

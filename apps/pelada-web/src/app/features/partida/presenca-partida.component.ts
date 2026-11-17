@@ -23,6 +23,7 @@ import {
   filterPresenceBySegment,
   orgTogglePlayer,
   presenceCounts,
+  presenceFromAttendance,
   resolveGuest,
   selfSetPlayerStatus,
   segmentOptionsWithCounts,
@@ -35,10 +36,11 @@ import type {
   PresenceRow,
 } from '../../core/presence/presence-attendance.model';
 import type { Observable } from 'rxjs';
-import { forkJoin, of, switchMap } from 'rxjs';
+import { catchError, concatMap, forkJoin, of, Subject, switchMap } from 'rxjs';
 import { PresenceSessionService } from '../../core/presence/presence-session.service';
 import { evaluateFormatBeforeClose } from '../../core/presence/presence-format-suggest.logic';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
+import type { MatchAttendanceListApiDto } from '../../core/match/pelada-match-attendance.service';
 import {
   DEFAULT_PELADA_RULES,
   type PeladaRulesFormValues,
@@ -580,6 +582,13 @@ export class PresencaPartidaComponent implements OnInit {
       this.capacity(),
     );
     this.applyPresenceState(result.rows, result.queueOrder);
+    const pelada = this.peladaContext.getActivePelada();
+    const mid = this.matchId();
+    if (pelada && mid) {
+      this.syncWithApi(
+        this.attendanceApi.setSelf(pelada.id, mid, accept ? 'confirm' : 'decline'),
+      );
+    }
   }
 
   showOrgActions(row: PresenceRow): boolean {
@@ -600,6 +609,81 @@ export class PresencaPartidaComponent implements OnInit {
       this.capacity(),
     );
     this.applyPresenceState(result.rows, result.queueOrder);
+    const next = result.rows.find(
+      (r) => r.kind === 'player' && r.player.id === playerId,
+    );
+    const pelada = this.peladaContext.getActivePelada();
+    const mid = this.matchId();
+    if (pelada && mid && next?.kind === 'player') {
+      this.syncWithApi(
+        this.attendanceApi.patchPlayer(pelada.id, mid, playerId, {
+          status: this.presenceStatusToApi(next.status),
+        }),
+      );
+    }
+  }
+
+  /**
+   * Grava a mudança na API (otimista) e adota a lista devolvida como verdade —
+   * a fila/promoção é decidida no servidor. Sem isso a lista só existia no
+   * sessionStorage e se perdia ao fechar o app ou entrar de novo.
+   */
+  private syncWithApi(request: Observable<MatchAttendanceListApiDto>): void {
+    this.syncQueue.next(request);
+  }
+
+  /** Toques rápidos: uma gravação por vez, na ordem, pra resposta velha não sobrescrever a nova. */
+  private readonly syncQueue = new Subject<Observable<MatchAttendanceListApiDto>>();
+  private readonly syncSubscription = this.syncQueue
+    .pipe(
+      concatMap((req) =>
+        req.pipe(
+          catchError(() => {
+            this.refreshFromApi();
+            return of(null);
+          }),
+        ),
+      ),
+    )
+    .subscribe((dto) => {
+      if (dto) {
+        this.applyServerAttendance(dto);
+      }
+    });
+
+  private refreshFromApi(): void {
+    const pelada = this.peladaContext.getActivePelada();
+    const mid = this.matchId();
+    if (!pelada || !mid) {
+      return;
+    }
+    this.attendanceApi.getList(pelada.id, mid).subscribe({
+      next: (dto) => this.applyServerAttendance(dto),
+      error: () => {
+        /* API fora: mantém a lista local (sessionStorage) */
+      },
+    });
+  }
+
+  private applyServerAttendance(dto: MatchAttendanceListApiDto): void {
+    if (dto.matchId !== this.matchId()) {
+      return;
+    }
+    const { statusByPlayerId, queueOrder } = presenceFromAttendance(dto.entries);
+    this.capacity.set(dto.capacity);
+    this.listClosed.set(dto.listClosed);
+    this.presenceMode.set(
+      dto.presenceMode === 'SELF_CONFIRM' ? 'SELF_CONFIRM' : 'ORGANIZER_CLOSES',
+    );
+    this.rows.update((rows) =>
+      rows.map((r) =>
+        r.kind === 'player' && statusByPlayerId.has(r.player.id)
+          ? { ...r, status: statusByPlayerId.get(r.player.id)! }
+          : r,
+      ),
+    );
+    this.queueOrder.set(queueOrder);
+    this.persist();
   }
 
   onGuest(accept: boolean, guestId: string): void {
@@ -772,6 +856,7 @@ export class PresencaPartidaComponent implements OnInit {
       assemblePresenceRows(players, map, guests, extraPlayers),
     );
     this.persist();
+    this.refreshFromApi();
   }
 
   private applyPresenceState(

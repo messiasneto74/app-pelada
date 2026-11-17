@@ -380,3 +380,19 @@ describe('CORE-TEST: formatos e cenários', () => {
     expect(after.metrics.maxAverageDiff).not.toBe(before.maxAverageDiff);
   });
 });
+
+describe('computeDrawBalanceMetrics — exibição', () => {
+  it('balanceScore é inteiro e o resumo usa vírgula decimal (pt-BR)', () => {
+    const players = [mk(1, 6), mk(2, 7), mk(3, 5), mk(4, 6), mk(5, 6), mk(6, 7)];
+    const m = computeDrawBalanceMetrics(
+      [
+        ['p1', 'p2', 'p3'],
+        ['p4', 'p5', 'p6'],
+      ],
+      players,
+    );
+    expect(Number.isInteger(m.balanceScore)).toBe(true);
+    expect(m.balanceScore).toBe(97);
+    expect(m.summaryText).toBe('Diferença de 0,33 entre as médias.');
+  });
+});

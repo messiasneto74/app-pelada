@@ -14,7 +14,8 @@ import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
 import { DEFAULT_PELADA_RULES } from '../../core/pelada/pelada-rules.model';
 import { PresencaPartidaComponent } from './presenca-partida.component';
 import { PeladaMatchAttendanceService } from '../../core/match/pelada-match-attendance.service';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import type { MatchAttendanceListApiDto } from '../../core/match/pelada-match-attendance.service';
 
 const players: RosterPlayer[] = [
   {
@@ -58,6 +59,26 @@ const dash: InicioDashboardView = {
   cashExpectedLabel: 'R$ 0,00',
   cashPercent: 0,
 };
+
+function serverList(
+  statuses: Record<string, 'CONFIRMED' | 'PENDING' | 'QUEUE' | 'DECLINED'>,
+  extra: Partial<MatchAttendanceListApiDto> = {},
+): MatchAttendanceListApiDto {
+  return {
+    matchId: 'm1',
+    peladaId: 'p1',
+    listClosed: false,
+    capacity: 12,
+    presenceMode: 'ORGANIZER_CLOSES',
+    entries: Object.entries(statuses).map(([playerId, status], i) => ({
+      playerId,
+      status,
+      queuePosition: status === 'QUEUE' ? i + 1 : null,
+      isGuest: false,
+    })),
+    ...extra,
+  };
+}
 
 describe('PresencaPartidaComponent §3.4', () => {
   let fixture: ComponentFixture<PresencaPartidaComponent>;
@@ -127,6 +148,9 @@ describe('PresencaPartidaComponent §3.4', () => {
         {
           provide: PeladaMatchAttendanceService,
           useValue: {
+            // Padrão: API de presença fora do ar → tela segue com a lista local.
+            getList: () => throwError(() => new Error('offline')),
+            setSelf: () => throwError(() => new Error('offline')),
             patchPlayer: () => of({ status: 'CONFIRMED' }),
             closeList: () => of({}),
             reopenList: () => of({}),
@@ -210,6 +234,57 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(navigate).toHaveBeenCalledWith(['/partida/sorteio']);
     const saved = TestBed.inject(PresenceSessionService).load('m1');
     expect(saved?.listClosed).toBe(true);
+  });
+
+  it('carrega status, fila e lista fechada da API (fonte de verdade, não só a sessão)', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    api['getList'] = () =>
+      of(serverList({ a1: 'PENDING', b1: 'CONFIRMED' }, { listClosed: false }));
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    const rows = fixture.componentInstance.rows();
+    const status = (id: string) =>
+      rows.find((r) => r.kind === 'player' && r.player.id === id)?.status;
+    expect(status('a1')).toBe('pending');
+    expect(status('b1')).toBe('confirmed');
+    expect(fixture.componentInstance.capacity()).toBe(12);
+  });
+
+  it('organizador confirmar grava na API na hora (não só no sessionStorage)', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const patch = jasmine
+      .createSpy('patchPlayer')
+      .and.returnValue(of(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' })));
+    api['getList'] = () => of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }));
+    api['patchPlayer'] = patch;
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onOrgToggle('b1');
+
+    expect(patch).toHaveBeenCalledWith('p1', 'm1', 'b1', { status: 'CONFIRMED' });
+    const b1 = fixture.componentInstance
+      .rows()
+      .find((r) => r.kind === 'player' && r.player.id === 'b1');
+    expect(b1?.status).toBe('confirmed');
+  });
+
+  it('jogador "Vou" no modo SELF_CONFIRM chama POST attendance/self', async () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const setSelf = jasmine
+      .createSpy('setSelf')
+      .and.returnValue(of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }, { presenceMode: 'SELF_CONFIRM' })));
+    api['getList'] = () =>
+      of(serverList({ a1: 'PENDING', b1: 'PENDING' }, { presenceMode: 'SELF_CONFIRM' }));
+    api['setSelf'] = setSelf;
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.presenceMode()).toBe('SELF_CONFIRM');
+
+    fixture.componentInstance.onSelfPresence('a1', true);
+
+    expect(setSelf).toHaveBeenCalledWith('p1', 'm1', 'confirm');
   });
 
   it('lista jogador confirmado com chip', () => {
@@ -349,6 +424,9 @@ describe('PresencaPartidaComponent §3.4', () => {
         {
           provide: PeladaMatchAttendanceService,
           useValue: {
+            // Padrão: API de presença fora do ar → tela segue com a lista local.
+            getList: () => throwError(() => new Error('offline')),
+            setSelf: () => throwError(() => new Error('offline')),
             patchPlayer: () => of({ status: 'CONFIRMED' }),
             closeList: () => of({}),
             reopenList: () => of({}),

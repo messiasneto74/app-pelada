@@ -421,7 +421,9 @@ export class MatchAttendanceService {
     return {
       matchId: match.id,
       peladaId: match.peladaId,
-      listClosed: match.status === 'LIST_CLOSED',
+      // Sorteada / em campo / encerrada também é lista fechada — senão o app
+      // mostrava "Lista aberta" (e botões que a API recusa) depois do sorteio.
+      listClosed: match.status !== 'SCHEDULED',
       capacity,
       presenceMode: match.presenceMode,
       counts: attendanceCounts(rowInputs),

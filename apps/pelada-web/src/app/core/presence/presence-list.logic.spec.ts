@@ -1,5 +1,6 @@
 import type { RosterPlayer } from '../roster/roster-player.model';
 import {
+  presenceFromAttendance,
   assemblePresenceRows,
   buildInitialStatusMap,
   dashboardConfirmedIdsForSeed,
@@ -180,5 +181,22 @@ describe('presence-list.logic', () => {
     expect(rows.some((r) => r.kind === 'player' && r.player.id === 'guest-g1')).toBe(
       true,
     );
+  });
+});
+
+describe('presenceFromAttendance', () => {
+  it('mapeia status da API e ordena a fila por queuePosition', () => {
+    const { statusByPlayerId, queueOrder } = presenceFromAttendance([
+      { playerId: 'a', status: 'CONFIRMED', queuePosition: null },
+      { playerId: 'b', status: 'QUEUE', queuePosition: 2 },
+      { playerId: 'c', status: 'QUEUE', queuePosition: 1 },
+      { playerId: 'd', status: 'PENDING', queuePosition: null },
+      { playerId: 'e', status: 'DECLINED', queuePosition: null },
+    ]);
+    expect(statusByPlayerId.get('a')).toBe('confirmed');
+    expect(statusByPlayerId.get('b')).toBe('queue');
+    expect(statusByPlayerId.get('d')).toBe('pending');
+    expect(statusByPlayerId.get('e')).toBe('pending');
+    expect(queueOrder).toEqual(['c', 'b']);
   });
 });

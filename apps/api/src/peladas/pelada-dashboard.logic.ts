@@ -26,14 +26,22 @@ export type PeladaDashboardResponse = {
  * Sem `capacity` manual, o padrão é só os titulares de todos os times
  * (`playersPerTeam × teamCount`) — nem toda pelada tem banco de reserva, e
  * quem quiser vagas extras para reservas define `capacity` manualmente.
+ *
+ * `playersPerTeam` conta só jogadores de linha. Com "Um goleiro por time"
+ * (`FIXED_PER_TEAM`), cada time precisa de mais uma vaga pro goleiro — senão
+ * o 2º goleiro cai na fila e o sorteio trava em "confirme pelo menos N goleiros".
  */
 export function computeMatchCapacity(
-  rules: Pick<PeladaRules, 'capacity' | 'playersPerTeam' | 'teamCount'>,
+  rules: Pick<PeladaRules, 'capacity' | 'playersPerTeam' | 'teamCount'> & {
+    goalkeeperMode?: PeladaRules['goalkeeperMode'];
+  },
 ): number {
   if (typeof rules.capacity === 'number' && rules.capacity > 0) {
     return rules.capacity;
   }
-  return rules.playersPerTeam * rules.teamCount;
+  const perTeam =
+    rules.playersPerTeam + (rules.goalkeeperMode === 'FIXED_PER_TEAM' ? 1 : 0);
+  return perTeam * rules.teamCount;
 }
 
 /**
