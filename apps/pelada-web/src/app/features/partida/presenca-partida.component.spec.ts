@@ -351,6 +351,52 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(b1?.status).toBe('confirmed');
   });
 
+  it('resposta de uma gravação não desfaz o toque seguinte ainda na fila', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const responses = new Map<string, Subject<MatchAttendanceListApiDto>>();
+    api['getList'] = () => of(serverList({ a1: 'PENDING', b1: 'PENDING' }));
+    api['patchPlayer'] = (_p: string, _m: string, id: string) => {
+      const res = new Subject<MatchAttendanceListApiDto>();
+      responses.set(id, res);
+      return res;
+    };
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    const status = (id: string) =>
+      fixture.componentInstance
+        .rows()
+        .find((r) => r.kind === 'player' && r.player.id === id)?.status;
+
+    fixture.componentInstance.onOrgToggle('a1');
+    fixture.componentInstance.onOrgToggle('b1');
+    responses.get('a1')!.next(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }));
+    responses.get('a1')!.complete();
+    expect(status('b1')).toBe('confirmed');
+
+    responses.get('b1')!.next(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' }));
+    responses.get('b1')!.complete();
+    expect(status('a1')).toBe('confirmed');
+    expect(status('b1')).toBe('confirmed');
+  });
+
+  it('gravação pendente que responde depois de fechar não reabre a lista', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const pendingPatch = new Subject<MatchAttendanceListApiDto>();
+    api['getList'] = () => of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }));
+    api['patchPlayer'] = () => pendingPatch;
+    api['closeList'] = () => of({});
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onOrgToggle('b1');
+    fixture.componentInstance.confirmCloseDespiteFormat();
+    pendingPatch.next(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' }, { listClosed: false }));
+    pendingPatch.complete();
+
+    expect(fixture.componentInstance.listClosed()).toBeTrue();
+    expect(TestBed.inject(PresenceSessionService).load('m1')?.listClosed).toBeTrue();
+  });
+
   it('jogador "Vou" no modo SELF_CONFIRM chama POST attendance/self', async () => {
     const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
     const setSelf = jasmine

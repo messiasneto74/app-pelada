@@ -637,6 +637,7 @@ export class PresencaPartidaComponent implements OnInit {
   ): void {
     this.unsaved.set(key, write);
     this.mutationSeq++;
+    this.pendingWrites++;
     this.syncQueue.next(
       defer(write).pipe(
         tap(() => this.clearUnsaved(key, write)),
@@ -644,6 +645,9 @@ export class PresencaPartidaComponent implements OnInit {
           this.refreshFromApi(() => this.clearUnsaved(key, write));
           return of(null);
         }),
+        // Com outra gravação ainda na fila, esta resposta não sabe dela e
+        // desfaria o toque otimista seguinte: só a última resposta é aplicada.
+        map((dto) => (--this.pendingWrites === 0 ? dto : null)),
       ),
     );
   }
@@ -662,6 +666,12 @@ export class PresencaPartidaComponent implements OnInit {
 
   /** Sobe a cada gravação: leitura iniciada antes dela é descartada (resposta velha). */
   private mutationSeq = 0;
+
+  /** Gravações na fila ainda sem resposta. */
+  private pendingWrites = 0;
+
+  /** Organizador já fechou a lista: resposta de gravação anterior não reabre o snapshot. */
+  private closing = false;
 
   /** Toques rápidos: uma gravação por vez, na ordem, pra resposta velha não sobrescrever a nova. */
   private readonly syncQueue = new Subject<Observable<MatchAttendanceListApiDto | null>>();
@@ -700,7 +710,7 @@ export class PresencaPartidaComponent implements OnInit {
     }
     const { statusByPlayerId, queueOrder } = presenceFromAttendance(dto.entries);
     this.capacity.set(dto.capacity);
-    this.listClosed.set(dto.listClosed);
+    this.listClosed.set(dto.listClosed || this.closing);
     this.presenceMode.set(
       dto.presenceMode === 'SELF_CONFIRM' ? 'SELF_CONFIRM' : 'ORGANIZER_CLOSES',
     );
@@ -770,6 +780,7 @@ export class PresencaPartidaComponent implements OnInit {
   }
 
   private finishCloseListAndDraw(): void {
+    this.closing = true;
     this.listClosed.set(true);
     this.persist();
     const pelada = this.peladaContext.getActivePelada();
@@ -808,6 +819,7 @@ export class PresencaPartidaComponent implements OnInit {
   }
 
   reopenList(): void {
+    this.closing = false;
     this.listClosed.set(false);
     this.persist();
     const pelada = this.peladaContext.getActivePelada();
