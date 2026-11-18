@@ -38,7 +38,10 @@ const profile: PeladaPlayerProfileDto = {
   attributes: { tecnica: 7, forca: 6, chute: 8, passe: 5, defesa: 4, velocidade: 9 },
 };
 
-function rulesDto(allowPlayerSelfEdit: boolean): PeladaRulesApiDto {
+function rulesDto(
+  allowPlayerSelfEdit: boolean,
+  drawWeights: Record<string, unknown> = { mode: 'BALANCED' },
+): PeladaRulesApiDto {
   return {
     peladaId: pelada.id,
     playersPerTeam: 6,
@@ -47,13 +50,16 @@ function rulesDto(allowPlayerSelfEdit: boolean): PeladaRulesApiDto {
     goalkeeperMode: 'ROTATING',
     fixedListOnly: false,
     allowPlayerSelfEdit,
-    drawWeights: { mode: 'BALANCED' },
+    drawWeights,
     extra: { paymentModel: 'per_match' },
   };
 }
 
-function rulesApiMock(allowPlayerSelfEdit: boolean) {
-  const dto = rulesDto(allowPlayerSelfEdit);
+function rulesApiMock(
+  allowPlayerSelfEdit: boolean,
+  drawWeights?: Record<string, unknown>,
+) {
+  const dto = rulesDto(allowPlayerSelfEdit, drawWeights);
   return {
     fetchRules: () => of(dto),
     mapFromApi: (d: PeladaRulesApiDto) => peladaRulesFromApi(d),
@@ -119,7 +125,7 @@ describe('JogadorPerfilComponent (3.8)', () => {
         profileServiceProvider,
         {
           provide: PeladaRulesApiService,
-          useValue: rulesApiMock(false),
+          useValue: rulesApiMock(false, { useRating: false, useAttributes: true }),
         },
         {
           provide: PeladaOrganizadorContextService,

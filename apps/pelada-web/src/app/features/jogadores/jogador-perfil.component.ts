@@ -22,6 +22,7 @@ import {
   formatRosterRating,
   rosterPositionLabel,
 } from '../../core/roster/roster-list.logic';
+import { scoringModeFromFlags, type ScoringMode } from '../../core/pelada/pelada-rules.model';
 import type { RosterPlayer } from '../../core/roster/roster-player.model';
 import { PeladaAvatarComponent } from '../../ui/avatar.component';
 import { PeladaButtonComponent } from '../../ui/button.component';
@@ -62,19 +63,21 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       } @else if (editing()) {
         <form class="edit-form" (submit)="onSave($event)">
           <pelada-card title="Nota e tags">
-            <pelada-field label="Nota geral (1–10)" forId="profile-rating">
-              <input
-                id="profile-rating"
-                class="pelada-input"
-                type="number"
-                min="1"
-                max="10"
-                step="1"
-                [value]="editForm().rating"
-                (input)="patchRating($event)"
-                required
-              />
-            </pelada-field>
+            @if (scoringMode() === 'rating') {
+              <pelada-field label="Nota geral (1–10)" forId="profile-rating">
+                <input
+                  id="profile-rating"
+                  class="pelada-input"
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="1"
+                  [value]="editForm().rating"
+                  (input)="patchRating($event)"
+                  required
+                />
+              </pelada-field>
+            }
             <pelada-field
               label="Tags (separadas por vírgula)"
               forId="profile-tags"
@@ -104,28 +107,30 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
             }
           </pelada-card>
 
-          <pelada-card title="Atributos">
-            <ul class="attr-list">
-              @for (attr of attributeDefs; track attr.key) {
-                <li>
-                  <div class="attr-row">
-                    <label [attr.for]="'attr-' + attr.key">{{ attr.label }}</label>
-                    <span class="attr-value">{{ editForm().attributes[attr.key] }}/10</span>
-                  </div>
-                  <input
-                    [id]="'attr-' + attr.key"
-                    type="range"
-                    min="1"
-                    max="10"
-                    step="1"
-                    class="attr-range"
-                    [value]="editForm().attributes[attr.key]"
-                    (input)="patchAttribute(attr.key, $event)"
-                  />
-                </li>
-              }
-            </ul>
-          </pelada-card>
+          @if (scoringMode() === 'attributes') {
+            <pelada-card title="Atributos">
+              <ul class="attr-list">
+                @for (attr of attributeDefs; track attr.key) {
+                  <li>
+                    <div class="attr-row">
+                      <label [attr.for]="'attr-' + attr.key">{{ attr.label }}</label>
+                      <span class="attr-value">{{ editForm().attributes[attr.key] }}/10</span>
+                    </div>
+                    <input
+                      [id]="'attr-' + attr.key"
+                      type="range"
+                      min="1"
+                      max="10"
+                      step="1"
+                      class="attr-range"
+                      [value]="editForm().attributes[attr.key]"
+                      (input)="patchAttribute(attr.key, $event)"
+                    />
+                  </li>
+                }
+              </ul>
+            </pelada-card>
+          }
 
           @if (saveError()) {
             <p class="pelada-field__error" role="alert">{{ saveError() }}</p>
@@ -156,7 +161,9 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           <h2 class="profile-name">{{ profile()!.displayName }}</h2>
           <p class="pelada-muted profile-meta">
             {{ positionLabel() }}
-            · Nota {{ formatRosterRating(profile()!.rating) }}
+            @if (scoringMode() === 'rating') {
+              · Nota {{ formatRosterRating(profile()!.rating) }}
+            }
           </p>
         </div>
 
@@ -168,19 +175,21 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           </div>
         }
 
-        <pelada-card title="Atributos">
-          <ul class="attr-list">
-            @for (attr of attributeRows(); track attr.key) {
-              <li>
-                <div class="attr-row">
-                  <span>{{ attr.label }}</span>
-                  <span class="attr-value">{{ attr.value }}/10</span>
-                </div>
-                <pelada-progress [value]="attr.barPercent" />
-              </li>
-            }
-          </ul>
-        </pelada-card>
+        @if (scoringMode() === 'attributes') {
+          <pelada-card title="Atributos">
+            <ul class="attr-list">
+              @for (attr of attributeRows(); track attr.key) {
+                <li>
+                  <div class="attr-row">
+                    <span>{{ attr.label }}</span>
+                    <span class="attr-value">{{ attr.value }}/10</span>
+                  </div>
+                  <pelada-progress [value]="attr.barPercent" />
+                </li>
+              }
+            </ul>
+          </pelada-card>
+        }
 
         <pelada-card title="Pagamento">
           <p class="plan-label">{{ paymentLabel() }}</p>
@@ -315,6 +324,8 @@ export class JogadorPerfilComponent implements OnInit {
   });
   readonly currentAppUserId = signal<string | null>(null);
   readonly allowPlayerSelfEdit = signal(false);
+  /** Nota e atributos são excludentes no sorteio — só um aparece aqui. */
+  readonly scoringMode = signal<ScoringMode>('rating');
 
   readonly formatRosterRating = formatRosterRating;
   readonly attributeDefs = PLAYER_PROFILE_ATTRIBUTES;
@@ -384,8 +395,10 @@ export class JogadorPerfilComponent implements OnInit {
     this.orgContext.refreshMembership(pelada.id);
     this.rulesApi.fetchRules(pelada.id).subscribe({
       next: (dto) => {
-        this.allowPlayerSelfEdit.set(
-          this.rulesApi.mapFromApi(dto).allowPlayerSelfEdit,
+        const rules = this.rulesApi.mapFromApi(dto);
+        this.allowPlayerSelfEdit.set(rules.allowPlayerSelfEdit);
+        this.scoringMode.set(
+          scoringModeFromFlags(rules.drawUseRating, rules.drawUseAttributes),
         );
       },
       error: () => this.allowPlayerSelfEdit.set(false),

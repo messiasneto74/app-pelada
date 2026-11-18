@@ -82,7 +82,8 @@ describe('RegrasPeladaComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Regras da pelada');
     expect(fixture.nativeElement.textContent).toContain('Formato');
     expect(fixture.nativeElement.textContent).toContain('Salvar como padrão');
-    expect(fixture.nativeElement.textContent).toContain('Usar atributos');
+    expect(fixture.nativeElement.textContent).toContain('Pontuação do sorteio');
+    expect(fixture.nativeElement.textContent).toContain('Atributos');
     expect(fixture.nativeElement.textContent).toContain(
       'Jogador edita o próprio perfil',
     );

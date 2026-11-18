@@ -6,6 +6,9 @@ export type PaymentModel = 'PER_MATCH' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
 
 export type DrawMode = 'BALANCED' | 'RANDOM' | 'MANUAL';
 
+/** Nota e atributos são excludentes no sorteio (história pedida por Messias). */
+export type ScoringMode = 'rating' | 'attributes';
+
 export type FixedGkRotation = 'RESULT' | 'SIDE' | 'MANUAL_ONLY';
 
 export type PeladaRulesFormValues = {
@@ -85,6 +88,24 @@ export function validatePeladaRulesForm(values: PeladaRulesFormValues): string |
     return 'Times no sorteio: entre 2 e 6.';
   }
   return null;
+}
+
+/** `drawUseRating`/`drawUseAttributes` → modo único (nota XOR atributos). */
+export function scoringModeFromFlags(
+  drawUseRating: boolean,
+  drawUseAttributes: boolean,
+): ScoringMode {
+  return !drawUseRating && drawUseAttributes ? 'attributes' : 'rating';
+}
+
+/** Modo único → `drawUseRating`/`drawUseAttributes` (sempre excludentes). */
+export function scoringModeToFlags(
+  mode: ScoringMode,
+): Pick<PeladaRulesFormValues, 'drawUseRating' | 'drawUseAttributes'> {
+  return {
+    drawUseRating: mode === 'rating',
+    drawUseAttributes: mode === 'attributes',
+  };
 }
 
 export function toGoalkeeperMode(values: Pick<
