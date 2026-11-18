@@ -100,7 +100,8 @@
               "buildTarget": "pelada-web:build:development"
             },
             "development-device": {
-              "buildTarget": "pelada-web:build:development-device"
+              "buildTarget": "pelada-web:build:development-device",
+              "host": "0.0.0.0"
             }
           },
           "defaultConfiguration": "development"

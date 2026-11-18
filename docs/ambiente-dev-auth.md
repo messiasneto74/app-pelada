@@ -82,9 +82,17 @@ o cliente usou.
    o IP atual da sua máquina na rede (`LAN_HOST`).
 2. Cadastre esse mesmo host (`http://<ip>.nip.io:8080/realms/pelada/broker/google/endpoint`)
    como redirect URI adicional no client OAuth do Google Cloud Console.
-3. `npm run dev:web:device` em vez de `npm run dev:web` — sobe o Angular com esse
-   environment (fileReplacement `development-device` no `angular.json`), sem precisar
-   editar `environment.development.ts` toda vez que for testar no PC vs. no celular.
+3. Rode a API local (`npm run dev:api`) — ela escuta em todas as interfaces por padrão
+   (`app.listen(port)` sem host fixo), então já aceita conexão da LAN sem mudança.
+   Se usar `npm run stack:up` (API em container) em vez disso, publique também a porta
+   da API pra fora de `127.0.0.1` no `docker-compose.yml`.
+4. Adicione o host do nip.io em `CORS_ORIGIN` (no `.env` da API), separado por vírgula
+   do `localhost`, por exemplo: `CORS_ORIGIN=http://localhost:4200,http://192.168.1.6.nip.io:4200`.
+   Sem isso a API rejeita as chamadas vindas do nip.io por CORS.
+5. `npm run dev:web:device` em vez de `npm run dev:web` — sobe o Angular com esse
+   environment (fileReplacement `development-device` no `angular.json`) escutando em
+   `0.0.0.0` (serve `host`), sem precisar editar `environment.development.ts` toda vez
+   que for testar no PC vs. no celular.
 
 O `docker-compose.yml` publica o Keycloak em todas as interfaces (`${KEYCLOAK_HTTP_PORT:-8080}:8080`,
 sem `127.0.0.1:`), justamente pra aceitar essas conexões vindas da LAN. É um Keycloak
