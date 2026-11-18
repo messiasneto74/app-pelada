@@ -89,7 +89,13 @@ o cliente usou.
 4. Adicione o host do nip.io em `CORS_ORIGIN` (no `.env` da API), separado por vírgula
    do `localhost`, por exemplo: `CORS_ORIGIN=http://localhost:4200,http://192.168.1.6.nip.io:4200`.
    Sem isso a API rejeita as chamadas vindas do nip.io por CORS.
-5. `npm run dev:web:device` em vez de `npm run dev:web` — sobe o Angular com esse
+5. Troque também `KEYCLOAK_ISSUER` (no `.env` da API) pro host do nip.io, por exemplo:
+   `KEYCLOAK_ISSUER=http://192.168.1.6.nip.io:8080/realms/pelada`. O token do Keycloak
+   carrega o host que o navegador usou (`iss`); se a API continuar esperando `localhost`
+   nessa variável, ela rejeita o token com 401 mesmo com o login tendo funcionado.
+   **Volte pro valor de `localhost` depois** (ou mantenha dois `.env` separados), senão
+   o login normal por `npm run dev:web` para de funcionar.
+6. `npm run dev:web:device` em vez de `npm run dev:web` — sobe o Angular com esse
    environment (fileReplacement `development-device` no `angular.json`) escutando em
    `0.0.0.0` (serve `host`), sem precisar editar `environment.development.ts` toda vez
    que for testar no PC vs. no celular.
