@@ -138,7 +138,7 @@ describe('JogadorPerfilComponent (3.8)', () => {
     fixture = TestBed.createComponent(JogadorPerfilComponent);
   });
 
-  it('renderiza §3.8 com tags, atributos e plano', async () => {
+  it('renderiza §3.8 com tags, atributos e plano, sem nota (modo atributos)', async () => {
     fixture.detectChanges();
     await fixture.whenStable();
     await Promise.resolve();
@@ -149,6 +149,76 @@ describe('JogadorPerfilComponent (3.8)', () => {
     expect(text).toContain('Técnica');
     expect(text).toContain('Por partida');
     expect(text).toContain('Editar perfil (adm)');
+    expect(text).not.toContain('· Nota');
+  });
+
+  it('formulário de edição mostra atributos e não a nota (modo atributos)', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    fixture.detectChanges();
+    fixture.componentInstance.startEdit();
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('#profile-rating'),
+    ).toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('#attr-tecnica'),
+    ).not.toBeNull();
+  });
+});
+
+describe('JogadorPerfilComponent modo nota (issue #186)', () => {
+  let fixture: ComponentFixture<JogadorPerfilComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [JogadorPerfilComponent],
+      providers: [
+        provideRouter([
+          { path: 'jogadores/:playerId', component: JogadorPerfilComponent },
+        ]),
+        routeProvider,
+        peladaContextProvider,
+        profileServiceProvider,
+        {
+          provide: PeladaRulesApiService,
+          useValue: rulesApiMock(false, { useRating: true, useAttributes: false }),
+        },
+        {
+          provide: PeladaOrganizadorContextService,
+          useValue: orgContextMock(true),
+        },
+        { provide: AuthService, useValue: authMock('user-org') },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(JogadorPerfilComponent);
+  });
+
+  it('mostra a nota e não os atributos na visualização (modo nota)', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('· Nota 6');
+    expect(text).not.toContain('Técnica');
+  });
+
+  it('formulário de edição mostra a nota e não os atributos (modo nota)', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await Promise.resolve();
+    fixture.detectChanges();
+    fixture.componentInstance.startEdit();
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('#profile-rating'),
+    ).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('#attr-tecnica'),
+    ).toBeNull();
   });
 });
 
