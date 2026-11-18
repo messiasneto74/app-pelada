@@ -71,6 +71,21 @@ deep link `com.pelada.app://callback` (`AndroidManifest.xml` / `Info.plist`), ca
 `App.addListener('appUrlOpen', …)` em `AuthService`, que completa o code flow com
 `tryLoginCodeFlow` e fecha o navegador.
 
+#### Testar em dispositivo físico (celular na mesma rede) ou validar o redirect do Google
+
+O Google recusa IP de LAN cru (ex. `192.168.1.6`) como redirect URI — só aceita
+`localhost` ou um domínio "de verdade". Use um DNS curinga (`<ip>.nip.io`, resolve
+pro próprio IP): o Keycloak (`KC_HOSTNAME_STRICT: false`) devolve o mesmo host que
+o cliente usou.
+
+1. Edite `apps/pelada-web/src/environments/environment.development-device.ts` com
+   o IP atual da sua máquina na rede (`LAN_HOST`).
+2. Cadastre esse mesmo host (`http://<ip>.nip.io:8080/realms/pelada/broker/google/endpoint`)
+   como redirect URI adicional no client OAuth do Google Cloud Console.
+3. `npm run dev:web:device` em vez de `npm run dev:web` — sobe o Angular com esse
+   environment (fileReplacement `development-device` no `angular.json`), sem precisar
+   editar `environment.development.ts` toda vez que for testar no PC vs. no celular.
+
 ---
 
 ## Fluxo no app (F0-5 / F0-6 + UX-AUTH in-app)

@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "dev:web": "npm run build:core && npm run start -w @pelada/web",
+    "dev:web:device": "npm run build:core && npm run start -w @pelada/web -- --configuration=development-device",
     "dev:api": "npm run start:dev -w @pelada/api",
     "build:web": "npm run build -w @pelada/web",
     "build:web:staging": "node scripts/prepare-staging-web-env.mjs && npm run build -w @pelada/web -- --configuration=staging",
