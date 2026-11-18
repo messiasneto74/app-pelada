@@ -2,4 +2,6 @@
 export type AuthUserPayload = {
   sub: string;
   email?: string;
+  /** Nome de exibição vindo do IdP (claim `name`/`given_name`), quando houver. */
+  name?: string;
 };

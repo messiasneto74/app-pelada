@@ -36,9 +36,16 @@ function generateInviteToken(): string {
   return randomBytes(24).toString('base64url');
 }
 
-/** Nome de exibição default pro jogador criado via convite, a partir do e-mail. */
-function displayNameFromEmail(email: string | undefined): string {
-  const local = email?.split('@')[0]?.trim();
+/**
+ * Nome de exibição pro jogador criado via convite: o nome da conta (claim do
+ * token); sem ele, o começo do e-mail.
+ */
+function inviteDisplayName(auth: AuthUserPayload): string {
+  const name = auth.name?.trim();
+  if (name) {
+    return name.slice(0, 60);
+  }
+  const local = auth.email?.split('@')[0]?.trim();
   if (local && local.length >= 2) {
     return local;
   }
@@ -114,7 +121,7 @@ export class PeladaInvitesService {
         data: {
           peladaId: invite.peladaId,
           userId: user.id,
-          displayName: displayNameFromEmail(auth.email),
+          displayName: inviteDisplayName(auth),
           isGuest: true,
         },
       });

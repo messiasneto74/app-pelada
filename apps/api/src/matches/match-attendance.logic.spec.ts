@@ -28,6 +28,18 @@ describe('match-attendance.logic', () => {
     expect(next.find((r) => r.playerId === 'c')?.status).toBe('QUEUE');
   });
 
+  it('reconfirmar quem já está confirmado com a lista cheia não mexe na fila', () => {
+    const rows: AttendanceRowInput[] = [
+      { playerId: 'c', status: 'QUEUE', queuePosition: 1, isGuest: false, isFixedList: false },
+      { playerId: 'a', status: 'CONFIRMED', queuePosition: null, isGuest: false, isFixedList: false },
+      { playerId: 'b', status: 'CONFIRMED', queuePosition: null, isGuest: false, isFixedList: false },
+    ];
+    let next = applyAttendanceStatusChange(rows, 'c', 'QUEUE', capacity);
+    next = applyAttendanceStatusChange(next, 'a', 'CONFIRMED', capacity);
+    next = applyAttendanceStatusChange(next, 'b', 'CONFIRMED', capacity);
+    expect(next).toEqual(rows);
+  });
+
   it('nextQueuePosition incrementa', () => {
     const rows: AttendanceRowInput[] = [
       { playerId: 'a', status: 'QUEUE', queuePosition: 1, isGuest: false, isFixedList: false },

@@ -21,6 +21,41 @@ describe('pelada-dashboard.logic', () => {
     ).toBe(12);
   });
 
+  it('soma uma vaga de goleiro por time com "Um goleiro por time" (FIXED_PER_TEAM)', () => {
+    expect(
+      computeMatchCapacity({
+        capacity: null,
+        playersPerTeam: 5,
+        teamCount: 2,
+        goalkeeperMode: 'FIXED_PER_TEAM',
+      }),
+    ).toBe(12);
+  });
+
+  it('não soma goleiro nos modos ROTATING e FIXED_GLOBAL', () => {
+    for (const goalkeeperMode of ['ROTATING', 'FIXED_GLOBAL'] as const) {
+      expect(
+        computeMatchCapacity({
+          capacity: null,
+          playersPerTeam: 5,
+          teamCount: 2,
+          goalkeeperMode,
+        }),
+      ).toBe(10);
+    }
+  });
+
+  it('capacity manual continua valendo mesmo com goleiro por time', () => {
+    expect(
+      computeMatchCapacity({
+        capacity: 14,
+        playersPerTeam: 5,
+        teamCount: 2,
+        goalkeeperMode: 'FIXED_PER_TEAM',
+      }),
+    ).toBe(14);
+  });
+
   it('monthUtcBounds cobre o mês civil no fuso de Brasília (UTC-3)', () => {
     const { start, end } = monthUtcBounds(new Date('2026-11-15T12:00:00.000Z'));
     expect(start.toISOString()).toBe('2026-11-01T03:00:00.000Z');

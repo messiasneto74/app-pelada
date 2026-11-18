@@ -81,6 +81,21 @@ export class PresenceSessionService {
     return fallback;
   }
 
+  /** Marca a lista como fechada (confirmado pela API) preservando o resto do snapshot. */
+  markListClosed(matchId: string): void {
+    const current = this.load(matchId);
+    this.save({
+      matchId,
+      statusByPlayerId: {},
+      guests: [],
+      extraPlayers: [],
+      queueOrder: [],
+      presenceMode: 'ORGANIZER_CLOSES',
+      ...current,
+      listClosed: true,
+    });
+  }
+
   load(matchId: string): PresenceSessionSnapshot | null {
     if (typeof sessionStorage === 'undefined') {
       return null;

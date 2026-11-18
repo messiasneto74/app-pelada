@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { readAccessToken } from './helpers/auth';
+import { test, expect, devices } from '@playwright/test';
+import { loginAsDevOrganizer, readAccessToken } from './helpers/auth';
 import { loginAndOpenShell } from './helpers/shell-ready';
 import {
   closeListOnApi,
@@ -18,6 +18,7 @@ test.describe.configure({ mode: 'serial' });
 
 test.describe('E2E fluxo MVP §D', () => {
   test('criar pelada → regras → jogadores → partida → presença → sorteio → campo', async ({
+    browser,
     page,
     request,
   }) => {
@@ -139,5 +140,24 @@ test.describe('E2E fluxo MVP §D', () => {
     await expect(
       page.getByRole('heading', { name: 'Pronto para entrar em campo', level: 2 }),
     ).toBeVisible({ timeout: 30_000 });
+
+    // Regressão: outro aparelho / novo login (sessionStorage vazio) precisa ver a
+    // lista salva no servidor e conseguir abrir Em campo depois do sorteio.
+    const other = await browser.newContext({
+      ...devices['Pixel 5'],
+      baseURL: test.info().project.use.baseURL,
+    });
+    const otherPage = await other.newPage();
+    await loginAsDevOrganizer(otherPage);
+    await otherPage.goto('/partida/campo');
+    await expect(otherPage).toHaveURL(/\/partida\/campo/, { timeout: 30_000 });
+    await expect(
+      otherPage.getByRole('heading', { name: 'Pronto para entrar em campo', level: 2 }),
+    ).toBeVisible({ timeout: 30_000 });
+    await otherPage.goto('/partida/presenca');
+    await expect(
+      otherPage.getByRole('tab', { name: /Confirmados \(12\)/ }),
+    ).toBeVisible({ timeout: 30_000 });
+    await other.close();
   });
 });

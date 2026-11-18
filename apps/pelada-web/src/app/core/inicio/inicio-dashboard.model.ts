@@ -40,10 +40,10 @@ export type InicioDashboardView = {
 };
 
 export const INICIO_SHORTCUTS = [
-  { id: 'create', label: 'Criar partida', route: '/inicio/criar-partida' },
-  { id: 'rules', label: 'Regras', route: '/inicio/regras' },
-  { id: 'roster', label: 'Elenco', route: '/jogadores' },
-  { id: 'cash', label: 'Cobrar', route: '/caixa' },
+  { id: 'create', label: 'Criar partida', route: '/inicio/criar-partida', organizerOnly: true },
+  { id: 'rules', label: 'Regras', route: '/inicio/regras', organizerOnly: true },
+  { id: 'roster', label: 'Elenco', route: '/jogadores', organizerOnly: false },
+  { id: 'cash', label: 'Cobrar', route: '/caixa', organizerOnly: true },
 ] as const;
 
 const MODALITY_LABELS: Record<string, string> = {

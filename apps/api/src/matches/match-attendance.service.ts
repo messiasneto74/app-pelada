@@ -60,7 +60,7 @@ export class MatchAttendanceService {
       matchId,
       user.id,
     );
-    await this.ensureAttendanceRows(match);
+    await this.ensureAttendanceRows(match, defaults);
     return this.buildListDto(match, defaults);
   }
 
@@ -79,7 +79,7 @@ export class MatchAttendanceService {
       user.id,
     );
     this.assertListOpenForEdits(match, true);
-    await this.ensureAttendanceRows(match);
+    await this.ensureAttendanceRows(match, defaults);
     await this.applyStatusForPlayer(match.id, playerId, dto.status, defaults);
     const refreshed = await this.prisma.match.findUniqueOrThrow({
       where: { id: matchId },
@@ -113,7 +113,7 @@ export class MatchAttendanceService {
         'Nenhum jogador do elenco vinculado à sua conta.',
       );
     }
-    await this.ensureAttendanceRows(match);
+    await this.ensureAttendanceRows(match, defaults);
     const status: AttendanceStatus =
       dto.action === 'confirm' ? 'CONFIRMED' : 'DECLINED';
     await this.applyStatusForPlayer(match.id, player.id, status, defaults);
@@ -136,7 +136,7 @@ export class MatchAttendanceService {
       user.id,
     );
     this.assertListOpenForEdits(match, false);
-    await this.ensureAttendanceRows(match);
+    await this.ensureAttendanceRows(match, defaults);
     const name = dto.displayName.trim();
     const guestPlayer = await this.prisma.player.create({
       data: {
@@ -350,7 +350,10 @@ export class MatchAttendanceService {
     }
   }
 
-  private async ensureAttendanceRows(match: Match): Promise<void> {
+  private async ensureAttendanceRows(
+    match: Match,
+    defaults: PeladaRules,
+  ): Promise<void> {
     const players = await this.prisma.player.findMany({
       where: { peladaId: match.peladaId, isGuest: false },
       // A ordem inicial também precisa refletir a prioridade do elenco.
@@ -364,12 +367,23 @@ export class MatchAttendanceService {
     if (missing.length === 0) {
       return;
     }
+    // Jogador fixo na lista (regra `fixedListOnly`) entra confirmado até
+    // encher as vagas — o app passou a adotar a lista da API, então essa
+    // confirmação automática precisa existir no servidor. Só vale pra linha
+    // nova: quem o organizador já mexeu (linha existente) não é tocado.
+    const effective = this.effectiveRulesForMatch(match, defaults);
+    let confirmed = existing.filter((e) => e.status === 'CONFIRMED').length;
+    const capacity = computeMatchCapacity(effective);
+    const autoConfirm = effective.fixedListOnly && match.status === 'SCHEDULED';
     await this.prisma.matchAttendance.createMany({
-      data: missing.map((p) => ({
-        matchId: match.id,
-        playerId: p.id,
-        status: 'PENDING' as AttendanceStatus,
-      })),
+      data: missing.map((p) => {
+        let status: AttendanceStatus = 'PENDING';
+        if (autoConfirm && p.isFixedList && confirmed < capacity) {
+          status = 'CONFIRMED';
+          confirmed += 1;
+        }
+        return { matchId: match.id, playerId: p.id, status };
+      }),
       skipDuplicates: true,
     });
   }
@@ -421,7 +435,9 @@ export class MatchAttendanceService {
     return {
       matchId: match.id,
       peladaId: match.peladaId,
-      listClosed: match.status === 'LIST_CLOSED',
+      // Sorteada / em campo / encerrada também é lista fechada — senão o app
+      // mostrava "Lista aberta" (e botões que a API recusa) depois do sorteio.
+      listClosed: match.status !== 'SCHEDULED',
       capacity,
       presenceMode: match.presenceMode,
       counts: attendanceCounts(rowInputs),

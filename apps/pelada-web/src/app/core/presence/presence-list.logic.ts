@@ -368,3 +368,37 @@ export function segmentOptionsWithCounts(counts: {
 export function vacancySummary(confirmed: number, capacity: number): string {
   return `${confirmed} de ${capacity} vagas`;
 }
+
+/** Entrada mínima de `GET .../attendance` usada pra montar a lista local. */
+export type AttendanceEntryInput = {
+  playerId: string;
+  status: 'CONFIRMED' | 'PENDING' | 'DECLINED' | 'QUEUE';
+  queuePosition: number | null;
+};
+
+/**
+ * Lista da API (fonte de verdade) → status por jogador + ordem da fila.
+ * `DECLINED` aparece como pendente (a tela não tem aba de recusados).
+ */
+export function presenceFromAttendance(entries: readonly AttendanceEntryInput[]): {
+  statusByPlayerId: Map<string, PlayerPresenceStatus>;
+  queueOrder: string[];
+} {
+  const statusByPlayerId = new Map<string, PlayerPresenceStatus>();
+  for (const e of entries) {
+    statusByPlayerId.set(
+      e.playerId,
+      e.status === 'CONFIRMED' ? 'confirmed' : e.status === 'QUEUE' ? 'queue' : 'pending',
+    );
+  }
+  const queueOrder = entries
+    .filter((e) => e.status === 'QUEUE')
+    .slice()
+    .sort(
+      (a, b) =>
+        (a.queuePosition ?? Number.MAX_SAFE_INTEGER) -
+        (b.queuePosition ?? Number.MAX_SAFE_INTEGER),
+    )
+    .map((e) => e.playerId);
+  return { statusByPlayerId, queueOrder };
+}

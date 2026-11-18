@@ -8,6 +8,12 @@ import {
 import { PeladaDashboardRefreshService } from '../../core/inicio/pelada-dashboard-refresh.service';
 import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
+import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
+
+const orgContextStub = (isJogador = false) => ({
+  provide: PeladaOrganizadorContextService,
+  useValue: { isJogador: () => isJogador, refreshMembership: () => undefined },
+});
 import { InicioComponent } from './inicio.component';
 
 const mockView: InicioDashboardView = {
@@ -46,6 +52,7 @@ describe('InicioComponent', () => {
           provide: OAuthService,
           useValue: { getIdentityClaims: () => ({ sub: 'user-inicio' }) },
         },
+        orgContextStub(),
         {
           provide: PeladaDashboardService,
           useValue: {
@@ -162,6 +169,7 @@ describe('InicioComponent sem partida', () => {
           provide: OAuthService,
           useValue: { getIdentityClaims: () => ({ sub: 'user-inicio' }) },
         },
+        orgContextStub(),
         {
           provide: PeladaDashboardService,
           useValue: {
@@ -208,6 +216,7 @@ describe('InicioComponent elenco vazio', () => {
           provide: OAuthService,
           useValue: { getIdentityClaims: () => ({ sub: 'user-inicio' }) },
         },
+        orgContextStub(),
         {
           provide: PeladaDashboardService,
           useValue: {
@@ -238,5 +247,49 @@ describe('InicioComponent elenco vazio', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Elenco vazio');
     expect(fixture.nativeElement.querySelector('a[href="/jogadores"]')).not.toBeNull();
+  });
+});
+
+describe('InicioComponent visão do jogador (convidado)', () => {
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [InicioComponent],
+      providers: [
+        provideRouter([{ path: 'inicio', component: InicioComponent }]),
+        {
+          provide: OAuthService,
+          useValue: { getIdentityClaims: () => ({ sub: 'user-jogador' }) },
+        },
+        orgContextStub(true),
+        {
+          provide: PeladaDashboardService,
+          useValue: {
+            loadDashboard: (
+              _pelada: unknown,
+              onResult: (view: InicioDashboardView) => void,
+            ) => onResult({ ...mockView, nextMatch: null }),
+          },
+        },
+      ],
+    }).compileComponents();
+
+    TestBed.inject(PeladaContextService).setActivePelada({
+      id: 'p1',
+      name: 'Pelada',
+      defaultWeekday: null,
+      defaultLocation: '',
+      photoPreviewUrl: null,
+    });
+  });
+
+  it('esconde atalhos e CTA de organizador', () => {
+    const fixture = TestBed.createComponent(InicioComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('a[href="/inicio/criar-partida"]')).toBeNull();
+    expect(el.querySelector('a[href="/inicio/regras"]')).toBeNull();
+    expect(el.querySelector('.shortcut-grid a[href="/caixa"]')).toBeNull();
+    expect(el.querySelector('.shortcut-grid a[href="/jogadores"]')).not.toBeNull();
+    expect(el.textContent).toContain('O organizador ainda não marcou');
   });
 });

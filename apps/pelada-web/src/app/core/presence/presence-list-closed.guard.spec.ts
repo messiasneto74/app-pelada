@@ -1,16 +1,26 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpClient } from '@angular/common/http';
 import { Router, UrlTree } from '@angular/router';
+import { isObservable, lastValueFrom, of, throwError, type Observable } from 'rxjs';
+import { PeladaMatchAttendanceService } from '../match/pelada-match-attendance.service';
+import { PeladaContextService } from '../pelada/pelada-context.service';
 import { presenceListClosedGuard } from './presence-list-closed.guard';
 import { PresenceSessionService } from './presence-session.service';
 
 describe('presenceListClosedGuard (3.4-NAV)', () => {
   let session: PresenceSessionService;
   let router: { createUrlTree: jasmine.Spy };
+  let activePelada: { id: string } | null;
+  let dashboard: () => Observable<unknown>;
+  let attendance: () => Observable<unknown>;
 
   const runGuard = () =>
     TestBed.runInInjectionContext(() => presenceListClosedGuard({} as never, {} as never));
 
   beforeEach(() => {
+    activePelada = null;
+    dashboard = () => throwError(() => new Error('não deveria chamar'));
+    attendance = () => throwError(() => new Error('não deveria chamar'));
     router = {
       createUrlTree: jasmine
         .createSpy('createUrlTree')
@@ -20,6 +30,15 @@ describe('presenceListClosedGuard (3.4-NAV)', () => {
       providers: [
         PresenceSessionService,
         { provide: Router, useValue: router },
+        {
+          provide: PeladaContextService,
+          useValue: { getActivePelada: () => activePelada },
+        },
+        { provide: HttpClient, useValue: { get: () => dashboard() } },
+        {
+          provide: PeladaMatchAttendanceService,
+          useValue: { getList: () => attendance() },
+        },
       ],
     });
     session = TestBed.inject(PresenceSessionService);
@@ -90,5 +109,40 @@ describe('presenceListClosedGuard (3.4-NAV)', () => {
     session.setActiveMatchId(null);
     runGuard();
     expect(router.createUrlTree).toHaveBeenCalledWith(['/partida/presenca']);
+  });
+
+  it('sem sessão (app reaberto), libera Sorteio/Em campo se a API diz lista fechada', async () => {
+    sessionStorage.clear();
+    session.setActiveMatchId(null);
+    activePelada = { id: 'p1' };
+    dashboard = () => of({ nextMatch: { id: 'm9' } });
+    attendance = () => of({ matchId: 'm9', listClosed: true });
+
+    const result = runGuard();
+    expect(isObservable(result)).toBe(true);
+    expect(await lastValueFrom(result as Observable<unknown>)).toBe(true);
+    expect(session.resolveMatchIdWithClosedList()).toBe('m9');
+  });
+
+  it('sem sessão, redireciona se a API diz lista aberta', async () => {
+    sessionStorage.clear();
+    session.setActiveMatchId(null);
+    activePelada = { id: 'p1' };
+    dashboard = () => of({ nextMatch: { id: 'm9' } });
+    attendance = () => of({ matchId: 'm9', listClosed: false });
+
+    const result = await lastValueFrom(runGuard() as Observable<unknown>);
+    expect(result).not.toBe(true);
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/partida/presenca']);
+  });
+
+  it('API fora do ar → redireciona pra presença', async () => {
+    sessionStorage.clear();
+    session.setActiveMatchId(null);
+    activePelada = { id: 'p1' };
+    dashboard = () => throwError(() => new Error('offline'));
+
+    const result = await lastValueFrom(runGuard() as Observable<unknown>);
+    expect(result).not.toBe(true);
   });
 });

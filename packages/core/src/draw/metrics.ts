@@ -35,11 +35,14 @@ export function computeDrawBalanceMetrics(
     teamAverages.length === 0
       ? 0
       : Math.max(...teamAverages) - Math.min(...teamAverages);
-  const balanceScore = Math.max(0, Math.min(100, 100 - maxAverageDiff * 10));
+  // Inteiro: a tela mostra "98%", não "98.33333333333334%".
+  const balanceScore = Math.round(
+    Math.max(0, Math.min(100, 100 - maxAverageDiff * 10)),
+  );
   const summaryText =
     maxAverageDiff <= 0.05
       ? 'Médias iguais entre os times.'
-      : `Diferença de ${maxAverageDiff.toFixed(2)} entre as médias.`;
+      : `Diferença de ${maxAverageDiff.toFixed(2).replace('.', ',')} entre as médias.`;
   return {
     balanceScore,
     teamAverages,
