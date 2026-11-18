@@ -73,7 +73,10 @@ services:
         condition: service_healthy
     command: start-dev --import-realm
     ports:
-      - "127.0.0.1:${KEYCLOAK_HTTP_PORT:-8080}:8080"
+      # Sem 127.0.0.1: pra permitir acesso via IP de LAN (teste em
+      # dispositivo físico / nip.io, ver docs/ambiente-dev-auth.md).
+      # Dev-only (start-dev, sem TLS) — não usar em produção.
+      - "${KEYCLOAK_HTTP_PORT:-8080}:8080"
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak

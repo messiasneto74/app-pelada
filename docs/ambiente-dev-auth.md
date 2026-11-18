@@ -86,6 +86,10 @@ o cliente usou.
    environment (fileReplacement `development-device` no `angular.json`), sem precisar
    editar `environment.development.ts` toda vez que for testar no PC vs. no celular.
 
+O `docker-compose.yml` publica o Keycloak em todas as interfaces (`${KEYCLOAK_HTTP_PORT:-8080}:8080`,
+sem `127.0.0.1:`), justamente pra aceitar essas conexões vindas da LAN. É um Keycloak
+de desenvolvimento (`start-dev`, sem TLS) — não suba esse compose fora da sua rede local/dev.
+
 ---
 
 ## Fluxo no app (F0-5 / F0-6 + UX-AUTH in-app)
