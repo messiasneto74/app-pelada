@@ -8,7 +8,7 @@ export const ZAP_CHARGE_MVP_PRESENTATION: ZapChargeMvpPresentation = 'disabled';
 
 export const ZAP_CHARGE_BUTTON_LABEL = 'Cobrança Zap (em breve)';
 export const ZAP_CHARGE_BUTTON_TITLE =
-  'Cobrança pelo WhatsApp com Pix fica para depois do MVP (hist. 18).';
+  'Cobrança pelo WhatsApp com Pix fica para depois do MVP.';
 
 export function showZapChargeButton(isOrganizador: boolean): boolean {
   if (!isOrganizador) {

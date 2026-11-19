@@ -1,5 +1,6 @@
 import {
   ZAP_CHARGE_BUTTON_LABEL,
+  ZAP_CHARGE_BUTTON_TITLE,
   ZAP_CHARGE_ENABLED,
   ZAP_CHARGE_MVP_PRESENTATION,
   showZapChargeButton,
@@ -20,5 +21,9 @@ describe('caixa-zap-charge.policy §3.9-ZAP', () => {
 
   it('rótulo do stub MVP', () => {
     expect(ZAP_CHARGE_BUTTON_LABEL).toContain('Cobrança Zap');
+  });
+
+  it('issue #192 — tooltip do stub não expõe referência interna de spec/história', () => {
+    expect(ZAP_CHARGE_BUTTON_TITLE).not.toMatch(/§|história|hist\.\s*\d|\d+\.\d+-[A-Z]+/);
   });
 });
