@@ -440,6 +440,12 @@ export class JogadorPerfilComponent implements OnInit {
   patchTagsText(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.tagsDirty.set(true);
+    // Issue #188: pré-preenchimento de atributo só pro organizador — jogador
+    // em autoedição (história 27) não pediu nota/atributos, só tags.
+    if (!this.isOrganizador()) {
+      this.editForm.update((f) => ({ ...f, tagsText: value }));
+      return;
+    }
     const suggestions = attributeSuggestionsForTags(parseTagsText(value));
     this.editForm.update((f) => ({
       ...f,

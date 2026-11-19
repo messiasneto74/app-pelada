@@ -249,6 +249,27 @@ describe('JogadorPerfilComponent regra 27 (3.8)', () => {
       'Editar meu perfil',
     );
   });
+
+  it('não pré-preenche atributo em autoedição — só organizador (issue #188)', async () => {
+    const selfFixture = TestBed.createComponent(JogadorPerfilComponent);
+    selfFixture.detectChanges();
+    await selfFixture.whenStable();
+    await Promise.resolve();
+    selfFixture.detectChanges();
+
+    selfFixture.componentInstance.startEdit();
+    const before = selfFixture.componentInstance.editForm().attributes.chute;
+    selfFixture.componentInstance.patchTagsText({
+      target: { value: 'artilheiro' },
+    } as unknown as Event);
+
+    expect(selfFixture.componentInstance.editForm().attributes.chute).toBe(
+      before,
+    );
+    expect(selfFixture.componentInstance.editForm().tagsText).toBe(
+      'artilheiro',
+    );
+  });
 });
 
 describe('JogadorPerfilComponent regras via HTTP (3.8)', () => {
