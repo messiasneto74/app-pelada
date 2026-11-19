@@ -27,6 +27,8 @@ WORKDIR /app
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/prisma ./apps/api/prisma
+COPY --from=build /app/packages/core/dist ./packages/core/dist
+COPY --from=build /app/packages/core/package.json ./packages/core/package.json
 COPY package.json package-lock.json ./
 COPY apps/api/package.json ./apps/api/
 WORKDIR /app/apps/api
