@@ -1,6 +1,8 @@
 import {
   DEFAULT_PELADA_RULES,
   mapPeladaRulesApiError,
+  scoringModeFromFlags,
+  scoringModeToFlags,
   toGoalkeeperMode,
   toDrawWeights,
   validateGoalkeeperToggles,
@@ -38,6 +40,41 @@ describe('pelada rules form (3.2)', () => {
 
   it('desliga edição de perfil pelo jogador por padrão (história 27)', () => {
     expect(DEFAULT_PELADA_RULES.allowPlayerSelfEdit).toBe(false);
+  });
+
+  describe('scoringModeFromFlags / scoringModeToFlags (issue #186)', () => {
+    it('mapeia nota e atributos como modos excludentes', () => {
+      expect(scoringModeFromFlags(true, false)).toBe('rating');
+      expect(scoringModeFromFlags(false, true)).toBe('attributes');
+    });
+
+    it('cai em nota quando os dois flags ligados (default legado, história §3.2)', () => {
+      expect(scoringModeFromFlags(true, true)).toBe('rating');
+    });
+
+    it('cai em nota quando os dois flags desligados', () => {
+      expect(scoringModeFromFlags(false, false)).toBe('rating');
+    });
+
+    it('scoringModeToFlags sempre liga um e desliga o outro', () => {
+      expect(scoringModeToFlags('rating')).toEqual({
+        drawUseRating: true,
+        drawUseAttributes: false,
+      });
+      expect(scoringModeToFlags('attributes')).toEqual({
+        drawUseRating: false,
+        drawUseAttributes: true,
+      });
+    });
+
+    it('é round-trip para os dois modos', () => {
+      for (const mode of ['rating', 'attributes'] as const) {
+        const flags = scoringModeToFlags(mode);
+        expect(
+          scoringModeFromFlags(flags.drawUseRating, flags.drawUseAttributes),
+        ).toBe(mode);
+      }
+    });
   });
 
   it('mapeia drawWeights para API', () => {

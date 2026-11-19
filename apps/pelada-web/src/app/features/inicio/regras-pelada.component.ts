@@ -7,7 +7,10 @@ import {
   type FixedGkRotation,
   type Modality,
   type PaymentModel,
+  type ScoringMode,
   mapPeladaRulesApiError,
+  scoringModeFromFlags,
+  scoringModeToFlags,
   validatePeladaRulesForm,
   type PeladaRulesFormValues,
 } from '../../core/pelada/pelada-rules.model';
@@ -141,8 +144,12 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <pelada-field label="Modo">
           <pelada-segment [options]="drawOptions" [(value)]="drawSegment" />
         </pelada-field>
-        <pelada-switch [(checked)]="drawUseRating">Usar nota</pelada-switch>
-        <pelada-switch [(checked)]="drawUseAttributes">Usar atributos</pelada-switch>
+        <pelada-field label="Pontuação do sorteio">
+          <pelada-segment [options]="scoringOptions" [(value)]="scoringSegment" />
+        </pelada-field>
+        <p class="pelada-muted hint">
+          Nota geral ou atributos — só um dos dois entra no cálculo do sorteio.
+        </p>
         <pelada-switch [(checked)]="drawUseStyleTags">Usar tags de estilo</pelada-switch>
       </pelada-card>
 
@@ -234,12 +241,16 @@ export class RegrasPeladaComponent implements OnInit {
     { value: 'MANUAL', label: 'Manual' },
   ];
 
+  readonly scoringOptions = [
+    { value: 'rating', label: 'Nota' },
+    { value: 'attributes', label: 'Atributos' },
+  ];
+
   readonly paymentSegment = model('PER_MATCH');
   readonly drawSegment = model('BALANCED');
   readonly fixedListOnly = model(false);
   readonly allowPlayerSelfEdit = model(false);
-  readonly drawUseRating = model(true);
-  readonly drawUseAttributes = model(true);
+  readonly scoringSegment = model<ScoringMode>('rating');
   readonly drawUseStyleTags = model(true);
 
   ngOnInit(): void {
@@ -344,8 +355,7 @@ export class RegrasPeladaComponent implements OnInit {
       allowPlayerSelfEdit: this.allowPlayerSelfEdit(),
       paymentModel: this.paymentSegment() as PaymentModel,
       drawMode: this.drawSegment() as PeladaRulesFormValues['drawMode'],
-      drawUseRating: this.drawUseRating(),
-      drawUseAttributes: this.drawUseAttributes(),
+      ...scoringModeToFlags(this.scoringSegment()),
       drawUseStyleTags: this.drawUseStyleTags(),
     };
   }
@@ -355,8 +365,9 @@ export class RegrasPeladaComponent implements OnInit {
     this.allowPlayerSelfEdit.set(v.allowPlayerSelfEdit);
     this.paymentSegment.set(v.paymentModel);
     this.drawSegment.set(v.drawMode);
-    this.drawUseRating.set(v.drawUseRating);
-    this.drawUseAttributes.set(v.drawUseAttributes ?? true);
+    this.scoringSegment.set(
+      scoringModeFromFlags(v.drawUseRating, v.drawUseAttributes ?? true),
+    );
     this.drawUseStyleTags.set(v.drawUseStyleTags);
   }
 }
