@@ -138,6 +138,42 @@ describe('PeladaContextService', () => {
     expect(sessionStorage.getItem(ACTIVE_PELADA_STORAGE_KEY)).toBeNull();
   });
 
+  it('usa sub do access_token quando getIdentityClaims está vazio (login por senha, issue #193)', () => {
+    sessionStorage.clear();
+    const base64url = (s: string) =>
+      btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const accessToken = [
+      base64url(JSON.stringify({ alg: 'RS256' })),
+      base64url(JSON.stringify({ sub: 'user-sem-id-token' })),
+      'fake-signature',
+    ].join('.');
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: OAuthService,
+          useValue: {
+            getIdentityClaims: () => null,
+            getAccessToken: () => accessToken,
+          },
+        },
+      ],
+    });
+    const svc = TestBed.inject(PeladaContextService);
+    svc.setActivePelada({
+      id: 'p-senha',
+      name: 'Pelada via senha',
+      defaultWeekday: null,
+      defaultLocation: '',
+      photoPreviewUrl: null,
+    });
+
+    expect(
+      sessionStorage.getItem(`${ACTIVE_PELADA_STORAGE_KEY}:user-sem-id-token`),
+    ).toContain('Pelada via senha');
+  });
+
   it('não importa chave legacy para outro sub sem pelada em memória', () => {
     sessionStorage.clear();
     sessionStorage.setItem(

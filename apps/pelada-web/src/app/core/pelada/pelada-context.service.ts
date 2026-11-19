@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { decodeJwtClaims } from '../../auth/jwt-claims.logic';
 import {
   ACTIVE_PELADA_STORAGE_KEY,
   ActivePelada,
@@ -91,8 +92,20 @@ export class PeladaContextService {
   }
 
   private readCurrentSub(): string | null {
-    const sub = this.oauth.getIdentityClaims()?.['sub'];
-    return typeof sub === 'string' && sub.length > 0 ? sub : null;
+    const fromIdToken = this.oauth.getIdentityClaims()?.['sub'];
+    if (typeof fromIdToken === 'string' && fromIdToken.length > 0) {
+      return fromIdToken;
+    }
+    // Login por senha (issue #193): o id_token desse grant nunca é
+    // processado pelo angular-oauth2-oidc (nonce não se aplica a Resource
+    // Owner Password), então `getIdentityClaims()` fica vazio — o
+    // access_token (sempre presente) também traz o `sub`.
+    const fromAccessToken = decodeJwtClaims(this.oauth.getAccessToken())?.[
+      'sub'
+    ];
+    return typeof fromAccessToken === 'string' && fromAccessToken.length > 0
+      ? fromAccessToken
+      : null;
   }
 
   private discardInMemoryActive(): void {
@@ -105,11 +118,8 @@ export class PeladaContextService {
   }
 
   private storageKey(): string {
-    const sub = this.oauth.getIdentityClaims()?.['sub'];
-    if (typeof sub === 'string' && sub.length > 0) {
-      return `${ACTIVE_PELADA_STORAGE_KEY}:${sub}`;
-    }
-    return ACTIVE_PELADA_STORAGE_KEY;
+    const sub = this.readCurrentSub();
+    return sub ? `${ACTIVE_PELADA_STORAGE_KEY}:${sub}` : ACTIVE_PELADA_STORAGE_KEY;
   }
 
   private loadStored(): ActivePelada | null {
