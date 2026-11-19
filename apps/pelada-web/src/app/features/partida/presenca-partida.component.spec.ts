@@ -40,6 +40,20 @@ const players: RosterPlayer[] = [
   },
 ];
 
+const guests: RosterPlayer[] = [
+  {
+    id: 'g-vinculado',
+    displayName: 'Convidado Vinculado',
+    isGoalkeeper: false,
+    position: null,
+    rating: null,
+    tags: [],
+    isFixedList: false,
+    userId: 'user-guest',
+    isGuest: true,
+  },
+];
+
 const dash: InicioDashboardView = {
   peladaName: 'Pelada Teste',
   nextMatch: {
@@ -119,6 +133,10 @@ describe('PresencaPartidaComponent §3.4', () => {
               _p: unknown,
               cb: (list: RosterPlayer[], outcome: 'api' | 'fallback') => void,
             ) => cb(players, 'api'),
+            loadGuests: (
+              _p: unknown,
+              cb: (list: RosterPlayer[], outcome: 'api' | 'fallback') => void,
+            ) => cb(guests, 'api'),
           },
         },
         {
@@ -472,6 +490,32 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(text).toContain('Não vou');
   });
 
+  it('convidado vinculado a conta (não promovido) vê Vou/Não vou em SELF_CONFIRM', async () => {
+    const auth = TestBed.inject(AuthService) as unknown as Record<string, unknown>;
+    auth['getMe'] = () =>
+      Promise.resolve({ id: 'user-guest', keycloakSub: 's', email: null, phone: null });
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    api['getList'] = () =>
+      of(
+        serverList(
+          { a1: 'CONFIRMED', b1: 'PENDING', 'g-vinculado': 'PENDING' },
+          { presenceMode: 'SELF_CONFIRM' },
+        ),
+      );
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.selfPlayerId()).toBe('g-vinculado');
+    fixture.componentInstance.segment.set('pending');
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Convidado Vinculado');
+    expect(text).toContain('Vou');
+    expect(text).toContain('Não vou');
+  });
+
   it('exibe convidado com aceitar/recusar quando na sessão', () => {
     TestBed.inject(PresenceSessionService).save({
       matchId: 'm1',
@@ -557,6 +601,10 @@ describe('PresencaPartidaComponent §3.4', () => {
           provide: PeladaRosterService,
           useValue: {
             loadRoster: (
+              _p: unknown,
+              cb: (list: RosterPlayer[], outcome: 'api' | 'fallback') => void,
+            ) => cb([], 'fallback'),
+            loadGuests: (
               _p: unknown,
               cb: (list: RosterPlayer[], outcome: 'api' | 'fallback') => void,
             ) => cb([], 'fallback'),

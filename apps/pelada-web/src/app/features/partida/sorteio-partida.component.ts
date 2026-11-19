@@ -530,9 +530,16 @@ export class SorteioPartidaComponent implements OnInit {
       this.listClosed.set(snap?.listClosed ?? false);
 
       this.rosterService.loadRoster(pelada, (players) => {
-        this.rosterById.set(new Map(players.map((p) => [p.id, p])));
-        this.loading.set(false);
-        this.loadDrawFromApi();
+        // Convidado vinculado a conta (issue #172) pode se autoconfirmar e
+        // entrar no sorteio: sem isso o time dele mostrava um placeholder no
+        // lugar do nome real (ver mapDrawToSorteioTeams/placeholderRosterPlayer).
+        this.rosterService.loadGuests(pelada, (guests) => {
+          this.rosterById.set(
+            new Map([...players, ...guests].map((p) => [p.id, p])),
+          );
+          this.loading.set(false);
+          this.loadDrawFromApi();
+        });
       });
     });
   }
