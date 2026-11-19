@@ -397,8 +397,17 @@ export class MatchAttendanceService {
     match: Match,
     defaults: PeladaRules,
   ): Promise<void> {
+    // Inclui Convidado vinculado a conta (isGuest:true + userId, via convite —
+    // issue #172/#179): ele entra na lista como qualquer jogador comum (nunca
+    // confirmado automaticamente, pois nunca é isFixedList), só não se
+    // autoconfirma antes disso existir. Convidado avulso por partida
+    // (requestGuest, sem userId) continua de fora: sua linha é criada na hora
+    // do pedido e não deve aparecer sozinha em partidas futuras (A3).
     const players = await this.prisma.player.findMany({
-      where: { peladaId: match.peladaId, isGuest: false },
+      where: {
+        peladaId: match.peladaId,
+        OR: [{ isGuest: false }, { userId: { not: null } }],
+      },
       // A ordem inicial também precisa refletir a prioridade do elenco.
       orderBy: [{ isFixedList: 'desc' }, { createdAt: 'asc' }],
     });

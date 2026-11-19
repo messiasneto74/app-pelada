@@ -134,6 +134,9 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
                   <span class="presence-row__main">
                     <span class="presence-row__name">{{ row.player.displayName }}</span>
                     <span class="presence-row__meta pelada-muted">
+                      @if (row.player.isGuest) {
+                        Convidado ·
+                      }
                       {{ rosterPositionLabel(row.player) }}
                       · Nota {{ formatRosterRating(row.player.rating) }}
                     </span>
@@ -532,9 +535,20 @@ export class PresencaPartidaComponent implements OnInit {
       .catch(() => this.currentAppUserId.set(null));
     this.dashboardService.loadDashboard(pelada, (dash) => {
       this.rosterService.loadRoster(pelada, (players, outcome) => {
-        this.rosterLoadFailed.set(outcome === 'fallback');
-        this.applyLoadedState(dash, players, outcome === 'api');
-        this.loading.set(false);
+        // Convidado vinculado a conta (issue #172) também pode se autoconfirmar
+        // em modo "Jogador confirma" — ver isGuest em RosterPlayer. Ele entra
+        // na mesma lista do elenco pra ganhar linha própria, ações de
+        // autoconfirmação e prioridade de fila (fixo sempre antes).
+        // `loadGuests` também devolve convidado avulso de partida (requestGuest,
+        // sem conta) — esse fica de fora (igual ensureAttendanceRows no backend),
+        // senão sobra como linha fantasma pendente em partidas futuras.
+        this.rosterService.loadGuests(pelada, (guests, guestsOutcome) => {
+          const linkedGuests = guests.filter((g) => g.userId != null);
+          const rosterOk = outcome === 'api' && guestsOutcome === 'api';
+          this.rosterLoadFailed.set(!rosterOk);
+          this.applyLoadedState(dash, [...players, ...linkedGuests], rosterOk);
+          this.loading.set(false);
+        });
       });
     });
   }

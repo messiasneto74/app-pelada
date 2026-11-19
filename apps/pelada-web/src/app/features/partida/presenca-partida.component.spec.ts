@@ -40,6 +40,34 @@ const players: RosterPlayer[] = [
   },
 ];
 
+const guests: RosterPlayer[] = [
+  {
+    id: 'g-vinculado',
+    displayName: 'Convidado Vinculado',
+    isGoalkeeper: false,
+    position: null,
+    rating: null,
+    tags: [],
+    isFixedList: false,
+    userId: 'user-guest',
+    isGuest: true,
+  },
+  {
+    // Convidado avulso de partida anterior (requestGuest, sem conta vinculada)
+    // — `listGuests` no backend devolve ele junto, mas não deve virar linha
+    // fantasma pendente em partidas futuras (ensureAttendanceRows exclui).
+    id: 'g-avulso',
+    displayName: 'Convidado Avulso de Outra Partida',
+    isGoalkeeper: false,
+    position: 'Convidado',
+    rating: 5,
+    tags: [],
+    isFixedList: false,
+    userId: null,
+    isGuest: true,
+  },
+];
+
 const dash: InicioDashboardView = {
   peladaName: 'Pelada Teste',
   nextMatch: {
@@ -119,6 +147,10 @@ describe('PresencaPartidaComponent §3.4', () => {
               _p: unknown,
               cb: (list: RosterPlayer[], outcome: 'api' | 'fallback') => void,
             ) => cb(players, 'api'),
+            loadGuests: (
+              _p: unknown,
+              cb: (list: RosterPlayer[], outcome: 'api' | 'fallback') => void,
+            ) => cb(guests, 'api'),
           },
         },
         {
@@ -472,6 +504,42 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(text).toContain('Não vou');
   });
 
+  it('convidado vinculado a conta (não promovido) vê Vou/Não vou em SELF_CONFIRM', async () => {
+    const auth = TestBed.inject(AuthService) as unknown as Record<string, unknown>;
+    auth['getMe'] = () =>
+      Promise.resolve({ id: 'user-guest', keycloakSub: 's', email: null, phone: null });
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    api['getList'] = () =>
+      of(
+        serverList(
+          { a1: 'CONFIRMED', b1: 'PENDING', 'g-vinculado': 'PENDING' },
+          { presenceMode: 'SELF_CONFIRM' },
+        ),
+      );
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.selfPlayerId()).toBe('g-vinculado');
+    fixture.componentInstance.segment.set('pending');
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Convidado Vinculado');
+    expect(text).toContain('Vou');
+    expect(text).toContain('Não vou');
+  });
+
+  it('convidado avulso de outra partida (sem conta) não vira linha fantasma', () => {
+    const roster = fixture.componentInstance.roster();
+    expect(roster.some((p) => p.id === 'g-vinculado')).toBeTrue();
+    expect(roster.some((p) => p.id === 'g-avulso')).toBeFalse();
+    const rows = fixture.componentInstance.rows();
+    expect(
+      rows.some((r) => r.kind === 'player' && r.player.id === 'g-avulso'),
+    ).toBeFalse();
+  });
+
   it('exibe convidado com aceitar/recusar quando na sessão', () => {
     TestBed.inject(PresenceSessionService).save({
       matchId: 'm1',
@@ -560,6 +628,10 @@ describe('PresencaPartidaComponent §3.4', () => {
               _p: unknown,
               cb: (list: RosterPlayer[], outcome: 'api' | 'fallback') => void,
             ) => cb([], 'fallback'),
+            loadGuests: (
+              _p: unknown,
+              cb: (list: RosterPlayer[], outcome: 'api' | 'fallback') => void,
+            ) => cb([], 'fallback'),
           },
         },
         {
@@ -616,5 +688,98 @@ describe('PresencaPartidaComponent §3.4', () => {
     fixture2.detectChanges();
     const snap = session.load('m1');
     expect(snap?.statusByPlayerId['a1']).toBe('confirmed');
+  });
+
+  it('não apaga sessão quando só convidados falham (elenco ok, guests fallback)', async () => {
+    const session = TestBed.inject(PresenceSessionService);
+
+    await TestBed.resetTestingModule();
+    const refreshMembership3 = jasmine.createSpy('refreshMembership');
+    await TestBed.configureTestingModule({
+      imports: [PresencaPartidaComponent],
+      providers: [
+        provideRouter([{ path: 'partida/presenca', component: PresencaPartidaComponent }]),
+        {
+          provide: OAuthService,
+          useValue: { getIdentityClaims: () => ({ sub: 'test-presenca' }) },
+        },
+        {
+          provide: AuthService,
+          useValue: { getMe: () => Promise.resolve({ id: 'x', keycloakSub: 's', email: null, phone: null }) },
+        },
+        {
+          provide: PeladaDashboardService,
+          useValue: {
+            loadDashboard: (_p: unknown, cb: (v: InicioDashboardView) => void) => cb(dash),
+          },
+        },
+        {
+          provide: PeladaRosterService,
+          useValue: {
+            // Elenco carrega normalmente; só o endpoint /guests falha.
+            loadRoster: (
+              _p: unknown,
+              cb: (list: RosterPlayer[], outcome: 'api' | 'fallback') => void,
+            ) => cb([], 'api'),
+            loadGuests: (
+              _p: unknown,
+              cb: (list: RosterPlayer[], outcome: 'api' | 'fallback') => void,
+            ) => cb([], 'fallback'),
+          },
+        },
+        {
+          provide: PeladaOrganizadorContextService,
+          useValue: { isOrganizador: () => true, refreshMembership: refreshMembership3 },
+        },
+        {
+          provide: PeladaRulesService,
+          useValue: {
+            getDefaultRules: () => ({ ...DEFAULT_PELADA_RULES }),
+          },
+        },
+        {
+          provide: PeladaRulesApiService,
+          useValue: {
+            fetchRules: () => ({
+              subscribe: (handlers: { error?: () => void }) => handlers.error?.(),
+            }),
+            mapFromApi: (d: unknown) => d,
+          },
+        },
+        {
+          provide: PeladaMatchAttendanceService,
+          useValue: {
+            getList: () => throwError(() => new Error('offline')),
+            setSelf: () => throwError(() => new Error('offline')),
+            patchPlayer: () => of({ status: 'CONFIRMED' }),
+            closeList: () => of({}),
+            reopenList: () => of({}),
+          },
+        },
+        PresenceSessionService,
+      ],
+    }).compileComponents();
+    TestBed.inject(PeladaContextService).setActivePelada({
+      id: 'p1',
+      name: 'Pelada Teste',
+      defaultWeekday: null,
+      defaultLocation: '',
+      photoPreviewUrl: null,
+    });
+    session.save({
+      matchId: 'm1',
+      listClosed: false,
+      statusByPlayerId: { a1: 'confirmed' },
+      guests: [],
+      extraPlayers: [],
+      queueOrder: [],
+      presenceMode: 'ORGANIZER_CLOSES',
+    });
+
+    const fixture3 = TestBed.createComponent(PresencaPartidaComponent);
+    fixture3.detectChanges();
+    const snap = session.load('m1');
+    expect(snap?.statusByPlayerId['a1']).toBe('confirmed');
+    expect(fixture3.componentInstance.rosterLoadFailed()).toBe(true);
   });
 });
