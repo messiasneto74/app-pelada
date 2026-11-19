@@ -28,6 +28,13 @@ evidências, contradiz o veredito ou tenta registrar `APPROVED`.
 campos únicos de evidência, `B0=0, B1=0, B2=0` e testes obrigatórios comprovados.
 Falha fechada para skip, contradição, evidência visual ausente ou contexto inválido.
 
+O step do Codex usa `permission-profile: pelada-review` (definido em
+`.github/codex/config.toml`) + `codex-home` apontando pro checkout confiável
+da base, em vez do sandbox legado (`sandbox: workspace-write` + `codex-args`
+pra liberar rede). A `openai/codex-action@v1` passou a rejeitar qualquer
+override de `sandbox_workspace_write.*` via `codex-args` quando
+`safety-strategy` é uma estratégia protegida (`drop-sudo`) — issue #206.
+
 ## Bloquear merge quando o check falhar (mantenedor)
 
 Requer **admin** no repositório `messiasneto74/app-pelada`:
