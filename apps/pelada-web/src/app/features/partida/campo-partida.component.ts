@@ -177,7 +177,7 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
                 variant="secondary"
                 [peladaButtonBlock]="true"
                 [disabled]="busy()"
-                (click)="endRound()"
+                (click)="requestEndRound()"
               >
                 Encerrar jogo e rodízio
               </button>
@@ -187,7 +187,7 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
                 variant="secondary"
                 [peladaButtonBlock]="true"
                 [disabled]="busy()"
-                (click)="finishMatch()"
+                (click)="requestFinishMatch()"
               >
                 Encerrar partida
               </button>
@@ -230,10 +230,84 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
           </pelada-card>
         }
       }
+
+      @if (confirmAction()) {
+        <div
+          class="confirm-modal-backdrop"
+          role="presentation"
+          (click)="cancelConfirm()"
+        >
+          <div
+            class="confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-modal-title"
+            (click)="$event.stopPropagation()"
+            (keydown.escape)="cancelConfirm()"
+          >
+            <h2 id="confirm-modal-title" class="confirm-modal__title">
+              {{ confirmModalTitle() }}
+            </h2>
+            <p class="confirm-modal__lead pelada-muted">
+              {{ confirmModalMessage() }}
+            </p>
+            <div class="confirm-modal__actions">
+              <button
+                type="button"
+                peladaButton
+                variant="lime"
+                [peladaButtonBlock]="true"
+                (click)="confirmPendingAction()"
+              >
+                Confirmar
+              </button>
+              <button
+                type="button"
+                peladaButton
+                variant="secondary"
+                [peladaButtonBlock]="true"
+                (click)="cancelConfirm()"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     </section>
   `,
   styles: [
     `
+      .confirm-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: var(--pelada-space-4);
+        background: rgba(0, 0, 0, 0.45);
+      }
+      .confirm-modal {
+        width: min(100%, 390px);
+        padding: var(--pelada-space-4);
+        border-radius: var(--pelada-radius-lg) var(--pelada-radius-lg) 0 0;
+        background: var(--pelada-paper);
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+      }
+      .confirm-modal__title {
+        margin: 0 0 var(--pelada-space-2);
+        font-size: 1.125rem;
+      }
+      .confirm-modal__lead {
+        margin: 0 0 var(--pelada-space-3);
+        font-size: 0.875rem;
+      }
+      .confirm-modal__actions {
+        display: flex;
+        flex-direction: column;
+        gap: var(--pelada-space-2);
+      }
       .partida-tabs {
         display: flex;
         gap: var(--pelada-space-2);
@@ -348,6 +422,8 @@ export class CampoPartidaComponent implements OnInit {
   readonly hasDraw = signal(false);
   readonly fieldSession = signal<MatchFieldSessionDto | null>(null);
   readonly actionError = signal<string | null>(null);
+  /** Issue #191 — confirmação antes de ação difícil de desfazer. */
+  readonly confirmAction = signal<'endRound' | 'finishMatch' | null>(null);
   private readonly tickMs = signal(Date.now());
   /** Instante em que `fieldSession` foi recebido da API (anchor do cronômetro). */
   private readonly sessionElapsedAnchorMs = signal(Date.now());
@@ -356,6 +432,18 @@ export class CampoPartidaComponent implements OnInit {
     const pelada = this.peladaContext.getActivePelada();
     return pelada?.name ?? 'Em campo';
   });
+
+  readonly confirmModalTitle = computed(() =>
+    this.confirmAction() === 'finishMatch'
+      ? 'Encerrar partida?'
+      : 'Encerrar jogo e rodízio?',
+  );
+
+  readonly confirmModalMessage = computed(() =>
+    this.confirmAction() === 'finishMatch'
+      ? 'A partida será encerrada e não dá para voltar atrás. Confirma?'
+      : 'O jogo atual termina e o rodízio avança para as próximas duplas. Confirma?',
+  );
 
   readonly isOrganizador = computed(() => {
     const pelada = this.peladaContext.getActivePelada();
@@ -487,13 +575,35 @@ export class CampoPartidaComponent implements OnInit {
     );
   }
 
-  endRound(): void {
+  requestEndRound(): void {
+    this.confirmAction.set('endRound');
+  }
+
+  requestFinishMatch(): void {
+    this.confirmAction.set('finishMatch');
+  }
+
+  cancelConfirm(): void {
+    this.confirmAction.set(null);
+  }
+
+  confirmPendingAction(): void {
+    const action = this.confirmAction();
+    this.confirmAction.set(null);
+    if (action === 'endRound') {
+      this.endRound();
+    } else if (action === 'finishMatch') {
+      this.finishMatch();
+    }
+  }
+
+  private endRound(): void {
     this.runMutation((peladaId, matchId) =>
       this.fieldApi.endRound(peladaId, matchId),
     );
   }
 
-  finishMatch(): void {
+  private finishMatch(): void {
     this.runMutation((peladaId, matchId) =>
       this.fieldApi.finish(peladaId, matchId),
     );
