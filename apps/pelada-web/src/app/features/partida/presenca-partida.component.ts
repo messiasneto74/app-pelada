@@ -542,10 +542,11 @@ export class PresencaPartidaComponent implements OnInit {
         // `loadGuests` também devolve convidado avulso de partida (requestGuest,
         // sem conta) — esse fica de fora (igual ensureAttendanceRows no backend),
         // senão sobra como linha fantasma pendente em partidas futuras.
-        this.rosterService.loadGuests(pelada, (guests) => {
+        this.rosterService.loadGuests(pelada, (guests, guestsOutcome) => {
           const linkedGuests = guests.filter((g) => g.userId != null);
-          this.rosterLoadFailed.set(outcome === 'fallback');
-          this.applyLoadedState(dash, [...players, ...linkedGuests], outcome === 'api');
+          const rosterOk = outcome === 'api' && guestsOutcome === 'api';
+          this.rosterLoadFailed.set(!rosterOk);
+          this.applyLoadedState(dash, [...players, ...linkedGuests], rosterOk);
           this.loading.set(false);
         });
       });

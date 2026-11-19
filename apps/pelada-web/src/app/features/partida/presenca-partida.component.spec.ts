@@ -689,4 +689,97 @@ describe('PresencaPartidaComponent §3.4', () => {
     const snap = session.load('m1');
     expect(snap?.statusByPlayerId['a1']).toBe('confirmed');
   });
+
+  it('não apaga sessão quando só convidados falham (elenco ok, guests fallback)', async () => {
+    const session = TestBed.inject(PresenceSessionService);
+
+    await TestBed.resetTestingModule();
+    const refreshMembership3 = jasmine.createSpy('refreshMembership');
+    await TestBed.configureTestingModule({
+      imports: [PresencaPartidaComponent],
+      providers: [
+        provideRouter([{ path: 'partida/presenca', component: PresencaPartidaComponent }]),
+        {
+          provide: OAuthService,
+          useValue: { getIdentityClaims: () => ({ sub: 'test-presenca' }) },
+        },
+        {
+          provide: AuthService,
+          useValue: { getMe: () => Promise.resolve({ id: 'x', keycloakSub: 's', email: null, phone: null }) },
+        },
+        {
+          provide: PeladaDashboardService,
+          useValue: {
+            loadDashboard: (_p: unknown, cb: (v: InicioDashboardView) => void) => cb(dash),
+          },
+        },
+        {
+          provide: PeladaRosterService,
+          useValue: {
+            // Elenco carrega normalmente; só o endpoint /guests falha.
+            loadRoster: (
+              _p: unknown,
+              cb: (list: RosterPlayer[], outcome: 'api' | 'fallback') => void,
+            ) => cb([], 'api'),
+            loadGuests: (
+              _p: unknown,
+              cb: (list: RosterPlayer[], outcome: 'api' | 'fallback') => void,
+            ) => cb([], 'fallback'),
+          },
+        },
+        {
+          provide: PeladaOrganizadorContextService,
+          useValue: { isOrganizador: () => true, refreshMembership: refreshMembership3 },
+        },
+        {
+          provide: PeladaRulesService,
+          useValue: {
+            getDefaultRules: () => ({ ...DEFAULT_PELADA_RULES }),
+          },
+        },
+        {
+          provide: PeladaRulesApiService,
+          useValue: {
+            fetchRules: () => ({
+              subscribe: (handlers: { error?: () => void }) => handlers.error?.(),
+            }),
+            mapFromApi: (d: unknown) => d,
+          },
+        },
+        {
+          provide: PeladaMatchAttendanceService,
+          useValue: {
+            getList: () => throwError(() => new Error('offline')),
+            setSelf: () => throwError(() => new Error('offline')),
+            patchPlayer: () => of({ status: 'CONFIRMED' }),
+            closeList: () => of({}),
+            reopenList: () => of({}),
+          },
+        },
+        PresenceSessionService,
+      ],
+    }).compileComponents();
+    TestBed.inject(PeladaContextService).setActivePelada({
+      id: 'p1',
+      name: 'Pelada Teste',
+      defaultWeekday: null,
+      defaultLocation: '',
+      photoPreviewUrl: null,
+    });
+    session.save({
+      matchId: 'm1',
+      listClosed: false,
+      statusByPlayerId: { a1: 'confirmed' },
+      guests: [],
+      extraPlayers: [],
+      queueOrder: [],
+      presenceMode: 'ORGANIZER_CLOSES',
+    });
+
+    const fixture3 = TestBed.createComponent(PresencaPartidaComponent);
+    fixture3.detectChanges();
+    const snap = session.load('m1');
+    expect(snap?.statusByPlayerId['a1']).toBe('confirmed');
+    expect(fixture3.componentInstance.rosterLoadFailed()).toBe(true);
+  });
 });
