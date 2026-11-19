@@ -122,6 +122,27 @@ describe('RegrasPeladaComponent', () => {
     ).toBe('pé de anjo, capitão');
   });
 
+  it('mostra e persiste o limiar de promoção automática de convidado (issue #179)', () => {
+    expect(fixture.nativeElement.textContent).toContain('Convidados');
+    fixture.componentInstance.patchAutoPromoteAfterPresences({
+      target: { value: '5' },
+    } as unknown as Event);
+    expect(fixture.componentInstance.values().autoPromoteAfterPresences).toBe(5);
+    fixture.componentInstance.saveDefault();
+    expect(
+      rulesService.getDefaultRules('p1').autoPromoteAfterPresences,
+    ).toBe(5);
+  });
+
+  it('ignora entrada inválida/negativa no limiar de promoção automática', () => {
+    fixture.componentInstance.patchAutoPromoteAfterPresences({
+      target: { value: '-3' },
+    } as unknown as Event);
+    expect(fixture.componentInstance.values().autoPromoteAfterPresences).toBe(
+      DEFAULT_PELADA_RULES.autoPromoteAfterPresences,
+    );
+  });
+
   it('persiste allowPlayerSelfEdit ao salvar', () => {
     fixture.componentInstance.allowPlayerSelfEdit.set(true);
     fixture.componentInstance.saveDefault();

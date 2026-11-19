@@ -11,6 +11,10 @@ import { GuestAttendanceRequestDto } from '../domain/dto/guest-attendance-reques
 import { SelfAttendanceDto } from '../domain/dto/self-attendance.dto';
 import { MeService } from '../me/me.service';
 import { computeMatchCapacity } from '../peladas/pelada-dashboard.logic';
+import {
+  readAutoPromoteThresholdFromRules,
+  shouldAutoPromoteGuest,
+} from '../peladas/pelada-guest-auto-promote.logic';
 import { PrismaService } from '../prisma/prisma.service';
 import { mergeEffectiveMatchRules } from './match-rules.merge';
 import type { MatchRulesOverrideJson } from './match-rules.merge';
@@ -81,6 +85,7 @@ export class MatchAttendanceService {
     this.assertListOpenForEdits(match, true);
     await this.ensureAttendanceRows(match, defaults);
     await this.applyStatusForPlayer(match.id, playerId, dto.status, defaults);
+    await this.maybeAutoPromoteGuest(matchId, playerId, defaults);
     const refreshed = await this.prisma.match.findUniqueOrThrow({
       where: { id: matchId },
     });
@@ -117,6 +122,7 @@ export class MatchAttendanceService {
     const status: AttendanceStatus =
       dto.action === 'confirm' ? 'CONFIRMED' : 'DECLINED';
     await this.applyStatusForPlayer(match.id, player.id, status, defaults);
+    await this.maybeAutoPromoteGuest(matchId, player.id, defaults);
     const refreshed = await this.prisma.match.findUniqueOrThrow({
       where: { id: matchId },
     });
@@ -297,6 +303,43 @@ export class MatchAttendanceService {
       );
       await this.persistRowInputs(tx, matchId, rows, nextRows);
     });
+  }
+
+  /**
+   * Issue #179 — promove Convidado (vinculado a uma conta, via convite) pra
+   * Jogador quando atinge o nº de presenças confirmadas configurado pelo
+   * organizador. Convidado avulso (sem conta, `requestGuest`) nunca é tocado.
+   */
+  private async maybeAutoPromoteGuest(
+    matchId: string,
+    playerId: string,
+    defaults: PeladaRules,
+  ): Promise<void> {
+    const threshold = readAutoPromoteThresholdFromRules(defaults.extra);
+    if (threshold === null) {
+      return;
+    }
+    const attendance = await this.prisma.matchAttendance.findUnique({
+      where: { matchId_playerId: { matchId, playerId } },
+    });
+    if (attendance?.status !== 'CONFIRMED') {
+      return;
+    }
+    const player = await this.prisma.player.findUnique({
+      where: { id: playerId },
+    });
+    if (!player || !player.isGuest || !player.userId) {
+      return;
+    }
+    const confirmedCount = await this.prisma.matchAttendance.count({
+      where: { playerId, status: 'CONFIRMED' },
+    });
+    if (shouldAutoPromoteGuest(confirmedCount, threshold)) {
+      await this.prisma.player.update({
+        where: { id: playerId },
+        data: { isGuest: false },
+      });
+    }
   }
 
   private async loadRowInputs(

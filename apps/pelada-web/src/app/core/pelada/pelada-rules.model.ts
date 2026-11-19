@@ -30,6 +30,8 @@ export type PeladaRulesFormValues = {
   summaryTemplate: string;
   /** Issue #188 — tags extras do organizador, somadas ao catálogo fixo nas sugestões. */
   customStyleTagsText: string;
+  /** Issue #179 — nº de presenças confirmadas pra promover Convidado a Jogador. 0 desativa. */
+  autoPromoteAfterPresences: number;
 };
 
 export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
@@ -48,6 +50,7 @@ export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
   allowPlayerSelfEdit: false,
   summaryTemplate: '',
   customStyleTagsText: '',
+  autoPromoteAfterPresences: 0,
 };
 
 export function validateGoalkeeperToggles(
@@ -89,6 +92,9 @@ export function validatePeladaRulesForm(values: PeladaRulesFormValues): string |
   }
   if (values.teamCount < 2 || values.teamCount > 6) {
     return 'Times no sorteio: entre 2 e 6.';
+  }
+  if (values.autoPromoteAfterPresences < 0) {
+    return 'Promoção automática: nº de presenças não pode ser negativo.';
   }
   return null;
 }

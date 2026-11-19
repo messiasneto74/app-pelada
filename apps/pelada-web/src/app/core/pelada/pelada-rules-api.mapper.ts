@@ -51,6 +51,12 @@ export function peladaRulesFromApi(dto: PeladaRulesApiDto): PeladaRulesFormValue
           .filter((t): t is string => typeof t === 'string')
           .join(', ')
       : DEFAULT_PELADA_RULES.customStyleTagsText,
+    autoPromoteAfterPresences:
+      typeof extra['autoPromoteAfterPresences'] === 'number' &&
+      Number.isFinite(extra['autoPromoteAfterPresences']) &&
+      (extra['autoPromoteAfterPresences'] as number) >= 0
+        ? Math.floor(extra['autoPromoteAfterPresences'] as number)
+        : DEFAULT_PELADA_RULES.autoPromoteAfterPresences,
   };
 }
 
@@ -72,6 +78,7 @@ export function peladaRulesToPatchBody(
       fixedGoalkeeper: values.fixedGoalkeeper,
       summaryTemplate: values.summaryTemplate,
       customStyleTags: parseTagsText(values.customStyleTagsText),
+      autoPromoteAfterPresences: values.autoPromoteAfterPresences,
     },
   };
 }
