@@ -143,6 +143,26 @@ describe('RegrasPeladaComponent', () => {
     );
   });
 
+  it('mostra e persiste o valor da contribuição por partida (issue #190)', () => {
+    expect(fixture.componentInstance.feeReais()).toBe('0.00');
+    fixture.componentInstance.patchFeeReais({
+      target: { value: '20.50' },
+    } as unknown as Event);
+    expect(fixture.componentInstance.values().feeCents).toBe(2050);
+    expect(fixture.componentInstance.feeReais()).toBe('20.50');
+    fixture.componentInstance.saveDefault();
+    expect(rulesService.getDefaultRules('p1').feeCents).toBe(2050);
+  });
+
+  it('ignora valor negativo na contribuição por partida', () => {
+    fixture.componentInstance.patchFeeReais({
+      target: { value: '-5' },
+    } as unknown as Event);
+    expect(fixture.componentInstance.values().feeCents).toBe(
+      DEFAULT_PELADA_RULES.feeCents,
+    );
+  });
+
   it('persiste allowPlayerSelfEdit ao salvar', () => {
     fixture.componentInstance.allowPlayerSelfEdit.set(true);
     fixture.componentInstance.saveDefault();

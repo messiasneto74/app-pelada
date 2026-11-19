@@ -10,9 +10,13 @@ import { PeladaPaymentsService } from '../../core/payments/pelada-payments.servi
 import { PeladaDashboardRefreshService } from '../../core/inicio/pelada-dashboard-refresh.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
+import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
+import type { RosterPlayer } from '../../core/roster/roster-player.model';
 import { paymentPlanLabel } from '../../core/roster/player-profile.logic';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaCardComponent } from '../../ui/card.component';
+import { PeladaFieldComponent } from '../../ui/field.component';
+import { PeladaInputDirective } from '../../ui/input.directive';
 import { PeladaProgressComponent } from '../../ui/progress.component';
 import { PeladaSegmentComponent } from '../../ui/segment.component';
 import { ScreenHeaderComponent } from '../../ui/screen-header.component';
@@ -38,6 +42,8 @@ import { formatMoneyBrl } from '../../core/inicio/inicio-dashboard.model';
     CommonModule,
     ScreenHeaderComponent,
     PeladaCardComponent,
+    PeladaFieldComponent,
+    PeladaInputDirective,
     PeladaProgressComponent,
     PeladaSegmentComponent,
     PeladaButtonComponent,
@@ -75,6 +81,70 @@ import { formatMoneyBrl } from '../../core/inicio/inicio-dashboard.model';
             }
           </p>
         </pelada-card>
+
+        @if (isOrganizador()) {
+          @if (!showChargeForm()) {
+            <button
+              type="button"
+              class="pelada-btn pelada-btn--block"
+              peladaButton
+              variant="lime"
+              (click)="openChargeForm()"
+            >
+              + Lançar cobrança
+            </button>
+          } @else {
+            <pelada-card title="Lançar cobrança">
+              @if (chargeError()) {
+                <p class="pelada-error" role="alert">{{ chargeError() }}</p>
+              }
+              <pelada-field label="Jogador" forId="charge-player">
+                <select
+                  id="charge-player"
+                  peladaInput
+                  [value]="chargePlayerId()"
+                  (change)="patchChargePlayer($event)"
+                >
+                  <option value="">Selecione…</option>
+                  @for (p of players(); track p.id) {
+                    <option [value]="p.id">{{ p.displayName }}</option>
+                  }
+                </select>
+              </pelada-field>
+              <pelada-field label="Valor (R$)" forId="charge-amount">
+                <input
+                  id="charge-amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  peladaInput
+                  [value]="chargeAmountReais()"
+                  (input)="patchChargeAmount($event)"
+                />
+              </pelada-field>
+              <button
+                type="button"
+                class="pelada-btn pelada-btn--block"
+                peladaButton
+                variant="lime"
+                [disabled]="chargingBusy()"
+                (click)="submitCharge()"
+              >
+                {{ chargingBusy() ? 'Lançando…' : 'Lançar' }}
+              </button>
+              <button
+                type="button"
+                class="pelada-btn pelada-btn--block"
+                peladaButton
+                variant="secondary"
+                [disabled]="chargingBusy()"
+                (click)="closeChargeForm()"
+              >
+                Cancelar
+              </button>
+            </pelada-card>
+          }
+        }
 
         <pelada-segment [options]="segmentOptions" [(value)]="groupBy" />
 
@@ -256,12 +326,21 @@ export class CaixaPeladaComponent {
   private readonly orgContext = inject(PeladaOrganizadorContextService);
   private readonly paymentsApi = inject(PeladaPaymentsService);
   private readonly dashboardRefresh = inject(PeladaDashboardRefreshService);
+  private readonly rosterService = inject(PeladaRosterService);
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly ledger = signal<PaymentLedgerResponse | null>(null);
   readonly groupBy = model<LedgerGroupBy>('player');
   readonly busyId = signal<string | null>(null);
+
+  /** Issue #190 — lançar cobrança (Caixa). */
+  readonly showChargeForm = signal(false);
+  readonly players = signal<RosterPlayer[]>([]);
+  readonly chargePlayerId = signal('');
+  readonly chargeAmountReais = signal('');
+  readonly chargeError = signal<string | null>(null);
+  readonly chargingBusy = signal(false);
 
   readonly segmentOptions = [
     { value: 'player', label: 'Por jogador' },
@@ -335,6 +414,65 @@ export class CaixaPeladaComponent {
         this.error.set(apiErrorMessage(err));
       },
     });
+  }
+
+  openChargeForm(): void {
+    const pelada = this.peladaContext.getActivePelada();
+    if (!pelada) {
+      return;
+    }
+    this.chargeError.set(null);
+    this.chargePlayerId.set('');
+    const feeCents = this.ledger()?.feeCents ?? 0;
+    this.chargeAmountReais.set(feeCents > 0 ? (feeCents / 100).toFixed(2) : '');
+    this.showChargeForm.set(true);
+    this.rosterService.loadRoster(pelada, (players) => this.players.set(players));
+  }
+
+  closeChargeForm(): void {
+    this.showChargeForm.set(false);
+    this.chargeError.set(null);
+  }
+
+  patchChargePlayer(event: Event): void {
+    this.chargePlayerId.set((event.target as HTMLSelectElement).value);
+  }
+
+  patchChargeAmount(event: Event): void {
+    this.chargeAmountReais.set((event.target as HTMLInputElement).value);
+  }
+
+  submitCharge(): void {
+    const pelada = this.peladaContext.getActivePelada();
+    if (!pelada || !this.isOrganizador()) {
+      return;
+    }
+    const playerId = this.chargePlayerId();
+    if (!playerId) {
+      this.chargeError.set('Selecione um jogador.');
+      return;
+    }
+    const amountCents = Math.round(Number.parseFloat(this.chargeAmountReais()) * 100);
+    if (!Number.isFinite(amountCents) || amountCents <= 0) {
+      this.chargeError.set('Informe um valor válido para a cobrança.');
+      return;
+    }
+    this.chargingBusy.set(true);
+    this.chargeError.set(null);
+    this.paymentsApi
+      .createLedgerEntry(pelada.id, { playerId, amountCents })
+      .subscribe({
+        next: () => {
+          this.chargingBusy.set(false);
+          this.showChargeForm.set(false);
+          this.dashboardRefresh.notifyCashSummaryChanged();
+          this.loadLedger(pelada.id, this.groupBy());
+        },
+        error: (err: HttpErrorResponse) => {
+          this.chargingBusy.set(false);
+          this.chargeError.set(apiErrorMessage(err));
+        },
+      });
   }
 
   private loadLedger(peladaId: string, groupBy: LedgerGroupBy): void {
