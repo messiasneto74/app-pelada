@@ -24,6 +24,8 @@ export interface CreatedInviteApi {
   token: string;
   peladaId: string;
   expiresAt: string;
+  /** Issue #179b — true quando o convite também foi enviado por e-mail. */
+  emailSent: boolean;
 }
 
 export interface InvitePreviewApi {
@@ -66,11 +68,11 @@ export class PeladaApiService {
     );
   }
 
-  createInvite(peladaId: string): Promise<CreatedInviteApi> {
+  createInvite(peladaId: string, email?: string): Promise<CreatedInviteApi> {
     return firstValueFrom(
       this.http.post<CreatedInviteApi>(
         `${environment.apiUrl}/peladas/${peladaId}/invites`,
-        {},
+        email ? { email } : {},
       ),
     );
   }

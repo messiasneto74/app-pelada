@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -10,6 +11,7 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { AuthUserPayload } from '../auth/auth-user';
+import { CreateInviteDto } from './dto/create-invite.dto';
 import { PeladaInvitesService } from './pelada-invites.service';
 
 @Controller()
@@ -22,8 +24,9 @@ export class InvitesController {
   createInvite(
     @CurrentUser() user: AuthUserPayload,
     @Param('peladaId') peladaId: string,
+    @Body() body: CreateInviteDto,
   ) {
-    return this.invitesService.createInvite(user, peladaId);
+    return this.invitesService.createInvite(user, peladaId, body.email);
   }
 
   @Get('invites/:token')

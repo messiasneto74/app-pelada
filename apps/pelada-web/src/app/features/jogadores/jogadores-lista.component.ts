@@ -282,6 +282,30 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
               >
                 Copiar link
               </button>
+
+              <pelada-field label="Ou envie por e-mail (opcional)" forId="invite-email">
+                <input
+                  id="invite-email"
+                  type="email"
+                  peladaInput
+                  placeholder="jogador@example.com"
+                  [value]="inviteEmail()"
+                  (input)="patchInviteEmail($event)"
+                />
+              </pelada-field>
+              @if (emailSendMessage()) {
+                <p class="pelada-muted hint" role="status">{{ emailSendMessage() }}</p>
+              }
+              <button
+                type="button"
+                peladaButton
+                variant="secondary"
+                [peladaButtonBlock]="true"
+                [disabled]="sendingEmailInvite() || !inviteEmail()"
+                (click)="sendInviteByEmail()"
+              >
+                {{ sendingEmailInvite() ? 'Enviando…' : 'Enviar convite por e-mail' }}
+              </button>
             }
             <button
               type="button"
@@ -443,6 +467,10 @@ export class JogadoresListaComponent implements OnInit {
   readonly inviteLink = signal<string | null>(null);
   readonly inviteError = signal('');
   readonly inviteCopied = signal(false);
+  /** Issue #179b — convite também por e-mail. */
+  readonly inviteEmail = signal('');
+  readonly sendingEmailInvite = signal(false);
+  readonly emailSendMessage = signal<string | null>(null);
 
   readonly rosterPositionLabel = rosterPositionLabel;
   readonly formatRosterRating = formatRosterRating;
@@ -616,6 +644,8 @@ export class JogadoresListaComponent implements OnInit {
     this.inviteError.set('');
     this.inviteLink.set(null);
     this.inviteCopied.set(false);
+    this.inviteEmail.set('');
+    this.emailSendMessage.set(null);
 
     this.peladaApi
       .createInvite(pelada.id)
@@ -631,6 +661,37 @@ export class JogadoresListaComponent implements OnInit {
 
   closeInviteModal(): void {
     this.inviteModalOpen.set(false);
+  }
+
+  patchInviteEmail(event: Event): void {
+    this.inviteEmail.set((event.target as HTMLInputElement).value);
+    this.emailSendMessage.set(null);
+  }
+
+  sendInviteByEmail(): void {
+    const pelada = this.peladaContext.getActivePelada();
+    const email = this.inviteEmail().trim();
+    if (!pelada || !email) {
+      return;
+    }
+    this.sendingEmailInvite.set(true);
+    this.emailSendMessage.set(null);
+
+    this.peladaApi
+      .createInvite(pelada.id, email)
+      .then((created) => {
+        this.inviteLink.set(`${window.location.origin}/convite/${created.token}`);
+        this.sendingEmailInvite.set(false);
+        this.emailSendMessage.set(
+          created.emailSent
+            ? `Convite enviado para ${email}.`
+            : 'Não foi possível enviar o e-mail agora — use o link ou o QR code.',
+        );
+      })
+      .catch(() => {
+        this.sendingEmailInvite.set(false);
+        this.emailSendMessage.set('Não foi possível enviar o convite. Tente de novo.');
+      });
   }
 
   copyInviteLink(): void {

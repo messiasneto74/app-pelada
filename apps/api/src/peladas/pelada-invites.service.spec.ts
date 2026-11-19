@@ -5,8 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PeladaInvitesService } from './pelada-invites.service';
+import type { MailService } from '../mail/mail.service';
 import type { MeService } from '../me/me.service';
 import type { PrismaService } from '../prisma/prisma.service';
+import type { ConfigService } from '@nestjs/config';
 
 describe('PeladaInvitesService (issue #172 — fase 1)', () => {
   const auth = { sub: 'kc-sub-1', email: 'ana.silva@example.com' };
@@ -24,6 +26,8 @@ describe('PeladaInvitesService (issue #172 — fase 1)', () => {
     $transaction: jest.Mock;
   };
   let meService: { getOrCreateUser: jest.Mock };
+  let mailService: { isConfigured: jest.Mock; sendInviteEmail: jest.Mock };
+  let config: { get: jest.Mock };
   let service: PeladaInvitesService;
 
   const peladaRow = {
@@ -47,9 +51,16 @@ describe('PeladaInvitesService (issue #172 — fase 1)', () => {
       $transaction: jest.fn(async (cb) => cb(prisma)),
     };
     meService = { getOrCreateUser: jest.fn().mockResolvedValue(user) };
+    mailService = {
+      isConfigured: jest.fn().mockReturnValue(false),
+      sendInviteEmail: jest.fn().mockResolvedValue(undefined),
+    };
+    config = { get: jest.fn().mockReturnValue(undefined) };
     service = new PeladaInvitesService(
       prisma as unknown as PrismaService,
       meService as unknown as MeService,
+      mailService as unknown as MailService,
+      config as unknown as ConfigService,
     );
   });
 
@@ -75,10 +86,49 @@ describe('PeladaInvitesService (issue #172 — fase 1)', () => {
       );
       expect(result.peladaId).toBe('pel-1');
       expect(result.token).toMatch(/^[\w-]+$/);
+      expect(result.emailSent).toBe(false);
       const expiresAtMs = new Date(result.expiresAt).getTime();
       const fiveHoursMs = 5 * 60 * 60 * 1000;
       expect(expiresAtMs).toBeGreaterThanOrEqual(before + fiveHoursMs - 1000);
       expect(expiresAtMs).toBeLessThanOrEqual(after + fiveHoursMs + 1000);
+      expect(mailService.sendInviteEmail).not.toHaveBeenCalled();
+    });
+
+    it('issue #179b — com e-mail e SMTP configurado, envia convite por e-mail', async () => {
+      prisma.pelada.findUnique.mockResolvedValue(peladaRow);
+      prisma.peladaMember.findUnique.mockResolvedValue({ role: 'ORGANIZADOR' });
+      prisma.peladaInvite.create.mockImplementation(({ data }) =>
+        Promise.resolve({ ...data, id: 'inv-1' }),
+      );
+      mailService.isConfigured.mockReturnValue(true);
+      config.get.mockImplementation((key: string) =>
+        key === 'PELADA_WEB_URL' ? 'https://app.example.com' : undefined,
+      );
+
+      const result = await service.createInvite(auth, 'pel-1', 'convidado@example.com');
+
+      expect(result.emailSent).toBe(true);
+      expect(mailService.sendInviteEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'convidado@example.com',
+          peladaName: 'Pelada Teste',
+          inviteUrl: expect.stringContaining('https://app.example.com/convite/'),
+        }),
+      );
+    });
+
+    it('issue #179b — com e-mail mas SMTP não configurado, não envia e segue sem erro', async () => {
+      prisma.pelada.findUnique.mockResolvedValue(peladaRow);
+      prisma.peladaMember.findUnique.mockResolvedValue({ role: 'ORGANIZADOR' });
+      prisma.peladaInvite.create.mockImplementation(({ data }) =>
+        Promise.resolve({ ...data, id: 'inv-1' }),
+      );
+      mailService.isConfigured.mockReturnValue(false);
+
+      const result = await service.createInvite(auth, 'pel-1', 'convidado@example.com');
+
+      expect(result.emailSent).toBe(false);
+      expect(mailService.sendInviteEmail).not.toHaveBeenCalled();
     });
 
     it('não organizador recebe 403', async () => {

@@ -271,6 +271,12 @@ Realm **pelada** → **Realm settings** → **User profile** → **Create attrib
 
 **Não** usar em produção.
 
+## SMTP — convite por e-mail (issue #179b)
+
+A API envia e-mail de convite (`POST /peladas/:id/invites` com `email` no body) via SMTP, configurado por `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`MAIL_FROM` (ver `.env.example`). **Sem essas vars no `.env`, o envio vira no-op logado** — o convite por link/QR continua funcionando normalmente, só não sai e-mail.
+
+Provedor em uso: **SendGrid** (free tier). `SMTP_USER` é sempre `apikey`; `SMTP_PASS` é a API key gerada em Settings → API Keys (permissão "Mail Send" basta). **Nunca** commitar a API key — só em `.env` local (gitignorado) ou nos secrets do servidor de produção.
+
 ## Checklist F0-4 (smoke manual)
 
 - [ ] `npm.cmd run smoke:keycloak` → `OK Keycloak smoke`

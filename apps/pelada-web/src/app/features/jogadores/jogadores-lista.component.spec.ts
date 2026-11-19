@@ -114,7 +114,12 @@ describe('JogadoresListaComponent', () => {
           useValue: {
             createInvite: jasmine
               .createSpy('createInvite')
-              .and.resolveTo({ token: 'tok-1', peladaId: 'p1', expiresAt: '' }),
+              .and.resolveTo({
+                token: 'tok-1',
+                peladaId: 'p1',
+                expiresAt: '',
+                emailSent: false,
+              }),
           },
         },
       ],
@@ -273,6 +278,61 @@ describe('JogadoresListaComponent', () => {
       fixture.componentInstance.closeInviteModal();
       fixture.detectChanges();
       expect(fixture.componentInstance.inviteModalOpen()).toBe(false);
+    });
+
+    it('issue #179b — envia convite por e-mail e mostra confirmação', async () => {
+      const api = TestBed.inject(PeladaApiService) as unknown as {
+        createInvite: jasmine.Spy;
+      };
+      api.createInvite.and.resolveTo({
+        token: 'tok-2',
+        peladaId: 'p1',
+        expiresAt: '',
+        emailSent: true,
+      });
+
+      fixture.componentInstance.openInviteModal();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      fixture.componentInstance.patchInviteEmail({
+        target: { value: 'convidado@example.com' },
+      } as unknown as Event);
+      fixture.componentInstance.sendInviteByEmail();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(api.createInvite).toHaveBeenCalledWith('p1', 'convidado@example.com');
+      expect(fixture.componentInstance.emailSendMessage()).toContain(
+        'convidado@example.com',
+      );
+    });
+
+    it('issue #179b — sem SMTP configurado, avisa que o e-mail não foi enviado', async () => {
+      const api = TestBed.inject(PeladaApiService) as unknown as {
+        createInvite: jasmine.Spy;
+      };
+      api.createInvite.and.resolveTo({
+        token: 'tok-2',
+        peladaId: 'p1',
+        expiresAt: '',
+        emailSent: false,
+      });
+
+      fixture.componentInstance.openInviteModal();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      fixture.componentInstance.patchInviteEmail({
+        target: { value: 'convidado@example.com' },
+      } as unknown as Event);
+      fixture.componentInstance.sendInviteByEmail();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.emailSendMessage()).toContain(
+        'use o link ou o QR code',
+      );
     });
   });
 
