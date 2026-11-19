@@ -539,9 +539,13 @@ export class PresencaPartidaComponent implements OnInit {
         // em modo "Jogador confirma" — ver isGuest em RosterPlayer. Ele entra
         // na mesma lista do elenco pra ganhar linha própria, ações de
         // autoconfirmação e prioridade de fila (fixo sempre antes).
+        // `loadGuests` também devolve convidado avulso de partida (requestGuest,
+        // sem conta) — esse fica de fora (igual ensureAttendanceRows no backend),
+        // senão sobra como linha fantasma pendente em partidas futuras.
         this.rosterService.loadGuests(pelada, (guests) => {
+          const linkedGuests = guests.filter((g) => g.userId != null);
           this.rosterLoadFailed.set(outcome === 'fallback');
-          this.applyLoadedState(dash, [...players, ...guests], outcome === 'api');
+          this.applyLoadedState(dash, [...players, ...linkedGuests], outcome === 'api');
           this.loading.set(false);
         });
       });

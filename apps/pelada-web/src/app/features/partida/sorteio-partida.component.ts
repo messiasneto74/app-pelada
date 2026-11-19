@@ -533,9 +533,12 @@ export class SorteioPartidaComponent implements OnInit {
         // Convidado vinculado a conta (issue #172) pode se autoconfirmar e
         // entrar no sorteio: sem isso o time dele mostrava um placeholder no
         // lugar do nome real (ver mapDrawToSorteioTeams/placeholderRosterPlayer).
+        // Convidado avulso de partida (requestGuest, sem conta) fica de fora —
+        // mesmo critério usado na tela de presença.
         this.rosterService.loadGuests(pelada, (guests) => {
+          const linkedGuests = guests.filter((g) => g.userId != null);
           this.rosterById.set(
-            new Map([...players, ...guests].map((p) => [p.id, p])),
+            new Map([...players, ...linkedGuests].map((p) => [p.id, p])),
           );
           this.loading.set(false);
           this.loadDrawFromApi();

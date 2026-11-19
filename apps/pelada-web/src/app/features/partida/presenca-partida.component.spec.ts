@@ -52,6 +52,20 @@ const guests: RosterPlayer[] = [
     userId: 'user-guest',
     isGuest: true,
   },
+  {
+    // Convidado avulso de partida anterior (requestGuest, sem conta vinculada)
+    // — `listGuests` no backend devolve ele junto, mas não deve virar linha
+    // fantasma pendente em partidas futuras (ensureAttendanceRows exclui).
+    id: 'g-avulso',
+    displayName: 'Convidado Avulso de Outra Partida',
+    isGoalkeeper: false,
+    position: 'Convidado',
+    rating: 5,
+    tags: [],
+    isFixedList: false,
+    userId: null,
+    isGuest: true,
+  },
 ];
 
 const dash: InicioDashboardView = {
@@ -514,6 +528,16 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(text).toContain('Convidado Vinculado');
     expect(text).toContain('Vou');
     expect(text).toContain('Não vou');
+  });
+
+  it('convidado avulso de outra partida (sem conta) não vira linha fantasma', () => {
+    const roster = fixture.componentInstance.roster();
+    expect(roster.some((p) => p.id === 'g-vinculado')).toBeTrue();
+    expect(roster.some((p) => p.id === 'g-avulso')).toBeFalse();
+    const rows = fixture.componentInstance.rows();
+    expect(
+      rows.some((r) => r.kind === 'player' && r.player.id === 'g-avulso'),
+    ).toBeFalse();
   });
 
   it('exibe convidado com aceitar/recusar quando na sessão', () => {
