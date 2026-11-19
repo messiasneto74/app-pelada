@@ -43,7 +43,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       <pelada-screen-header
         eyebrow="Início"
         title="Regras da pelada"
-        [subtitle]="peladaName() + ' — padrão do grupo (história 3.2). Exceção por partida na criação (3.3).'"
+        [subtitle]="peladaName() + ' — padrão do grupo. Pode ser trocado por partida na criação.'"
       />
 
       @if (formError()) {
@@ -133,7 +133,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           Jogador edita o próprio perfil
         </pelada-switch>
         <p class="pelada-muted hint">
-          Desligado: só o organizador altera nota, atributos e tags no elenco (história 27).
+          Desligado: só o organizador altera nota, atributos e tags no elenco.
         </p>
         <pelada-field label="Modelo de pagamento">
           <pelada-segment [options]="paymentOptions" [(value)]="paymentSegment" />

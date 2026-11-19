@@ -50,7 +50,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       <pelada-screen-header
         eyebrow="Elenco"
         [title]="headerTitle()"
-        subtitle="Busca, filtros e acesso ao perfil (§3.7)."
+        subtitle="Busca, filtros e acesso ao perfil."
       />
 
       @if (loading()) {

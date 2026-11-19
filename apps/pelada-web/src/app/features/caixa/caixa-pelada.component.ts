@@ -47,7 +47,7 @@ import { formatMoneyBrl } from '../../core/inicio/inicio-dashboard.model';
       <pelada-screen-header
         eyebrow="Caixa"
         [title]="headerTitle()"
-        subtitle="Recebido, devedores e marcar pago (§3.9)."
+        subtitle="Recebido, devedores e marcar pago."
       />
 
       @if (loading()) {

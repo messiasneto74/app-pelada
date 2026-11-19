@@ -67,6 +67,10 @@ describe('CampoPartidaComponent §3.6', () => {
       'finish',
     ]);
     fieldSpy.getSession.and.returnValue(of(fieldSession));
+    fieldSpy.endRound.and.returnValue(of(fieldSession));
+    fieldSpy.finish.and.returnValue(
+      of({ ...fieldSession, finishedAt: new Date().toISOString() }),
+    );
 
     await TestBed.configureTestingModule({
       imports: [CampoPartidaComponent],
@@ -168,4 +172,75 @@ describe('CampoPartidaComponent §3.6', () => {
     expect(link.getAttribute('href')).toContain('matchId=m1');
     f2.destroy();
   }));
+
+  it('pede confirmação antes de encerrar o jogo e rodízio (issue #191)', () => {
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    ) as HTMLButtonElement[];
+    const endRoundBtn = buttons.find(
+      (b) => b.textContent?.trim() === 'Encerrar jogo e rodízio',
+    );
+    endRoundBtn?.click();
+    fixture.detectChanges();
+
+    expect(fieldSpy.endRound).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Encerrar jogo e rodízio?',
+    );
+
+    const confirmBtn = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    ).find((b) => (b as HTMLButtonElement).textContent?.trim() === 'Confirmar') as
+      | HTMLButtonElement
+      | undefined;
+    confirmBtn?.click();
+    fixture.detectChanges();
+
+    expect(fieldSpy.endRound).toHaveBeenCalledWith('pel-1', 'm1');
+  });
+
+  it('cancelar a confirmação não chama a API (issue #191)', () => {
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    ) as HTMLButtonElement[];
+    const finishBtn = buttons.find(
+      (b) => b.textContent?.trim() === 'Encerrar partida',
+    );
+    finishBtn?.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Encerrar partida?');
+
+    const cancelBtn = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    ).find((b) => (b as HTMLButtonElement).textContent?.trim() === 'Cancelar') as
+      | HTMLButtonElement
+      | undefined;
+    cancelBtn?.click();
+    fixture.detectChanges();
+
+    expect(fieldSpy.finish).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).not.toContain('Encerrar partida?');
+  });
+
+  it('confirmar encerra a partida de fato (issue #191)', () => {
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    ) as HTMLButtonElement[];
+    const finishBtn = buttons.find(
+      (b) => b.textContent?.trim() === 'Encerrar partida',
+    );
+    finishBtn?.click();
+    fixture.detectChanges();
+
+    const confirmBtn = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    ).find((b) => (b as HTMLButtonElement).textContent?.trim() === 'Confirmar') as
+      | HTMLButtonElement
+      | undefined;
+    confirmBtn?.click();
+    fixture.detectChanges();
+
+    expect(fieldSpy.finish).toHaveBeenCalledWith('pel-1', 'm1');
+  });
 });

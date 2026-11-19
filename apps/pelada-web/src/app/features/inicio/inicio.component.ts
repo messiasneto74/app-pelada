@@ -31,7 +31,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       <pelada-screen-header
         eyebrow="Início"
         [title]="dashboard()?.peladaName ?? 'Bora jogar'"
-        subtitle="Próxima partida, atalhos e caixa do mês (§3.1)."
+        subtitle="Próxima partida, atalhos e caixa do mês."
       />
 
       @if (loading()) {
