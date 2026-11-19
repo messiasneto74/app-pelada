@@ -72,6 +72,7 @@ describe('pelada-rules-api.mapper', () => {
       summaryTemplate: 'Hoje foi animal!',
       customStyleTagsText: 'zagueiro de área, bate escanteio',
       autoPromoteAfterPresences: 5,
+      feeCents: 2000,
     });
     expect(body['goalkeeperMode']).toBe('FIXED_PER_TEAM');
     expect(body['allowPlayerSelfEdit']).toBe(true);
@@ -84,6 +85,35 @@ describe('pelada-rules-api.mapper', () => {
       'bate escanteio',
     ]);
     expect(extra['autoPromoteAfterPresences']).toBe(5);
+    expect(extra['feeCents']).toBe(2000);
+  });
+
+  it('issue #190 — mapeia feeCents (API → formulário, round-trip)', () => {
+    const form = peladaRulesFromApi({
+      peladaId: 'p1',
+      playersPerTeam: 6,
+      teamCount: 2,
+      modality: 'campo',
+      goalkeeperMode: 'ROTATING',
+      fixedListOnly: false,
+      drawWeights: {},
+      extra: { feeCents: 1500 },
+    });
+    expect(form.feeCents).toBe(1500);
+  });
+
+  it('sem feeCents em extra, usa o padrão (0)', () => {
+    const form = peladaRulesFromApi({
+      peladaId: 'p1',
+      playersPerTeam: 6,
+      teamCount: 2,
+      modality: 'campo',
+      goalkeeperMode: 'ROTATING',
+      fixedListOnly: false,
+      drawWeights: {},
+      extra: {},
+    });
+    expect(form.feeCents).toBe(0);
   });
 
   it('issue #179 — mapeia autoPromoteAfterPresences (API → formulário, round-trip)', () => {

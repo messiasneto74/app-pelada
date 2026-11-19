@@ -32,6 +32,8 @@ export type PeladaRulesFormValues = {
   customStyleTagsText: string;
   /** Issue #179 — nº de presenças confirmadas pra promover Convidado a Jogador. 0 desativa. */
   autoPromoteAfterPresences: number;
+  /** Issue #190 — valor padrão da contribuição (em centavos), usado ao lançar cobrança no Caixa. 0 = sem valor padrão. */
+  feeCents: number;
 };
 
 export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
@@ -51,6 +53,7 @@ export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
   summaryTemplate: '',
   customStyleTagsText: '',
   autoPromoteAfterPresences: 0,
+  feeCents: 0,
 };
 
 export function validateGoalkeeperToggles(
@@ -95,6 +98,9 @@ export function validatePeladaRulesForm(values: PeladaRulesFormValues): string |
   }
   if (values.autoPromoteAfterPresences < 0) {
     return 'Promoção automática: nº de presenças não pode ser negativo.';
+  }
+  if (values.feeCents < 0) {
+    return 'Contribuição por partida: valor não pode ser negativo.';
   }
   return null;
 }

@@ -57,6 +57,12 @@ export function peladaRulesFromApi(dto: PeladaRulesApiDto): PeladaRulesFormValue
       (extra['autoPromoteAfterPresences'] as number) >= 0
         ? Math.floor(extra['autoPromoteAfterPresences'] as number)
         : DEFAULT_PELADA_RULES.autoPromoteAfterPresences,
+    feeCents:
+      typeof extra['feeCents'] === 'number' &&
+      Number.isFinite(extra['feeCents']) &&
+      (extra['feeCents'] as number) >= 0
+        ? Math.floor(extra['feeCents'] as number)
+        : DEFAULT_PELADA_RULES.feeCents,
   };
 }
 
@@ -79,6 +85,7 @@ export function peladaRulesToPatchBody(
       summaryTemplate: values.summaryTemplate,
       customStyleTags: parseTagsText(values.customStyleTagsText),
       autoPromoteAfterPresences: values.autoPromoteAfterPresences,
+      feeCents: values.feeCents,
     },
   };
 }

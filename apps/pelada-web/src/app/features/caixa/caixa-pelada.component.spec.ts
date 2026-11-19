@@ -7,8 +7,22 @@ import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organi
 import { PeladaDashboardRefreshService } from '../../core/inicio/pelada-dashboard-refresh.service';
 import { PeladaPaymentsService } from '../../core/payments/pelada-payments.service';
 import type { PaymentLedgerResponse } from '../../core/payments/payment-ledger-api.model';
+import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
+import type { RosterPlayer } from '../../core/roster/roster-player.model';
 import { CaixaPeladaComponent } from './caixa-pelada.component';
 import { of } from 'rxjs';
+
+const rosterPlayers: RosterPlayer[] = [
+  {
+    id: 'p1',
+    displayName: 'Ana',
+    isGoalkeeper: false,
+    position: null,
+    rating: null,
+    tags: [],
+    isFixedList: true,
+  },
+];
 
 const ledger: PaymentLedgerResponse = {
   peladaId: 'pel-1',
@@ -55,18 +69,27 @@ describe('CaixaPeladaComponent §3.9', () => {
   let fixture: ComponentFixture<CaixaPeladaComponent>;
   let paymentsSpy: jasmine.SpyObj<PeladaPaymentsService>;
   let dashboardRefreshSpy: jasmine.SpyObj<PeladaDashboardRefreshService>;
+  let rosterSpy: jasmine.SpyObj<PeladaRosterService>;
 
   beforeEach(async () => {
     paymentsSpy = jasmine.createSpyObj('PeladaPaymentsService', [
       'getLedger',
       'markPaid',
+      'createLedgerEntry',
     ]);
     dashboardRefreshSpy = jasmine.createSpyObj('PeladaDashboardRefreshService', [
       'notifyCashSummaryChanged',
     ]);
+    rosterSpy = jasmine.createSpyObj('PeladaRosterService', ['loadRoster']);
+    rosterSpy.loadRoster.and.callFake((_pelada, onResult) =>
+      onResult(rosterPlayers, 'api'),
+    );
     paymentsSpy.getLedger.and.returnValue(of(ledger));
     paymentsSpy.markPaid.and.returnValue(
       of({ ...ledger.groups[0].entries[0], status: 'PAID' as const }),
+    );
+    paymentsSpy.createLedgerEntry.and.returnValue(
+      of({ ...ledger.groups[0].entries[0], id: 'led-3' }),
     );
 
     await TestBed.configureTestingModule({
@@ -77,6 +100,7 @@ describe('CaixaPeladaComponent §3.9', () => {
         { provide: OAuthService, useValue: { getIdentityClaims: () => ({ sub: 'test' }) } },
         { provide: PeladaPaymentsService, useValue: paymentsSpy },
         { provide: PeladaDashboardRefreshService, useValue: dashboardRefreshSpy },
+        { provide: PeladaRosterService, useValue: rosterSpy },
         {
           provide: PeladaOrganizadorContextService,
           useValue: {
@@ -127,6 +151,54 @@ describe('CaixaPeladaComponent §3.9', () => {
     expect(paymentsSpy.markPaid).toHaveBeenCalledWith('pel-1', 'led-2');
     expect(dashboardRefreshSpy.notifyCashSummaryChanged).toHaveBeenCalled();
     expect(paymentsSpy.getLedger).toHaveBeenCalledTimes(2);
+  });
+
+  it('issue #190: abre o formulário de cobrança e pré-popula valor com feeCents', () => {
+    const component = fixture.componentInstance;
+    component.openChargeForm();
+    fixture.detectChanges();
+    expect(component.showChargeForm()).toBe(true);
+    expect(component.chargeAmountReais()).toBe('20.00');
+    expect(rosterSpy.loadRoster).toHaveBeenCalled();
+    expect(component.players()).toEqual(rosterPlayers);
+  });
+
+  it('issue #190: lança cobrança e recarrega o extrato', () => {
+    const component = fixture.componentInstance;
+    component.openChargeForm();
+    component.chargePlayerId.set('p1');
+    component.chargeAmountReais.set('20.00');
+    component.submitCharge();
+    fixture.detectChanges();
+
+    expect(paymentsSpy.createLedgerEntry).toHaveBeenCalledWith('pel-1', {
+      playerId: 'p1',
+      amountCents: 2000,
+    });
+    expect(dashboardRefreshSpy.notifyCashSummaryChanged).toHaveBeenCalled();
+    expect(component.showChargeForm()).toBe(false);
+    expect(paymentsSpy.getLedger).toHaveBeenCalledTimes(2);
+  });
+
+  it('issue #190: bloqueia envio sem jogador selecionado', () => {
+    const component = fixture.componentInstance;
+    component.openChargeForm();
+    component.chargeAmountReais.set('20.00');
+    component.submitCharge();
+
+    expect(component.chargeError()).toContain('Selecione um jogador');
+    expect(paymentsSpy.createLedgerEntry).not.toHaveBeenCalled();
+  });
+
+  it('issue #190: bloqueia envio com valor inválido', () => {
+    const component = fixture.componentInstance;
+    component.openChargeForm();
+    component.chargePlayerId.set('p1');
+    component.chargeAmountReais.set('0');
+    component.submitCharge();
+
+    expect(component.chargeError()).toContain('valor válido');
+    expect(paymentsSpy.createLedgerEntry).not.toHaveBeenCalled();
   });
 });
 

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, model, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, model, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import {
@@ -138,6 +138,21 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <pelada-field label="Modelo de pagamento">
           <pelada-segment [options]="paymentOptions" [(value)]="paymentSegment" />
         </pelada-field>
+        <pelada-field
+          label="Valor da contribuição por partida (R$)"
+          forId="fee-reais"
+          hint="Usado como sugestão ao lançar cobrança no Caixa. 0 = sem valor padrão."
+        >
+          <input
+            id="fee-reais"
+            type="number"
+            min="0"
+            step="0.01"
+            peladaInput
+            [value]="feeReais()"
+            (input)="patchFeeReais($event)"
+          />
+        </pelada-field>
       </pelada-card>
 
       <pelada-card title="Sorteio">
@@ -245,6 +260,9 @@ export class RegrasPeladaComponent implements OnInit {
 
   readonly catalogTagsPreview = STYLE_TAG_CATALOG_NAMES.slice(0, 6).join(', ') + '…';
 
+  /** Issue #190 — feeCents (API) exibido em reais no formulário. */
+  readonly feeReais = computed(() => (this.values().feeCents / 100).toFixed(2));
+
   readonly paymentOptions = [
     { value: 'PER_MATCH', label: 'Por jogo' },
     { value: 'WEEKLY', label: 'Semanal' },
@@ -334,6 +352,17 @@ export class RegrasPeladaComponent implements OnInit {
     this.values.update((v) => ({
       ...v,
       autoPromoteAfterPresences: Number.isNaN(n) || n < 0 ? v.autoPromoteAfterPresences : n,
+    }));
+    this.formError.set(null);
+  }
+
+  patchFeeReais(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    const reais = Number.parseFloat(raw);
+    this.values.update((v) => ({
+      ...v,
+      feeCents:
+        Number.isNaN(reais) || reais < 0 ? v.feeCents : Math.round(reais * 100),
     }));
     this.formError.set(null);
   }

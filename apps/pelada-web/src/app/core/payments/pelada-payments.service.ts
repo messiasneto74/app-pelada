@@ -28,4 +28,15 @@ export class PeladaPaymentsService {
       {},
     );
   }
+
+  /** Issue #190 — organizador lança uma cobrança pra um jogador (opcionalmente ligada a uma partida). */
+  createLedgerEntry(
+    peladaId: string,
+    body: { playerId: string; matchId?: string; amountCents: number },
+  ) {
+    return this.http.post<PaymentLedgerEntryDto>(
+      `${environment.apiUrl}/peladas/${peladaId}/payments/ledger`,
+      body,
+    );
+  }
 }
