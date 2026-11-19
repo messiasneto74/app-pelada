@@ -14,7 +14,8 @@ import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
 import { DEFAULT_PELADA_RULES } from '../../core/pelada/pelada-rules.model';
 import { PresencaPartidaComponent } from './presenca-partida.component';
 import { PeladaMatchAttendanceService } from '../../core/match/pelada-match-attendance.service';
-import { of } from 'rxjs';
+import { defer, of, Subject, throwError } from 'rxjs';
+import type { MatchAttendanceListApiDto } from '../../core/match/pelada-match-attendance.service';
 
 const players: RosterPlayer[] = [
   {
@@ -58,6 +59,26 @@ const dash: InicioDashboardView = {
   cashExpectedLabel: 'R$ 0,00',
   cashPercent: 0,
 };
+
+function serverList(
+  statuses: Record<string, 'CONFIRMED' | 'PENDING' | 'QUEUE' | 'DECLINED'>,
+  extra: Partial<MatchAttendanceListApiDto> = {},
+): MatchAttendanceListApiDto {
+  return {
+    matchId: 'm1',
+    peladaId: 'p1',
+    listClosed: false,
+    capacity: 12,
+    presenceMode: 'ORGANIZER_CLOSES',
+    entries: Object.entries(statuses).map(([playerId, status], i) => ({
+      playerId,
+      status,
+      queuePosition: status === 'QUEUE' ? i + 1 : null,
+      isGuest: false,
+    })),
+    ...extra,
+  };
+}
 
 describe('PresencaPartidaComponent §3.4', () => {
   let fixture: ComponentFixture<PresencaPartidaComponent>;
@@ -127,6 +148,9 @@ describe('PresencaPartidaComponent §3.4', () => {
         {
           provide: PeladaMatchAttendanceService,
           useValue: {
+            // Padrão: API de presença fora do ar → tela segue com a lista local.
+            getList: () => throwError(() => new Error('offline')),
+            setSelf: () => throwError(() => new Error('offline')),
             patchPlayer: () => of({ status: 'CONFIRMED' }),
             closeList: () => of({}),
             reopenList: () => of({}),
@@ -210,6 +234,217 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(navigate).toHaveBeenCalledWith(['/partida/sorteio']);
     const saved = TestBed.inject(PresenceSessionService).load('m1');
     expect(saved?.listClosed).toBe(true);
+  });
+
+  it('carrega status, fila e lista fechada da API (fonte de verdade, não só a sessão)', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    api['getList'] = () =>
+      of(serverList({ a1: 'PENDING', b1: 'CONFIRMED' }, { listClosed: false }));
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    const rows = fixture.componentInstance.rows();
+    const status = (id: string) =>
+      rows.find((r) => r.kind === 'player' && r.player.id === id)?.status;
+    expect(status('a1')).toBe('pending');
+    expect(status('b1')).toBe('confirmed');
+    expect(fixture.componentInstance.capacity()).toBe(12);
+  });
+
+  it('organizador confirmar grava na API na hora (não só no sessionStorage)', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const patch = jasmine
+      .createSpy('patchPlayer')
+      .and.returnValue(of(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' })));
+    api['getList'] = () => of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }));
+    api['patchPlayer'] = patch;
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onOrgToggle('b1');
+
+    expect(patch).toHaveBeenCalledWith('p1', 'm1', 'b1', { status: 'CONFIRMED' });
+    const b1 = fixture.componentInstance
+      .rows()
+      .find((r) => r.kind === 'player' && r.player.id === 'b1');
+    expect(b1?.status).toBe('confirmed');
+  });
+
+  it('fechar a lista não reenvia os status (só close-list, depois das gravações pendentes)', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const pendingPatch = new Subject<MatchAttendanceListApiDto>();
+    const calls: string[] = [];
+    api['getList'] = () => of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }));
+    api['patchPlayer'] = jasmine.createSpy('patchPlayer').and.callFake(() => {
+      calls.push('patch');
+      return pendingPatch;
+    });
+    // Observable frio, como o HttpClient: a requisição só sai na inscrição.
+    api['closeList'] = jasmine.createSpy('closeList').and.callFake(() =>
+      defer(() => {
+        calls.push('close');
+        return of({});
+      }),
+    );
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onOrgToggle('b1');
+    fixture.componentInstance.confirmCloseDespiteFormat();
+    expect(calls).toEqual(['patch']);
+
+    pendingPatch.next(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' }));
+    pendingPatch.complete();
+    expect(calls).toEqual(['patch', 'close']);
+  });
+
+  it('gravação que falhou (API e recarga fora) é reenviada antes do close-list', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const calls: string[] = [];
+    let online = true;
+    api['getList'] = () =>
+      online
+        ? of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }))
+        : throwError(() => new Error('offline'));
+    api['patchPlayer'] = jasmine
+      .createSpy('patchPlayer')
+      .and.callFake((_p: string, _m: string, id: string) =>
+        defer(() => {
+          calls.push(`patch:${id}`);
+          return online
+            ? of(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' }))
+            : throwError(() => new Error('offline'));
+        }),
+      );
+    api['closeList'] = () =>
+      defer(() => {
+        calls.push('close');
+        return of({});
+      });
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+
+    online = false;
+    fixture.componentInstance.onOrgToggle('b1');
+    const b1 = () =>
+      fixture.componentInstance.rows().find((r) => r.kind === 'player' && r.player.id === 'b1');
+    expect(b1()?.status).toBe('confirmed');
+
+    online = true;
+    fixture.componentInstance.confirmCloseDespiteFormat();
+    expect(calls).toEqual(['patch:b1', 'patch:b1', 'close']);
+  });
+
+  it('leitura lenta não desfaz uma gravação que terminou depois dela', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const slowGet = new Subject<MatchAttendanceListApiDto>();
+    api['getList'] = () => slowGet;
+    api['patchPlayer'] = () => of(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' }));
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onOrgToggle('b1');
+    slowGet.next(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }));
+
+    const b1 = fixture.componentInstance
+      .rows()
+      .find((r) => r.kind === 'player' && r.player.id === 'b1');
+    expect(b1?.status).toBe('confirmed');
+  });
+
+  it('resposta de uma gravação não desfaz o toque seguinte ainda na fila', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const responses = new Map<string, Subject<MatchAttendanceListApiDto>>();
+    api['getList'] = () => of(serverList({ a1: 'PENDING', b1: 'PENDING' }));
+    api['patchPlayer'] = (_p: string, _m: string, id: string) => {
+      const res = new Subject<MatchAttendanceListApiDto>();
+      responses.set(id, res);
+      return res;
+    };
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    const status = (id: string) =>
+      fixture.componentInstance
+        .rows()
+        .find((r) => r.kind === 'player' && r.player.id === id)?.status;
+
+    fixture.componentInstance.onOrgToggle('a1');
+    fixture.componentInstance.onOrgToggle('b1');
+    responses.get('a1')!.next(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }));
+    responses.get('a1')!.complete();
+    expect(status('b1')).toBe('confirmed');
+
+    responses.get('b1')!.next(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' }));
+    responses.get('b1')!.complete();
+    expect(status('a1')).toBe('confirmed');
+    expect(status('b1')).toBe('confirmed');
+  });
+
+  it('falha de uma gravação com outra na fila não recarrega por cima da seguinte', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const responses = new Map<string, Subject<MatchAttendanceListApiDto>>();
+    const getList = jasmine
+      .createSpy('getList')
+      .and.returnValue(of(serverList({ a1: 'PENDING', b1: 'PENDING' })));
+    api['getList'] = getList;
+    api['patchPlayer'] = (_p: string, _m: string, id: string) => {
+      const res = new Subject<MatchAttendanceListApiDto>();
+      responses.set(id, res);
+      return res;
+    };
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    getList.calls.reset();
+    const status = (id: string) =>
+      fixture.componentInstance
+        .rows()
+        .find((r) => r.kind === 'player' && r.player.id === id)?.status;
+
+    fixture.componentInstance.onOrgToggle('a1');
+    fixture.componentInstance.onOrgToggle('b1');
+    responses.get('a1')!.error(new Error('offline'));
+    expect(getList).not.toHaveBeenCalled();
+    expect(status('b1')).toBe('confirmed');
+
+    responses.get('b1')!.next(serverList({ a1: 'PENDING', b1: 'CONFIRMED' }));
+    responses.get('b1')!.complete();
+    expect(status('a1')).toBe('pending');
+    expect(status('b1')).toBe('confirmed');
+  });
+
+  it('gravação pendente que responde depois de fechar não reabre a lista', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const pendingPatch = new Subject<MatchAttendanceListApiDto>();
+    api['getList'] = () => of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }));
+    api['patchPlayer'] = () => pendingPatch;
+    api['closeList'] = () => of({});
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.onOrgToggle('b1');
+    fixture.componentInstance.confirmCloseDespiteFormat();
+    pendingPatch.next(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' }, { listClosed: false }));
+    pendingPatch.complete();
+
+    expect(fixture.componentInstance.listClosed()).toBeTrue();
+    expect(TestBed.inject(PresenceSessionService).load('m1')?.listClosed).toBeTrue();
+  });
+
+  it('jogador "Vou" no modo SELF_CONFIRM chama POST attendance/self', async () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const setSelf = jasmine
+      .createSpy('setSelf')
+      .and.returnValue(of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }, { presenceMode: 'SELF_CONFIRM' })));
+    api['getList'] = () =>
+      of(serverList({ a1: 'PENDING', b1: 'PENDING' }, { presenceMode: 'SELF_CONFIRM' }));
+    api['setSelf'] = setSelf;
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.presenceMode()).toBe('SELF_CONFIRM');
+
+    fixture.componentInstance.onSelfPresence('a1', true);
+
+    expect(setSelf).toHaveBeenCalledWith('p1', 'm1', 'confirm');
   });
 
   it('lista jogador confirmado com chip', () => {
@@ -349,6 +584,9 @@ describe('PresencaPartidaComponent §3.4', () => {
         {
           provide: PeladaMatchAttendanceService,
           useValue: {
+            // Padrão: API de presença fora do ar → tela segue com a lista local.
+            getList: () => throwError(() => new Error('offline')),
+            setSelf: () => throwError(() => new Error('offline')),
             patchPlayer: () => of({ status: 'CONFIRMED' }),
             closeList: () => of({}),
             reopenList: () => of({}),

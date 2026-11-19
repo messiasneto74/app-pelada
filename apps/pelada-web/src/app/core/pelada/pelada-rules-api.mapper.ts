@@ -1,3 +1,4 @@
+import { parseTagsText } from '../roster/player-profile-edit.logic';
 import type { PeladaRulesFormValues } from './pelada-rules.model';
 import {
   DEFAULT_PELADA_RULES,
@@ -45,6 +46,11 @@ export function peladaRulesFromApi(dto: PeladaRulesApiDto): PeladaRulesFormValue
       typeof extra['summaryTemplate'] === 'string'
         ? (extra['summaryTemplate'] as string)
         : DEFAULT_PELADA_RULES.summaryTemplate,
+    customStyleTagsText: Array.isArray(extra['customStyleTags'])
+      ? (extra['customStyleTags'] as unknown[])
+          .filter((t): t is string => typeof t === 'string')
+          .join(', ')
+      : DEFAULT_PELADA_RULES.customStyleTagsText,
   };
 }
 
@@ -65,6 +71,7 @@ export function peladaRulesToPatchBody(
       goalkeeperPerTeam: values.goalkeeperPerTeam,
       fixedGoalkeeper: values.fixedGoalkeeper,
       summaryTemplate: values.summaryTemplate,
+      customStyleTags: parseTagsText(values.customStyleTagsText),
     },
   };
 }

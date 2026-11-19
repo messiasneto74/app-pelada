@@ -19,6 +19,11 @@ export class PeladaOrganizadorContextService {
     return this.roleByPeladaId()[peladaId] === 'ORGANIZADOR';
   }
 
+  /** `true` só depois de a API confirmar JOGADOR (evita piscar a UI do organizador). */
+  isJogador(peladaId: string): boolean {
+    return this.roleByPeladaId()[peladaId] === 'JOGADOR';
+  }
+
   refreshMembership(peladaId: string): void {
     this.http
       .get<PeladaMembershipDto>(

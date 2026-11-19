@@ -194,6 +194,17 @@ describe('PeladaInvitesService (issue #172 — fase 1)', () => {
       });
     });
 
+    it('usa o nome da conta (claim do token) quando existe', async () => {
+      mockValidInvite();
+      prisma.peladaMember.findUnique.mockResolvedValue(null);
+
+      await service.redeemInvite({ ...auth, name: 'Ana Silva' }, 'tok-1');
+
+      expect(prisma.player.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ displayName: 'Ana Silva' }),
+      });
+    });
+
     it('usa nome genérico quando não há e-mail', async () => {
       mockValidInvite();
       prisma.peladaMember.findUnique.mockResolvedValue(null);

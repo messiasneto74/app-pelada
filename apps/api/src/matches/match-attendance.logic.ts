@@ -82,6 +82,12 @@ export function applyAttendanceStatusChange(
   if (!target) {
     return rows;
   }
+  // Idempotente: pedir o status que o jogador já tem não mexe na lista. Antes,
+  // reconfirmar um confirmado com a lista cheia caía em resolveNextStatus →
+  // QUEUE, rebaixava o jogador e promovia o primeiro da fila.
+  if (target.status === requested) {
+    return rows;
+  }
   const confirmedBefore = countConfirmed(rows);
   const wasConfirmed = target.status === 'CONFIRMED';
 

@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { PeladaDashboardRefreshService } from '../../core/inicio/pelada-dashboard-refresh.service';
 import {
@@ -8,6 +8,7 @@ import {
 import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
 import { resolveInicioEmptyStates } from '../../core/inicio/inicio-empty-states';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
+import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import { PeladaAvatarComponent } from '../../ui/avatar.component';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaCardComponent } from '../../ui/card.component';
@@ -69,16 +70,22 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           </pelada-card>
         } @else {
           <pelada-card title="Nenhuma partida marcada">
-            <p class="pelada-muted">
-              Crie a primeira partida para ver dia, hora, vagas e confirmados aqui.
-            </p>
-            <a
-              routerLink="/inicio/criar-partida"
-              peladaButton
-              [peladaButtonBlock]="true"
-            >
-              Criar partida
-            </a>
+            @if (isJogador()) {
+              <p class="pelada-muted">
+                O organizador ainda não marcou a próxima partida. Quando marcar, ela aparece aqui.
+              </p>
+            } @else {
+              <p class="pelada-muted">
+                Crie a primeira partida para ver dia, hora, vagas e confirmados aqui.
+              </p>
+              <a
+                routerLink="/inicio/criar-partida"
+                peladaButton
+                [peladaButtonBlock]="true"
+              >
+                Criar partida
+              </a>
+            }
           </pelada-card>
         }
 
@@ -99,7 +106,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         }
 
         <div class="shortcut-grid">
-          @for (s of shortcuts; track s.id) {
+          @for (s of visibleShortcuts(); track s.id) {
             <a [routerLink]="s.route" class="shortcut" peladaButton variant="secondary">
               {{ s.label }}
             </a>
@@ -166,8 +173,16 @@ export class InicioComponent {
   private readonly dashboardService = inject(PeladaDashboardService);
   private readonly dashboardRefresh = inject(PeladaDashboardRefreshService);
   private readonly router = inject(Router);
+  private readonly orgContext = inject(PeladaOrganizadorContextService);
 
-  readonly shortcuts = INICIO_SHORTCUTS;
+  /** Jogador (ex.: entrou por convite) não vê atalhos de organizador — a API recusaria. */
+  readonly isJogador = computed(() => {
+    const pelada = this.peladaContext.getActivePelada();
+    return pelada ? this.orgContext.isJogador(pelada.id) : false;
+  });
+  readonly visibleShortcuts = computed(() =>
+    INICIO_SHORTCUTS.filter((s) => !s.organizerOnly || !this.isJogador()),
+  );
   readonly dashboard = signal<InicioDashboardView | null>(null);
   readonly loading = signal(true);
   readonly resolveInicioEmptyStates = resolveInicioEmptyStates;
@@ -182,6 +197,7 @@ export class InicioComponent {
         return;
       }
       this.loading.set(true);
+      untracked(() => this.orgContext.refreshMembership(pelada.id));
       this.dashboardService.loadDashboard(pelada, (view) => {
         this.dashboard.set(view);
         this.loading.set(false);

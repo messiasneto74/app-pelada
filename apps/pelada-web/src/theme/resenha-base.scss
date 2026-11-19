@@ -38,7 +38,10 @@ a {
   font-weight: 600;
 }
 
-a:hover {
+/* Botões em <a peladaButton> mantêm a cor da variante: sem o :not, o texto do
+   botão primário (verde escuro) ficava verde-sobre-verde no hover — e no celular
+   o hover "gruda" depois do toque. */
+a:not(.pelada-btn):hover {
   color: var(--pelada-green);
 }
 

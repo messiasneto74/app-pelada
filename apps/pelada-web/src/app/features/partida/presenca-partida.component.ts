@@ -23,6 +23,7 @@ import {
   filterPresenceBySegment,
   orgTogglePlayer,
   presenceCounts,
+  presenceFromAttendance,
   resolveGuest,
   selfSetPlayerStatus,
   segmentOptionsWithCounts,
@@ -35,10 +36,11 @@ import type {
   PresenceRow,
 } from '../../core/presence/presence-attendance.model';
 import type { Observable } from 'rxjs';
-import { forkJoin, of, switchMap } from 'rxjs';
+import { catchError, concat, concatMap, defer, last, map, of, Subject, switchMap, tap } from 'rxjs';
 import { PresenceSessionService } from '../../core/presence/presence-session.service';
 import { evaluateFormatBeforeClose } from '../../core/presence/presence-format-suggest.logic';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
+import type { MatchAttendanceListApiDto } from '../../core/match/pelada-match-attendance.service';
 import {
   DEFAULT_PELADA_RULES,
   type PeladaRulesFormValues,
@@ -580,6 +582,13 @@ export class PresencaPartidaComponent implements OnInit {
       this.capacity(),
     );
     this.applyPresenceState(result.rows, result.queueOrder);
+    const pelada = this.peladaContext.getActivePelada();
+    const mid = this.matchId();
+    if (pelada && mid) {
+      this.syncWithApi(`self:${playerId}`, () =>
+        this.attendanceApi.setSelf(pelada.id, mid, accept ? 'confirm' : 'decline'),
+      );
+    }
   }
 
   showOrgActions(row: PresenceRow): boolean {
@@ -600,6 +609,133 @@ export class PresencaPartidaComponent implements OnInit {
       this.capacity(),
     );
     this.applyPresenceState(result.rows, result.queueOrder);
+    const next = result.rows.find(
+      (r) => r.kind === 'player' && r.player.id === playerId,
+    );
+    const pelada = this.peladaContext.getActivePelada();
+    const mid = this.matchId();
+    if (pelada && mid && next?.kind === 'player') {
+      const status = this.presenceStatusToApi(next.status);
+      this.syncWithApi(`org:${playerId}`, () =>
+        this.attendanceApi.patchPlayer(pelada.id, mid, playerId, { status }),
+      );
+    }
+  }
+
+  /**
+   * Grava a mudança na API (otimista) e adota a lista devolvida como verdade —
+   * a fila/promoção é decidida no servidor. Sem isso a lista só existia no
+   * sessionStorage e se perdia ao fechar o app ou entrar de novo.
+   *
+   * A gravação fica em `unsaved` até dar certo (ou até a lista do servidor ser
+   * recarregada no lugar dela), pra ser reenviada antes do close-list se a
+   * conexão caiu no meio.
+   */
+  private syncWithApi(
+    key: string,
+    write: () => Observable<MatchAttendanceListApiDto>,
+  ): void {
+    this.unsaved.set(key, write);
+    this.mutationSeq++;
+    this.pendingWrites++;
+    this.syncQueue.next(
+      defer(write).pipe(
+        map((dto) => ({ ok: true as const, dto })),
+        catchError(() => of({ ok: false as const, dto: null })),
+        map((res) => {
+          if (res.ok) {
+            this.clearUnsaved(key, write);
+          }
+          // Com outra gravação ainda na fila, esta resposta (ou uma recarga
+          // agora) não sabe dela e desfaria o toque otimista seguinte: só a
+          // última da fila reconcilia com o servidor.
+          if (--this.pendingWrites > 0) {
+            return null;
+          }
+          if (res.ok) {
+            // A lista do servidor passa a ser a da tela: o que falhou antes
+            // aparece desfeito, então não há mais nada pra reenviar.
+            this.unsaved.clear();
+            return res.dto;
+          }
+          this.refreshFromApi(() => this.unsaved.clear());
+          return null;
+        }),
+      ),
+    );
+  }
+
+  private clearUnsaved(
+    key: string,
+    write: () => Observable<MatchAttendanceListApiDto>,
+  ): void {
+    if (this.unsaved.get(key) === write) {
+      this.unsaved.delete(key);
+    }
+  }
+
+  /** Gravações que falharam e ainda aparecem na tela (por jogador). */
+  private readonly unsaved = new Map<string, () => Observable<MatchAttendanceListApiDto>>();
+
+  /** Sobe a cada gravação: leitura iniciada antes dela é descartada (resposta velha). */
+  private mutationSeq = 0;
+
+  /** Gravações na fila ainda sem resposta. */
+  private pendingWrites = 0;
+
+  /** Organizador já fechou a lista: resposta de gravação anterior não reabre o snapshot. */
+  private closing = false;
+
+  /** Toques rápidos: uma gravação por vez, na ordem, pra resposta velha não sobrescrever a nova. */
+  private readonly syncQueue = new Subject<Observable<MatchAttendanceListApiDto | null>>();
+  private readonly syncSubscription = this.syncQueue
+    .pipe(concatMap((req) => req))
+    .subscribe((dto) => {
+      if (dto) {
+        this.applyServerAttendance(dto);
+      }
+    });
+
+  private refreshFromApi(onApplied?: () => void): void {
+    const pelada = this.peladaContext.getActivePelada();
+    const mid = this.matchId();
+    if (!pelada || !mid) {
+      return;
+    }
+    const seq = this.mutationSeq;
+    this.attendanceApi.getList(pelada.id, mid).subscribe({
+      next: (dto) => {
+        if (seq !== this.mutationSeq) {
+          return; // uma gravação começou depois desta leitura: a resposta dela manda
+        }
+        this.applyServerAttendance(dto);
+        onApplied?.();
+      },
+      error: () => {
+        /* API fora: mantém a lista local (sessionStorage) */
+      },
+    });
+  }
+
+  private applyServerAttendance(dto: MatchAttendanceListApiDto): void {
+    if (dto.matchId !== this.matchId()) {
+      return;
+    }
+    const { statusByPlayerId, queueOrder } = presenceFromAttendance(dto.entries);
+    this.capacity.set(dto.capacity);
+    this.listClosed.set(dto.listClosed || this.closing);
+    this.presenceMode.set(
+      dto.presenceMode === 'SELF_CONFIRM' ? 'SELF_CONFIRM' : 'ORGANIZER_CLOSES',
+    );
+    this.rows.update((rows) =>
+      rows.map((r) =>
+        r.kind === 'player' && statusByPlayerId.has(r.player.id)
+          ? { ...r, status: statusByPlayerId.get(r.player.id)! }
+          : r,
+      ),
+    );
+    this.queueOrder.set(queueOrder);
+    this.persist();
   }
 
   onGuest(accept: boolean, guestId: string): void {
@@ -657,6 +793,7 @@ export class PresencaPartidaComponent implements OnInit {
   }
 
   private finishCloseListAndDraw(): void {
+    this.closing = true;
     this.listClosed.set(true);
     this.persist();
     const pelada = this.peladaContext.getActivePelada();
@@ -668,27 +805,34 @@ export class PresencaPartidaComponent implements OnInit {
     if (!pelada || !mid || !this.isOrganizador()) {
       return;
     }
-    const playerRows = this.rows().filter(
-      (r): r is Extract<PresenceRow, { kind: 'player' }> => r.kind === 'player',
+    // Cada toque já foi gravado na hora (syncWithApi). Reenviar todos os status
+    // aqui não é idempotente com a lista cheia (o servidor reordenava a fila),
+    // então só reenvia o que falhou e fecha — na mesma fila, depois das
+    // gravações pendentes. Se algum reenvio falhar, não fecha no servidor (o
+    // Sorteio reenvia close-list).
+    this.syncQueue.next(
+      defer(() => {
+        const retries = [...this.unsaved.entries()].map(([key, write]) =>
+          defer(write).pipe(tap(() => this.clearUnsaved(key, write))),
+        );
+        this.mutationSeq++;
+        // Não aplica a lista dos reenvios: ela ainda vem com listClosed=false.
+        return concat(...retries, of(null)).pipe(
+          last(),
+          switchMap(() => this.attendanceApi.closeList(pelada.id, mid)),
+          map(() => null),
+        );
+      }).pipe(
+        catchError(() => {
+          /* §3.4: já na tela Sorteio; sorteio pode reenviar close-list se draw falhar */
+          return of(null);
+        }),
+      ),
     );
-    const sync: Observable<unknown> =
-      playerRows.length > 0
-        ? forkJoin(
-            playerRows.map((r) =>
-              this.attendanceApi.patchPlayer(pelada.id, mid, r.player.id, {
-                status: this.presenceStatusToApi(r.status),
-              }),
-            ),
-          )
-        : of(undefined);
-    sync.pipe(switchMap(() => this.attendanceApi.closeList(pelada.id, mid))).subscribe({
-      error: () => {
-        /* §3.4: já na tela Sorteio; sorteio pode reenviar close-list se draw falhar */
-      },
-    });
   }
 
   reopenList(): void {
+    this.closing = false;
     this.listClosed.set(false);
     this.persist();
     const pelada = this.peladaContext.getActivePelada();
@@ -772,6 +916,7 @@ export class PresencaPartidaComponent implements OnInit {
       assemblePresenceRows(players, map, guests, extraPlayers),
     );
     this.persist();
+    this.refreshFromApi();
   }
 
   private applyPresenceState(

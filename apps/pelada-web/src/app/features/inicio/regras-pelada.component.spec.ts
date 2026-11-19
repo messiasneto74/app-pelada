@@ -1,7 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
+import type { PeladaRulesApiDto } from '../../core/pelada/pelada-rules-api.mapper';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
 import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
@@ -106,9 +107,53 @@ describe('RegrasPeladaComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/inicio']);
   });
 
+  it('mostra e persiste tags extras do grupo (issue #188)', () => {
+    expect(fixture.nativeElement.textContent).toContain('Tags de estilo');
+    fixture.componentInstance.patchCustomStyleTags({
+      target: { value: 'pé de anjo, capitão' },
+    } as unknown as Event);
+    expect(fixture.componentInstance.values().customStyleTagsText).toBe(
+      'pé de anjo, capitão',
+    );
+    fixture.componentInstance.saveDefault();
+    expect(
+      rulesService.getDefaultRules('p1').customStyleTagsText,
+    ).toBe('pé de anjo, capitão');
+  });
+
   it('persiste allowPlayerSelfEdit ao salvar', () => {
     fixture.componentInstance.allowPlayerSelfEdit.set(true);
     fixture.componentInstance.saveDefault();
     expect(rulesService.getDefaultRules('p1').allowPlayerSelfEdit).toBe(true);
+  });
+
+  it('esconde o formulário até o GET das regras responder (edição não é sobrescrita)', () => {
+    const pending = new Subject<PeladaRulesApiDto>();
+    const api = TestBed.inject(PeladaRulesApiService) as unknown as {
+      fetchRules: () => unknown;
+    };
+    api.fetchRules = () => pending.asObservable();
+    const slow = TestBed.createComponent(RegrasPeladaComponent);
+    slow.detectChanges();
+
+    const el = slow.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Carregando regras');
+    expect(el.querySelector('#players-per-team')).toBeNull();
+    expect(el.textContent).not.toContain('Salvar como padrão');
+
+    pending.next({
+      peladaId: 'p1',
+      playersPerTeam: 6,
+      teamCount: 2,
+      modality: 'campo',
+      goalkeeperMode: 'ROTATING',
+      fixedListOnly: false,
+      allowPlayerSelfEdit: false,
+      drawWeights: {},
+      extra: {},
+    } as PeladaRulesApiDto);
+    slow.detectChanges();
+    expect(el.querySelector('#players-per-team')).not.toBeNull();
+    expect(el.textContent).toContain('Salvar como padrão');
   });
 });
