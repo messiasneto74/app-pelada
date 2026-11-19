@@ -75,6 +75,17 @@
                   "with": "src/environments/environment.staging.generated.ts"
                 }
               ]
+            },
+            "development-device": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.development-device.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -87,6 +98,10 @@
             },
             "development": {
               "buildTarget": "pelada-web:build:development"
+            },
+            "development-device": {
+              "buildTarget": "pelada-web:build:development-device",
+              "host": "0.0.0.0"
             }
           },
           "defaultConfiguration": "development"

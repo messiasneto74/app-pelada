@@ -58,6 +58,7 @@ O realm importado (**F0-4**) traz o provider **Google** **desligado** (`enabled:
 1. [Google Cloud Console](https://console.cloud.google.com/) → OAuth client (Web).
 2. Redirect autorizado: `http://localhost:8080/realms/pelada/broker/google/endpoint`
 3. Admin Keycloak → Realm **pelada** → Identity providers → **Google** → colar Client ID/Secret → **Save** → **Enable**.
+4. `npm.cmd run keycloak:configure` — desativa a tela "Update Account Information" (Review Profile) do Keycloak no fluxo `first broker login`. O Google já manda nome/sobrenome/e-mail; não há motivo pra pedir confirmação numa tela hospedada pelo Keycloak — o usuário entra direto no app, que já tem sua própria tela (`/entrar/completar`) pra pedir o telefone. Precisa rodar de novo após qualquer `keycloak:reset` (volume novo). Alternativa manual se o script falhar: Admin Console → Authentication → `first broker login` → execução **Review Profile** → Requirement = **Disabled**.
 
 Redirect do Google aponta para o Keycloak, não para o Angular.
 
@@ -70,6 +71,39 @@ e abre o fluxo no **navegador do sistema** via `@capacitor/browser`; o retorno c
 deep link `com.pelada.app://callback` (`AndroidManifest.xml` / `Info.plist`), capturado por
 `App.addListener('appUrlOpen', …)` em `AuthService`, que completa o code flow com
 `tryLoginCodeFlow` e fecha o navegador.
+
+#### Testar em dispositivo físico (celular na mesma rede) ou validar o redirect do Google
+
+O Google recusa IP de LAN cru (ex. `192.168.1.6`) como redirect URI — só aceita
+`localhost` ou um domínio "de verdade". Use um DNS curinga (`<ip>.nip.io`, resolve
+pro próprio IP): o Keycloak (`KC_HOSTNAME_STRICT: false`) devolve o mesmo host que
+o cliente usou.
+
+1. Edite `apps/pelada-web/src/environments/environment.development-device.ts` com
+   o IP atual da sua máquina na rede (`LAN_HOST`).
+2. Cadastre esse mesmo host (`http://<ip>.nip.io:8080/realms/pelada/broker/google/endpoint`)
+   como redirect URI adicional no client OAuth do Google Cloud Console.
+3. Rode a API local (`npm run dev:api`) — ela escuta em todas as interfaces por padrão
+   (`app.listen(port)` sem host fixo), então já aceita conexão da LAN sem mudança.
+   Se usar `npm run stack:up` (API em container) em vez disso, publique também a porta
+   da API pra fora de `127.0.0.1` no `docker-compose.yml`.
+4. Adicione o host do nip.io em `CORS_ORIGIN` (no `.env` da API), separado por vírgula
+   do `localhost`, por exemplo: `CORS_ORIGIN=http://localhost:4200,http://192.168.1.6.nip.io:4200`.
+   Sem isso a API rejeita as chamadas vindas do nip.io por CORS.
+5. Troque também `KEYCLOAK_ISSUER` (no `.env` da API) pro host do nip.io, por exemplo:
+   `KEYCLOAK_ISSUER=http://192.168.1.6.nip.io:8080/realms/pelada`. O token do Keycloak
+   carrega o host que o navegador usou (`iss`); se a API continuar esperando `localhost`
+   nessa variável, ela rejeita o token com 401 mesmo com o login tendo funcionado.
+   **Volte pro valor de `localhost` depois** (ou mantenha dois `.env` separados), senão
+   o login normal por `npm run dev:web` para de funcionar.
+6. `npm run dev:web:device` em vez de `npm run dev:web` — sobe o Angular com esse
+   environment (fileReplacement `development-device` no `angular.json`) escutando em
+   `0.0.0.0` (serve `host`), sem precisar editar `environment.development.ts` toda vez
+   que for testar no PC vs. no celular.
+
+O `docker-compose.yml` publica o Keycloak em todas as interfaces (`${KEYCLOAK_HTTP_PORT:-8080}:8080`,
+sem `127.0.0.1:`), justamente pra aceitar essas conexões vindas da LAN. É um Keycloak
+de desenvolvimento (`start-dev`, sem TLS) — não suba esse compose fora da sua rede local/dev.
 
 ---
 

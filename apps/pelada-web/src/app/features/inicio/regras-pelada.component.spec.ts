@@ -108,6 +108,20 @@ describe('RegrasPeladaComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/inicio']);
   });
 
+  it('mostra e persiste tags extras do grupo (issue #188)', () => {
+    expect(fixture.nativeElement.textContent).toContain('Tags de estilo');
+    fixture.componentInstance.patchCustomStyleTags({
+      target: { value: 'pé de anjo, capitão' },
+    } as unknown as Event);
+    expect(fixture.componentInstance.values().customStyleTagsText).toBe(
+      'pé de anjo, capitão',
+    );
+    fixture.componentInstance.saveDefault();
+    expect(
+      rulesService.getDefaultRules('p1').customStyleTagsText,
+    ).toBe('pé de anjo, capitão');
+  });
+
   it('persiste allowPlayerSelfEdit ao salvar', () => {
     fixture.componentInstance.allowPlayerSelfEdit.set(true);
     fixture.componentInstance.saveDefault();

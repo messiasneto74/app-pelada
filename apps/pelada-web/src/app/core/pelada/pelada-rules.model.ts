@@ -28,6 +28,8 @@ export type PeladaRulesFormValues = {
   allowPlayerSelfEdit: boolean;
   /** Texto livre do resumo do dia (épico #156, etapa 4) — vazio usa o padrão da API. */
   summaryTemplate: string;
+  /** Issue #188 — tags extras do organizador, somadas ao catálogo fixo nas sugestões. */
+  customStyleTagsText: string;
 };
 
 export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
@@ -45,6 +47,7 @@ export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
   drawUseStyleTags: true,
   allowPlayerSelfEdit: false,
   summaryTemplate: '',
+  customStyleTagsText: '',
 };
 
 export function validateGoalkeeperToggles(

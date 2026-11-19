@@ -70,6 +70,7 @@ describe('pelada-rules-api.mapper', () => {
       drawUseStyleTags: false,
       allowPlayerSelfEdit: true,
       summaryTemplate: 'Hoje foi animal!',
+      customStyleTagsText: 'zagueiro de área, bate escanteio',
     });
     expect(body['goalkeeperMode']).toBe('FIXED_PER_TEAM');
     expect(body['allowPlayerSelfEdit']).toBe(true);
@@ -77,5 +78,23 @@ describe('pelada-rules-api.mapper', () => {
     expect(weights['useStyleTags']).toBe(false);
     const extra = body['extra'] as Record<string, unknown>;
     expect(extra['summaryTemplate']).toBe('Hoje foi animal!');
+    expect(extra['customStyleTags']).toEqual([
+      'zagueiro de área',
+      'bate escanteio',
+    ]);
+  });
+
+  it('issue #188 — mapeia customStyleTags (API → formulário, round-trip)', () => {
+    const form = peladaRulesFromApi({
+      peladaId: 'p1',
+      playersPerTeam: 6,
+      teamCount: 2,
+      modality: 'campo',
+      goalkeeperMode: 'ROTATING',
+      fixedListOnly: false,
+      drawWeights: {},
+      extra: { customStyleTags: ['pé de anjo', 'capitão'] },
+    });
+    expect(form.customStyleTagsText).toBe('pé de anjo, capitão');
   });
 });

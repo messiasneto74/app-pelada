@@ -13,6 +13,8 @@ import { peladaRulesFromApi } from '../../core/pelada/pelada-rules-api.mapper';
 import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
 import type { PeladaPlayerProfileDto } from '../../core/roster/pelada-player-profile-api.model';
 import { PeladaPlayerProfileService } from '../../core/roster/pelada-player-profile.service';
+import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
+import type { RosterPlayer } from '../../core/roster/roster-player.model';
 import { environment } from '../../../environments/environment';
 import { JogadorPerfilComponent } from './jogador-perfil.component';
 
@@ -110,6 +112,20 @@ const profileServiceProvider = {
   },
 };
 
+function rosterServiceMock(players: RosterPlayer[] = []) {
+  return {
+    loadRoster: (
+      _p: typeof pelada,
+      cb: (players: RosterPlayer[], outcome: 'api') => void,
+    ) => cb(players, 'api'),
+  };
+}
+
+const rosterServiceProvider = {
+  provide: PeladaRosterService,
+  useValue: rosterServiceMock(),
+};
+
 describe('JogadorPerfilComponent (3.8)', () => {
   let fixture: ComponentFixture<JogadorPerfilComponent>;
 
@@ -122,6 +138,7 @@ describe('JogadorPerfilComponent (3.8)', () => {
         ]),
         routeProvider,
         peladaContextProvider,
+        rosterServiceProvider,
         profileServiceProvider,
         {
           provide: PeladaRulesApiService,
@@ -232,6 +249,7 @@ describe('JogadorPerfilComponent editar oculto (3.8)', () => {
         ]),
         routeProvider,
         peladaContextProvider,
+        rosterServiceProvider,
         profileServiceProvider,
         {
           provide: PeladaRulesApiService,
@@ -273,6 +291,7 @@ describe('JogadorPerfilComponent regra 27 (3.8)', () => {
         ]),
         routeProvider,
         peladaContextProvider,
+        rosterServiceProvider,
         {
           provide: PeladaPlayerProfileService,
           useValue: {
@@ -306,6 +325,27 @@ describe('JogadorPerfilComponent regra 27 (3.8)', () => {
       'Editar meu perfil',
     );
   });
+
+  it('não pré-preenche atributo em autoedição — só organizador (issue #188)', async () => {
+    const selfFixture = TestBed.createComponent(JogadorPerfilComponent);
+    selfFixture.detectChanges();
+    await selfFixture.whenStable();
+    await Promise.resolve();
+    selfFixture.detectChanges();
+
+    selfFixture.componentInstance.startEdit();
+    const before = selfFixture.componentInstance.editForm().attributes.chute;
+    selfFixture.componentInstance.patchTagsText({
+      target: { value: 'artilheiro' },
+    } as unknown as Event);
+
+    expect(selfFixture.componentInstance.editForm().attributes.chute).toBe(
+      before,
+    );
+    expect(selfFixture.componentInstance.editForm().tagsText).toBe(
+      'artilheiro',
+    );
+  });
 });
 
 describe('JogadorPerfilComponent regras via HTTP (3.8)', () => {
@@ -321,6 +361,7 @@ describe('JogadorPerfilComponent regras via HTTP (3.8)', () => {
         ]),
         routeProvider,
         peladaContextProvider,
+        rosterServiceProvider,
         {
           provide: PeladaPlayerProfileService,
           useValue: {
@@ -385,6 +426,7 @@ describe('JogadorPerfilComponent modo edição (3.8-EDIT)', () => {
         ]),
         routeProvider,
         peladaContextProvider,
+        rosterServiceProvider,
         profileServiceProvider,
         {
           provide: PeladaRulesApiService,
@@ -433,5 +475,80 @@ describe('JogadorPerfilComponent modo edição (3.8-EDIT)', () => {
     expect(updateSpy).toHaveBeenCalled();
     expect(editFixture.componentInstance.editing()).toBe(false);
     expect(editFixture.nativeElement.textContent).toContain('novo');
+  });
+
+  it('pré-preenche atributo ao digitar tag do catálogo (issue #188)', async () => {
+    await TestBed.configureTestingModule({
+      imports: [JogadorPerfilComponent],
+      providers: [
+        provideRouter([
+          { path: 'jogadores/:playerId', component: JogadorPerfilComponent },
+        ]),
+        routeProvider,
+        peladaContextProvider,
+        rosterServiceProvider,
+        profileServiceProvider,
+        {
+          provide: PeladaRulesApiService,
+          useValue: rulesApiMock(false),
+        },
+        {
+          provide: PeladaOrganizadorContextService,
+          useValue: orgContextMock(true),
+        },
+        { provide: AuthService, useValue: authMock('user-org') },
+      ],
+    }).compileComponents();
+
+    const editFixture = TestBed.createComponent(JogadorPerfilComponent);
+    editFixture.detectChanges();
+    await editFixture.whenStable();
+    await Promise.resolve();
+    editFixture.detectChanges();
+
+    editFixture.componentInstance.startEdit();
+    editFixture.componentInstance.patchTagsText({
+      target: { value: 'artilheiro' },
+    } as unknown as Event);
+
+    expect(editFixture.componentInstance.editForm().attributes.chute).toBe(9);
+  });
+
+  it('lista sugestões de tags (catálogo) no datalist', async () => {
+    await TestBed.configureTestingModule({
+      imports: [JogadorPerfilComponent],
+      providers: [
+        provideRouter([
+          { path: 'jogadores/:playerId', component: JogadorPerfilComponent },
+        ]),
+        routeProvider,
+        peladaContextProvider,
+        rosterServiceProvider,
+        profileServiceProvider,
+        {
+          provide: PeladaRulesApiService,
+          useValue: rulesApiMock(false),
+        },
+        {
+          provide: PeladaOrganizadorContextService,
+          useValue: orgContextMock(true),
+        },
+        { provide: AuthService, useValue: authMock('user-org') },
+      ],
+    }).compileComponents();
+
+    const editFixture = TestBed.createComponent(JogadorPerfilComponent);
+    editFixture.detectChanges();
+    await editFixture.whenStable();
+    await Promise.resolve();
+    editFixture.detectChanges();
+
+    editFixture.componentInstance.startEdit();
+    editFixture.detectChanges();
+
+    const options = editFixture.nativeElement.querySelectorAll(
+      '#profile-tag-suggestions option',
+    );
+    expect(options.length).toBeGreaterThan(0);
   });
 });

@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "dev:web": "npm run build:core && npm run start -w @pelada/web",
+    "dev:web:device": "npm run build:core && npm run start -w @pelada/web -- --configuration=development-device",
     "dev:api": "npm run start:dev -w @pelada/api",
     "build:web": "npm run build -w @pelada/web",
     "build:web:staging": "node scripts/prepare-staging-web-env.mjs && npm run build -w @pelada/web -- --configuration=staging",
@@ -48,6 +49,7 @@
     "keycloak:down": "docker compose stop keycloak postgres-keycloak",
     "keycloak:reset": "node scripts/keycloak-reset.mjs",
     "smoke:keycloak": "node scripts/keycloak-smoke.mjs",
+    "keycloak:configure": "node scripts/keycloak-disable-review-profile.mjs",
     "test:e2e": "node scripts/run-e2e.mjs",
     "test:e2e:install": "playwright install chromium",
     "test:e2e:playwright": "playwright test --config e2e/playwright.config.ts"
