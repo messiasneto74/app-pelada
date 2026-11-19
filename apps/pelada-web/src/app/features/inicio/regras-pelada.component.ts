@@ -13,6 +13,7 @@ import {
 } from '../../core/pelada/pelada-rules.model';
 import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
 import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
+import { STYLE_TAG_CATALOG_NAMES } from '../../core/roster/player-profile-tag-suggestions.logic';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaCardComponent } from '../../ui/card.component';
 import { PeladaFieldComponent } from '../../ui/field.component';
@@ -145,6 +146,26 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <pelada-switch [(checked)]="drawUseStyleTags">Usar tags de estilo</pelada-switch>
       </pelada-card>
 
+      <pelada-card title="Tags de estilo">
+        <p class="pelada-muted hint">
+          Sugeridas no perfil do jogador: catálogo padrão ({{ catalogTagsPreview }}) + tags já usadas na pelada.
+        </p>
+        <pelada-field
+          label="Tags extras do grupo (separadas por vírgula)"
+          forId="custom-style-tags"
+          hint="Somadas ao catálogo padrão nas sugestões de Editar perfil."
+        >
+          <input
+            id="custom-style-tags"
+            type="text"
+            maxlength="300"
+            peladaInput
+            [value]="values().customStyleTagsText"
+            (input)="patchCustomStyleTags($event)"
+          />
+        </pelada-field>
+      </pelada-card>
+
       <button
         type="button"
         class="pelada-btn pelada-btn--block"
@@ -197,6 +218,8 @@ export class RegrasPeladaComponent implements OnInit {
    * mexia era sobrescrito em silêncio quando a resposta chegava (rede lenta).
    */
   readonly rulesReady = signal(false);
+
+  readonly catalogTagsPreview = STYLE_TAG_CATALOG_NAMES.slice(0, 6).join(', ') + '…';
 
   readonly paymentOptions = [
     { value: 'PER_MATCH', label: 'Por jogo' },
@@ -270,6 +293,11 @@ export class RegrasPeladaComponent implements OnInit {
     const fixedGkRotation = (event.target as HTMLSelectElement)
       .value as FixedGkRotation;
     this.values.update((v) => ({ ...v, fixedGkRotation }));
+  }
+
+  patchCustomStyleTags(event: Event): void {
+    const customStyleTagsText = (event.target as HTMLInputElement).value;
+    this.values.update((v) => ({ ...v, customStyleTagsText }));
   }
 
   saveDefault(): void {

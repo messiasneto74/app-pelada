@@ -400,9 +400,10 @@ export class JogadorPerfilComponent implements OnInit {
     });
     this.rulesApi.fetchRules(pelada.id).subscribe({
       next: (dto) => {
-        this.allowPlayerSelfEdit.set(
-          this.rulesApi.mapFromApi(dto).allowPlayerSelfEdit,
-        );
+        const rules = this.rulesApi.mapFromApi(dto);
+        this.allowPlayerSelfEdit.set(rules.allowPlayerSelfEdit);
+        const customTags = parseTagsText(rules.customStyleTagsText);
+        this.usedTags.update((tags) => [...tags, ...customTags]);
       },
       error: () => this.allowPlayerSelfEdit.set(false),
     });
