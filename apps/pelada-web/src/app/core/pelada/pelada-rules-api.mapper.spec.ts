@@ -71,6 +71,7 @@ describe('pelada-rules-api.mapper', () => {
       allowPlayerSelfEdit: true,
       summaryTemplate: 'Hoje foi animal!',
       customStyleTagsText: 'zagueiro de área, bate escanteio',
+      autoPromoteAfterPresences: 5,
     });
     expect(body['goalkeeperMode']).toBe('FIXED_PER_TEAM');
     expect(body['allowPlayerSelfEdit']).toBe(true);
@@ -82,6 +83,35 @@ describe('pelada-rules-api.mapper', () => {
       'zagueiro de área',
       'bate escanteio',
     ]);
+    expect(extra['autoPromoteAfterPresences']).toBe(5);
+  });
+
+  it('issue #179 — mapeia autoPromoteAfterPresences (API → formulário, round-trip)', () => {
+    const form = peladaRulesFromApi({
+      peladaId: 'p1',
+      playersPerTeam: 6,
+      teamCount: 2,
+      modality: 'campo',
+      goalkeeperMode: 'ROTATING',
+      fixedListOnly: false,
+      drawWeights: {},
+      extra: { autoPromoteAfterPresences: 4 },
+    });
+    expect(form.autoPromoteAfterPresences).toBe(4);
+  });
+
+  it('sem autoPromoteAfterPresences em extra, usa o padrão (0 — desativado)', () => {
+    const form = peladaRulesFromApi({
+      peladaId: 'p1',
+      playersPerTeam: 6,
+      teamCount: 2,
+      modality: 'campo',
+      goalkeeperMode: 'ROTATING',
+      fixedListOnly: false,
+      drawWeights: {},
+      extra: {},
+    });
+    expect(form.autoPromoteAfterPresences).toBe(0);
   });
 
   it('issue #188 — mapeia customStyleTags (API → formulário, round-trip)', () => {

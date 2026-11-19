@@ -153,6 +153,23 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <pelada-switch [(checked)]="drawUseStyleTags">Usar tags de estilo</pelada-switch>
       </pelada-card>
 
+      <pelada-card title="Convidados">
+        <pelada-field
+          label="Promover Convidado a Jogador após nº de presenças"
+          forId="auto-promote-presences"
+          hint="0 desativa a promoção automática. Vale só para convidados que entraram por convite (vinculados a uma conta); convidado avulso de uma partida não é afetado."
+        >
+          <input
+            id="auto-promote-presences"
+            type="number"
+            min="0"
+            peladaInput
+            [value]="values().autoPromoteAfterPresences"
+            (input)="patchAutoPromoteAfterPresences($event)"
+          />
+        </pelada-field>
+      </pelada-card>
+
       <pelada-card title="Tags de estilo">
         <p class="pelada-muted hint">
           Sugeridas no perfil do jogador: catálogo padrão ({{ catalogTagsPreview }}) + tags já usadas na pelada.
@@ -309,6 +326,16 @@ export class RegrasPeladaComponent implements OnInit {
   patchCustomStyleTags(event: Event): void {
     const customStyleTagsText = (event.target as HTMLInputElement).value;
     this.values.update((v) => ({ ...v, customStyleTagsText }));
+  }
+
+  patchAutoPromoteAfterPresences(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    const n = Number.parseInt(raw, 10);
+    this.values.update((v) => ({
+      ...v,
+      autoPromoteAfterPresences: Number.isNaN(n) || n < 0 ? v.autoPromoteAfterPresences : n,
+    }));
+    this.formError.set(null);
   }
 
   saveDefault(): void {
