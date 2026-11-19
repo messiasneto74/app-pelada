@@ -61,7 +61,7 @@ type TeamListState = { sortOrder: number; players: RosterPlayer[] };
       <pelada-screen-header
         eyebrow="Partida"
         [title]="headerTitle()"
-        subtitle="Sorteio equilibrado, trocas e compartilhamento (§3.5)."
+        subtitle="Sorteio equilibrado, trocas e compartilhamento."
       />
 
       <nav class="partida-tabs" aria-label="Abas da partida">
@@ -84,7 +84,7 @@ type TeamListState = { sortOrder: number; players: RosterPlayer[] };
       } @else if (!listClosed()) {
         <pelada-card title="Lista ainda aberta">
           <p class="pelada-muted">
-            Feche a lista de presença antes de sortear (§3.4).
+            Feche a lista de presença antes de sortear.
           </p>
           <a [routerLink]="presencaPath" peladaButton [peladaButtonBlock]="true">
             Ir para presença
@@ -218,7 +218,7 @@ type TeamListState = { sortOrder: number; players: RosterPlayer[] };
               Compartilhar times
             </h2>
             <p class="share-modal__lead pelada-muted">
-              Texto para WhatsApp ou imagem com os times (história 61).
+              Texto para WhatsApp ou imagem com os times.
             </p>
             <label class="share-toggle pelada-muted">
               <input

@@ -33,7 +33,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       <pelada-screen-header
         eyebrow="Onboarding"
         title="Criar pelada"
-        subtitle="Nome, foto, dia habitual e local — história 1 · L1-API persiste depois."
+        subtitle="Nome, foto, dia habitual e local."
       />
 
       <div class="photo-block">
