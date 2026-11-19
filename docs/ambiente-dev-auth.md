@@ -58,6 +58,7 @@ O realm importado (**F0-4**) traz o provider **Google** **desligado** (`enabled:
 1. [Google Cloud Console](https://console.cloud.google.com/) → OAuth client (Web).
 2. Redirect autorizado: `http://localhost:8080/realms/pelada/broker/google/endpoint`
 3. Admin Keycloak → Realm **pelada** → Identity providers → **Google** → colar Client ID/Secret → **Save** → **Enable**.
+4. `npm.cmd run keycloak:configure` — desativa a tela "Update Account Information" (Review Profile) do Keycloak no fluxo `first broker login`. O Google já manda nome/sobrenome/e-mail; não há motivo pra pedir confirmação numa tela hospedada pelo Keycloak — o usuário entra direto no app, que já tem sua própria tela (`/entrar/completar`) pra pedir o telefone. Precisa rodar de novo após qualquer `keycloak:reset` (volume novo). Alternativa manual se o script falhar: Admin Console → Authentication → `first broker login` → execução **Review Profile** → Requirement = **Disabled**.
 
 Redirect do Google aponta para o Keycloak, não para o Angular.
 
