@@ -53,7 +53,7 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
       <pelada-screen-header
         eyebrow="Partida"
         [title]="headerTitle()"
-        subtitle="Placar, cronômetro e rodízio (§3.6)."
+        subtitle="Placar, cronômetro e rodízio."
       />
 
       <nav class="partida-tabs" aria-label="Abas da partida">

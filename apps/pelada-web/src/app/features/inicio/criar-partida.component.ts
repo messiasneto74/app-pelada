@@ -35,7 +35,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       <pelada-screen-header
         eyebrow="Início"
         title="Criar partida"
-        subtitle="Marca data, local e como a galera confirma presença (§3.3)."
+        subtitle="Marca data, local e como a galera confirma presença."
       />
 
       @if (formError()) {
@@ -49,7 +49,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         @if (rulesSummary()) {
           <p class="rules-line">{{ rulesSummary() }}</p>
           <p class="pelada-muted rules-hint">
-            Herdadas de Configurações → Regras. Exceções por partida entram depois (3.2-EXC).
+            Herdadas de Configurações → Regras. Exceções por partida ficam para uma entrega futura.
           </p>
         } @else {
           <p class="pelada-muted">Carregando regras…</p>

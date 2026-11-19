@@ -76,6 +76,11 @@ describe('CriarPartidaComponent (3.3)', () => {
     expect(text).toContain('2 times');
   });
 
+  it('issue #192 — não expõe referência interna de spec/história na tela', () => {
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).not.toMatch(/§|história\s+\d|\d+\.\d+-[A-Z]+/);
+  });
+
   it('POST /matches e navega para presença ao enviar', async () => {
     fixture.componentInstance.values.update((v) => ({
       ...v,

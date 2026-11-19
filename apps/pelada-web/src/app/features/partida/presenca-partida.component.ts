@@ -80,7 +80,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       <pelada-screen-header
         eyebrow="Partida"
         [title]="headerTitle()"
-        subtitle="Lista de presença, fila e convidados (§3.4)."
+        subtitle="Lista de presença, fila e convidados."
       />
 
       <nav class="partida-tabs" aria-label="Abas da partida">
