@@ -115,6 +115,9 @@ describe('JogadoresListaComponent', () => {
             createInvite: jasmine
               .createSpy('createInvite')
               .and.resolveTo({ token: 'tok-1', peladaId: 'p1', expiresAt: '' }),
+            sendInviteEmail: jasmine
+              .createSpy('sendInviteEmail')
+              .and.resolveTo({ emailSent: false }),
           },
         },
       ],
@@ -273,6 +276,53 @@ describe('JogadoresListaComponent', () => {
       fixture.componentInstance.closeInviteModal();
       fixture.detectChanges();
       expect(fixture.componentInstance.inviteModalOpen()).toBe(false);
+    });
+
+    it('issue #179b — envia convite por e-mail reaproveitando o mesmo token do link/QR', async () => {
+      const api = TestBed.inject(PeladaApiService) as unknown as {
+        createInvite: jasmine.Spy;
+        sendInviteEmail: jasmine.Spy;
+      };
+      api.sendInviteEmail.and.resolveTo({ emailSent: true });
+
+      fixture.componentInstance.openInviteModal();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      fixture.componentInstance.patchInviteEmail({
+        target: { value: 'convidado@example.com' },
+      } as unknown as Event);
+      fixture.componentInstance.sendInviteByEmail();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(api.createInvite).toHaveBeenCalledTimes(1);
+      expect(api.sendInviteEmail).toHaveBeenCalledWith('tok-1', 'convidado@example.com');
+      expect(fixture.componentInstance.emailSendMessage()).toContain(
+        'convidado@example.com',
+      );
+    });
+
+    it('issue #179b — sem SMTP configurado, avisa que o e-mail não foi enviado', async () => {
+      const api = TestBed.inject(PeladaApiService) as unknown as {
+        sendInviteEmail: jasmine.Spy;
+      };
+      api.sendInviteEmail.and.resolveTo({ emailSent: false });
+
+      fixture.componentInstance.openInviteModal();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      fixture.componentInstance.patchInviteEmail({
+        target: { value: 'convidado@example.com' },
+      } as unknown as Event);
+      fixture.componentInstance.sendInviteByEmail();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.emailSendMessage()).toContain(
+        'use o link ou o QR code',
+      );
     });
   });
 

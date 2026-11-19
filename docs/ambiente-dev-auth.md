@@ -271,6 +271,12 @@ Realm **pelada** → **Realm settings** → **User profile** → **Create attrib
 
 **Não** usar em produção.
 
+## SMTP — convite por e-mail (issue #179b)
+
+O convite (`POST /peladas/:id/invites`) continua sendo criado só com o token, sem e-mail. Para reenviar esse MESMO convite por e-mail, use `POST /invites/:token/send-email` com `{ "email": "..." }` no body. O envio usa SMTP, configurado por `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`MAIL_FROM` (ver `.env.example`). **Sem essas vars no `.env`, o envio vira no-op logado** (resposta `{ emailSent: false }`) — o convite por link/QR continua funcionando normalmente, só não sai e-mail. Uma falha de SMTP também retorna `{ emailSent: false }` em vez de erro, e nunca cria ou invalida o convite.
+
+Provedor em uso: **SendGrid** (free tier). `SMTP_USER` é sempre `apikey`; `SMTP_PASS` é a API key gerada em Settings → API Keys (permissão "Mail Send" basta). **Nunca** commitar a API key — só em `.env` local (gitignorado) ou nos secrets do servidor de produção.
+
 ## Checklist F0-4 (smoke manual)
 
 - [ ] `npm.cmd run smoke:keycloak` → `OK Keycloak smoke`

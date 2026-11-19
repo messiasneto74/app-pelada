@@ -26,6 +26,11 @@ export interface CreatedInviteApi {
   expiresAt: string;
 }
 
+/** Issue #179b — resultado do reenvio do convite por e-mail. */
+export interface SendInviteEmailApi {
+  emailSent: boolean;
+}
+
 export interface InvitePreviewApi {
   peladaId: string;
   peladaName: string;
@@ -71,6 +76,16 @@ export class PeladaApiService {
       this.http.post<CreatedInviteApi>(
         `${environment.apiUrl}/peladas/${peladaId}/invites`,
         {},
+      ),
+    );
+  }
+
+  /** Issue #179b — reenvia o convite já existente (mesmo token) por e-mail. */
+  sendInviteEmail(token: string, email: string): Promise<SendInviteEmailApi> {
+    return firstValueFrom(
+      this.http.post<SendInviteEmailApi>(
+        `${environment.apiUrl}/invites/${token}/send-email`,
+        { email },
       ),
     );
   }

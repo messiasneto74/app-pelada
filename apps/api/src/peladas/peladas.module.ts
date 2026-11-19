@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { MailModule } from '../mail/mail.module';
 import { MeModule } from '../me/me.module';
 import { StorageModule } from '../storage/storage.module';
 import { InvitesController } from './invites.controller';
@@ -11,7 +12,7 @@ import { MultipartPlayerPatchInterceptor } from './multipart-player-patch.interc
 import { PeladasService } from './peladas.service';
 
 @Module({
-  imports: [AuthModule, MeModule, StorageModule],
+  imports: [AuthModule, MeModule, StorageModule, MailModule],
   controllers: [PeladasController, InvitesController],
   providers: [
     PeladasService,

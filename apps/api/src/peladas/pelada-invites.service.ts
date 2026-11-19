@@ -6,7 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
+import { ConfigService } from '@nestjs/config';
 import type { AuthUserPayload } from '../auth/auth-user';
+import { MailService } from '../mail/mail.service';
 import { MeService } from '../me/me.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -16,6 +18,10 @@ export type CreatedInviteDto = {
   token: string;
   peladaId: string;
   expiresAt: string;
+};
+
+export type SendInviteEmailResultDto = {
+  emailSent: boolean;
 };
 
 export type InvitePreviewDto = {
@@ -57,6 +63,8 @@ export class PeladaInvitesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly meService: MeService,
+    private readonly mailService: MailService,
+    private readonly config: ConfigService,
   ) {}
 
   async createInvite(
@@ -81,6 +89,44 @@ export class PeladaInvitesService {
       peladaId: invite.peladaId,
       expiresAt: invite.expiresAt.toISOString(),
     };
+  }
+
+  /**
+   * Issue #179b — reenvia o convite **já existente** (mesmo token do
+   * link/QR) por e-mail. Nunca cria um novo convite: evita tokens
+   * concorrentes e mantém persistência/envio desacoplados (falha de SMTP
+   * não invalida nem duplica o convite já em uso).
+   */
+  async sendInviteEmail(
+    auth: AuthUserPayload,
+    token: string,
+    email: string,
+  ): Promise<SendInviteEmailResultDto> {
+    const invite = await this.findValidInviteOrThrow(token);
+    const user = await this.meService.getOrCreateUser(auth);
+    await this.assertOrganizador(invite.peladaId, user.id);
+
+    if (!this.mailService.isConfigured()) {
+      return { emailSent: false };
+    }
+
+    try {
+      await this.mailService.sendInviteEmail({
+        to: email,
+        peladaName: invite.pelada.name,
+        inviteUrl: this.buildInviteUrl(invite.token),
+        expiresAt: invite.expiresAt,
+      });
+      return { emailSent: true };
+    } catch {
+      return { emailSent: false };
+    }
+  }
+
+  private buildInviteUrl(token: string): string {
+    const webUrl =
+      this.config.get<string>('PELADA_WEB_URL') ?? 'http://localhost:4200';
+    return `${webUrl.replace(/\/$/, '')}/convite/${token}`;
   }
 
   async previewInvite(token: string): Promise<InvitePreviewDto> {
@@ -153,10 +199,7 @@ export class PeladaInvitesService {
     return invite;
   }
 
-  private async assertOrganizador(
-    peladaId: string,
-    userId: string,
-  ): Promise<void> {
+  private async assertOrganizador(peladaId: string, userId: string) {
     const pelada = await this.prisma.pelada.findUnique({ where: { id: peladaId } });
     if (!pelada) {
       throw new NotFoundException('Pelada não encontrada.');
@@ -167,5 +210,6 @@ export class PeladaInvitesService {
     if (member?.role !== 'ORGANIZADOR') {
       throw new ForbiddenException('Somente organizador gera convites.');
     }
+    return pelada;
   }
 }
