@@ -246,6 +246,45 @@ describe('fillAttendance', () => {
 });
 
 describe('seedTestUsers (orquestração)', () => {
+  it('reautentica o organizador antes de cada fase (token pode expirar durante o cadastro)', async () => {
+    const tokenCalls = [];
+    const fetchFn = vi.fn().mockImplementation((url) => {
+      if (url.includes('/protocol/openid-connect/token')) {
+        tokenCalls.push(url);
+        return Promise.resolve(jsonResponse({ access_token: 'tok' }));
+      }
+      if (url.endsWith('/register')) return Promise.resolve(jsonResponse({}, 201));
+      if (url.endsWith('/invites')) return Promise.resolve(jsonResponse({ token: 'inv' }));
+      if (url.endsWith('/redeem')) return Promise.resolve(jsonResponse({}));
+      if (url.endsWith('/guests')) return Promise.resolve(jsonResponse({ players: [{ id: 'g1', displayName: testUserName(1) }] }));
+      if (url.endsWith('/players') && !url.includes('matches')) {
+        return Promise.resolve(jsonResponse({ players: [] }));
+      }
+      if (url.includes('/promote')) return Promise.resolve(jsonResponse({ id: 'g1' }));
+      if (url.endsWith('/matches')) return Promise.resolve(jsonResponse({ id: 'm1' }));
+      return Promise.resolve(jsonResponse({}));
+    });
+
+    await seedTestUsers({
+      apiUrl: 'http://api',
+      tokenUrl: 'http://kc/protocol/openid-connect/token',
+      clientId: 'pelada-web',
+      organizerEmail: 'org@x.com',
+      organizerPassword: 'pw',
+      peladaId: 'p1',
+      userCount: 1,
+      matchCount: 1,
+      fetchFn,
+      log: () => {},
+      sleepFn: async () => {},
+    });
+
+    // 1 login do usuário de teste + 4 reautenticações do organizador
+    // (entrar na pelada, promover, criar partidas, marcar presença) — nunca
+    // um único token obtido antes do cadastro (que pode levar minutos).
+    expect(tokenCalls.length).toBe(5);
+  });
+
   it('encadeia todos os passos e retorna usuários e partidas', async () => {
     const fetchFn = vi.fn().mockImplementation((url) => {
       if (url.includes('/protocol/openid-connect/token')) {

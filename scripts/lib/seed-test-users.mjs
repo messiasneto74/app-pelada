@@ -309,14 +309,14 @@ export async function seedTestUsers(deps) {
   const users = buildTestUsers(userCount, { domain, password });
   const matchPlan = buildMatchPlan(matchCount);
 
-  log(`Autenticando organizador (${organizerEmail})...`);
-  const orgToken = await passwordGrantToken(
-    fetchFn,
-    tokenUrl,
-    clientId,
-    organizerEmail,
-    organizerPassword,
-  );
+  /**
+   * Busca um token novo do organizador. O cadastro em lote pausa minutos
+   * entre lotes (throttle de 8/min) e o access_token do Keycloak costuma
+   * expirar em poucos minutos — reautenticar antes de cada fase evita usar
+   * um token já expirado (achado real do Codex no PR #202).
+   */
+  const freshOrgToken = () =>
+    passwordGrantToken(fetchFn, tokenUrl, clientId, organizerEmail, organizerPassword);
 
   log(`Cadastrando ${users.length} usuários de teste no Keycloak...`);
   await registerAllUsers(users, { fetchFn, apiUrl, log, sleepFn });
@@ -325,16 +325,29 @@ export async function seedTestUsers(deps) {
   await loginAllUsers(users, { fetchFn, tokenUrl, clientId, log });
 
   log('Entrando na pelada via convite...');
-  await joinAllUsers(users, { fetchFn, apiUrl, peladaId, orgToken, log });
+  await joinAllUsers(users, { fetchFn, apiUrl, peladaId, orgToken: await freshOrgToken(), log });
 
   log('Promovendo convidados a jogadores fixos...');
-  await promoteAllUsers(users, { fetchFn, apiUrl, peladaId, orgToken, log });
+  await promoteAllUsers(users, { fetchFn, apiUrl, peladaId, orgToken: await freshOrgToken(), log });
 
   log(`Criando ${matchPlan.length} partidas...`);
-  const matches = await createMatches(matchPlan, { fetchFn, apiUrl, peladaId, orgToken, log });
+  const matches = await createMatches(matchPlan, {
+    fetchFn,
+    apiUrl,
+    peladaId,
+    orgToken: await freshOrgToken(),
+    log,
+  });
 
   log('Marcando presença de parte dos usuários em cada partida...');
-  await fillAttendance(matches, users, { fetchFn, apiUrl, peladaId, orgToken, attendanceRate, log });
+  await fillAttendance(matches, users, {
+    fetchFn,
+    apiUrl,
+    peladaId,
+    orgToken: await freshOrgToken(),
+    attendanceRate,
+    log,
+  });
 
   return { users, matches };
 }
