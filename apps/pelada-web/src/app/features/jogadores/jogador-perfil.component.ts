@@ -6,9 +6,11 @@ import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
 import type { PeladaPlayerProfileDto } from '../../core/roster/pelada-player-profile-api.model';
 import { PeladaPlayerProfileService } from '../../core/roster/pelada-player-profile.service';
+import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
 import {
   buildPatchFromForm,
   editProfileButtonLabel,
+  parseTagsText,
   profileToEditForm,
   type PlayerProfileEditForm,
 } from '../../core/roster/player-profile-edit.logic';
@@ -18,6 +20,7 @@ import {
   paymentPlanLabel,
   PLAYER_PROFILE_ATTRIBUTES,
 } from '../../core/roster/player-profile.logic';
+import { attributeSuggestionsForTags, suggestStyleTags } from '../../core/roster/player-profile-tag-suggestions.logic';
 import {
   formatRosterRating,
   rosterPositionLabel,
@@ -85,9 +88,15 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
                 class="pelada-input"
                 type="text"
                 maxlength="120"
+                list="profile-tag-suggestions"
                 [value]="editForm().tagsText"
                 (input)="patchTagsText($event)"
               />
+              <datalist id="profile-tag-suggestions">
+                @for (tag of tagSuggestions(); track tag) {
+                  <option [value]="tag"></option>
+                }
+              </datalist>
             </pelada-field>
             @if (isOrganizador()) {
               <pelada-field label="Plano de pagamento" forId="profile-plan">
@@ -290,6 +299,7 @@ export class JogadorPerfilComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly peladaContext = inject(PeladaContextService);
   private readonly profileService = inject(PeladaPlayerProfileService);
+  private readonly rosterService = inject(PeladaRosterService);
   private readonly rulesApi = inject(PeladaRulesApiService);
   private readonly orgContext = inject(PeladaOrganizadorContextService);
   private readonly authService = inject(AuthService);
@@ -315,6 +325,9 @@ export class JogadorPerfilComponent implements OnInit {
   });
   readonly currentAppUserId = signal<string | null>(null);
   readonly allowPlayerSelfEdit = signal(false);
+  /** Issue #188 — tags já usadas por outros jogadores da pelada, pro autocomplete. */
+  readonly usedTags = signal<string[]>([]);
+  readonly tagSuggestions = computed(() => suggestStyleTags(this.usedTags()));
 
   readonly formatRosterRating = formatRosterRating;
   readonly attributeDefs = PLAYER_PROFILE_ATTRIBUTES;
@@ -382,11 +395,15 @@ export class JogadorPerfilComponent implements OnInit {
       return;
     }
     this.orgContext.refreshMembership(pelada.id);
+    this.rosterService.loadRoster(pelada, (players) => {
+      this.usedTags.set(players.flatMap((p) => p.tags));
+    });
     this.rulesApi.fetchRules(pelada.id).subscribe({
       next: (dto) => {
-        this.allowPlayerSelfEdit.set(
-          this.rulesApi.mapFromApi(dto).allowPlayerSelfEdit,
-        );
+        const rules = this.rulesApi.mapFromApi(dto);
+        this.allowPlayerSelfEdit.set(rules.allowPlayerSelfEdit);
+        const customTags = parseTagsText(rules.customStyleTagsText);
+        this.usedTags.update((tags) => [...tags, ...customTags]);
       },
       error: () => this.allowPlayerSelfEdit.set(false),
     });
@@ -423,7 +440,21 @@ export class JogadorPerfilComponent implements OnInit {
   patchTagsText(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.tagsDirty.set(true);
-    this.editForm.update((f) => ({ ...f, tagsText: value }));
+    // Issue #188: pré-preenchimento de atributo só pro organizador — jogador
+    // em autoedição (história 27) não pediu nota/atributos, só tags.
+    if (!this.isOrganizador()) {
+      this.editForm.update((f) => ({ ...f, tagsText: value }));
+      return;
+    }
+    const suggestions = attributeSuggestionsForTags(parseTagsText(value));
+    this.editForm.update((f) => ({
+      ...f,
+      tagsText: value,
+      attributes: suggestions.reduce(
+        (attrs, s) => ({ ...attrs, [s.attribute]: s.value }),
+        f.attributes,
+      ),
+    }));
   }
 
   patchPaymentPlan(event: Event): void {
