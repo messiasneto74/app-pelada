@@ -430,6 +430,191 @@ if (runHarness) {
         .expect(403);
     });
 
+    it('convidado vinculado a conta se autoconfirma e entra na lista em SELF_CONFIRM', async () => {
+      const sub = `att-self-guest-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const guestUser = await createUser(prisma, { keycloakSub: `${sub}-gu` });
+      const pelada = await createPelada(prisma, { owner: org });
+      await prisma.peladaMember.create({
+        data: { peladaId: pelada.id, userId: guestUser.id, role: 'JOGADOR' },
+      });
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-11-03T19:00:00Z'),
+      });
+      await prisma.match.update({
+        where: { id: match.id },
+        data: { presenceMode: 'SELF_CONFIRM' },
+      });
+      const guestPlayer = await prisma.player.create({
+        data: {
+          peladaId: pelada.id,
+          userId: guestUser.id,
+          displayName: 'Convidado Vinculado',
+          isGuest: true,
+        },
+      });
+      const token = signTestJwt({
+        sub: `${sub}-gu`,
+        email: guestUser.email ?? 'gu@y.z',
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/self`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ action: 'confirm' })
+        .expect(201);
+
+      const row = res.body.entries.find(
+        (e: { playerId: string }) => e.playerId === guestPlayer.id,
+      );
+      expect(row).toBeDefined();
+      expect(row.status).toBe('CONFIRMED');
+    });
+
+    it('convidado fica na fila atrás do fixo mesmo confirmando primeiro', async () => {
+      const sub = `att-self-guest-queue-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const guestUser = await createUser(prisma, { keycloakSub: `${sub}-gu` });
+      const fixedUser = await createUser(prisma, { keycloakSub: `${sub}-fx` });
+      const pelada = await createPelada(prisma, { owner: org });
+      await prisma.peladaMember.create({
+        data: { peladaId: pelada.id, userId: guestUser.id, role: 'JOGADOR' },
+      });
+      await prisma.peladaMember.create({
+        data: { peladaId: pelada.id, userId: fixedUser.id, role: 'JOGADOR' },
+      });
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { capacity: 1, fixedListOnly: true },
+      });
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-11-04T19:00:00Z'),
+      });
+      await prisma.match.update({
+        where: { id: match.id },
+        data: { presenceMode: 'SELF_CONFIRM' },
+      });
+      const guestPlayer = await prisma.player.create({
+        data: {
+          peladaId: pelada.id,
+          userId: guestUser.id,
+          displayName: 'Convidado Vinculado',
+          isGuest: true,
+        },
+      });
+      const fixedPlayer = await prisma.player.create({
+        data: {
+          peladaId: pelada.id,
+          userId: fixedUser.id,
+          displayName: 'Fixo',
+          isFixedList: true,
+        },
+      });
+      const guestToken = signTestJwt({
+        sub: `${sub}-gu`,
+        email: guestUser.email ?? 'gu@y.z',
+      });
+      const fixedToken = signTestJwt({
+        sub: `${sub}-fx`,
+        email: fixedUser.email ?? 'fx@y.z',
+      });
+
+      // Convidado tenta confirmar primeiro, mas a regra `fixedListOnly` já
+      // reservou a única vaga pro fixo (auto-confirmado assim que a lista é
+      // criada) — o convidado fica na fila, mesmo chegando antes.
+      const afterGuest = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/self`)
+        .set('Authorization', `Bearer ${guestToken}`)
+        .send({ action: 'confirm' })
+        .expect(201);
+
+      const fixedRowAfterGuest = afterGuest.body.entries.find(
+        (e: { playerId: string }) => e.playerId === fixedPlayer.id,
+      );
+      const guestRowAfterGuest = afterGuest.body.entries.find(
+        (e: { playerId: string }) => e.playerId === guestPlayer.id,
+      );
+      expect(fixedRowAfterGuest.status).toBe('CONFIRMED');
+      expect(guestRowAfterGuest.status).toBe('QUEUE');
+
+      // Fixo confirma (idempotente, já estava confirmado) — convidado continua na fila.
+      const afterFixed = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/self`)
+        .set('Authorization', `Bearer ${fixedToken}`)
+        .send({ action: 'confirm' })
+        .expect(201);
+
+      const fixedRow = afterFixed.body.entries.find(
+        (e: { playerId: string }) => e.playerId === fixedPlayer.id,
+      );
+      const guestRow = afterFixed.body.entries.find(
+        (e: { playerId: string }) => e.playerId === guestPlayer.id,
+      );
+      expect(fixedRow.status).toBe('CONFIRMED');
+      expect(guestRow.status).toBe('QUEUE');
+    });
+
+    it('convidado entra confirmado quando há vaga sobrando após os fixos', async () => {
+      const sub = `att-self-guest-room-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const guestUser = await createUser(prisma, { keycloakSub: `${sub}-gu` });
+      const fixedUser = await createUser(prisma, { keycloakSub: `${sub}-fx` });
+      const pelada = await createPelada(prisma, { owner: org });
+      await prisma.peladaMember.create({
+        data: { peladaId: pelada.id, userId: guestUser.id, role: 'JOGADOR' },
+      });
+      await prisma.peladaMember.create({
+        data: { peladaId: pelada.id, userId: fixedUser.id, role: 'JOGADOR' },
+      });
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { capacity: 2, fixedListOnly: true },
+      });
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-11-05T19:00:00Z'),
+      });
+      await prisma.match.update({
+        where: { id: match.id },
+        data: { presenceMode: 'SELF_CONFIRM' },
+      });
+      await prisma.player.create({
+        data: {
+          peladaId: pelada.id,
+          userId: fixedUser.id,
+          displayName: 'Fixo',
+          isFixedList: true,
+        },
+      });
+      const guestPlayer = await prisma.player.create({
+        data: {
+          peladaId: pelada.id,
+          userId: guestUser.id,
+          displayName: 'Convidado Vinculado',
+          isGuest: true,
+        },
+      });
+      const guestToken = signTestJwt({
+        sub: `${sub}-gu`,
+        email: guestUser.email ?? 'gu@y.z',
+      });
+
+      // Capacidade 2: o fixo ocupa 1 vaga automaticamente, sobra 1 pro
+      // convidado, que entra confirmado (não precisa ir pra fila).
+      const res = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/attendance/self`)
+        .set('Authorization', `Bearer ${guestToken}`)
+        .send({ action: 'confirm' })
+        .expect(201);
+
+      const guestRow = res.body.entries.find(
+        (e: { playerId: string }) => e.playerId === guestPlayer.id,
+      );
+      expect(guestRow.status).toBe('CONFIRMED');
+    });
+
     it('POST approve guest confirms or queues guest', async () => {
       const { pelada, match, token } = await seedMatch();
       const guestRes = await request(app.getHttpServer())

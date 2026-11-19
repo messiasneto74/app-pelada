@@ -130,6 +130,10 @@ describe('SorteioPartidaComponent §3.5', () => {
               _p: unknown,
               cb: (list: RosterPlayer[], _o: 'api' | 'fallback') => void,
             ) => cb(roster, 'api'),
+            loadGuests: (
+              _p: unknown,
+              cb: (list: RosterPlayer[], _o: 'api' | 'fallback') => void,
+            ) => cb([], 'api'),
           },
         },
         {
