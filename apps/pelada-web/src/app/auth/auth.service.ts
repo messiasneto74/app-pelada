@@ -172,13 +172,27 @@ export class AuthService {
   /**
    * Login in-app (Resource Owner Password / Direct Access Grants).
    * Não redireciona para a UI do Keycloak.
+   *
+   * Issue #193 — esse grant não tem nonce (não passa pelo redirect do IdP),
+   * mas o angular-oauth2-oidc sempre roda a checagem de nonce no id_token
+   * quando `oidc` está ligado, rejeitando com "Wrong nonce: undefined" no
+   * console. Desligo `oidc` só durante essa chamada (nonce continua
+   * validado normalmente no login por redirect/Google); `sub` e demais
+   * claims básicas vêm do access_token via {@link decodeJwtClaims}, lido em
+   * `PeladaContextService`.
    */
   async loginWithPassword(username: string, password: string): Promise<void> {
     await this.ensureDiscovery();
-    await this.oauth.fetchTokenUsingPasswordFlowAndLoadUserProfile(
-      username.trim(),
-      password,
-    );
+    const previousOidc = this.oauth.oidc;
+    this.oauth.oidc = false;
+    try {
+      await this.oauth.fetchTokenUsingPasswordFlowAndLoadUserProfile(
+        username.trim(),
+        password,
+      );
+    } finally {
+      this.oauth.oidc = previousOidc;
+    }
     this.peladaContext.refreshFromStorage();
   }
 

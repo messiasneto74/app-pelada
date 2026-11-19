@@ -59,6 +59,7 @@ describe('AuthService.loginWithPassword', () => {
     getIdentityClaims: jasmine.Spy;
     configure: jasmine.Spy;
     initLoginFlow: jasmine.Spy;
+    oidc: boolean;
   };
   let peladaContext: { refreshFromStorage: jasmine.Spy };
 
@@ -76,6 +77,7 @@ describe('AuthService.loginWithPassword', () => {
         .and.returnValue({ sub: 'keycloak-sub-login' }),
       configure: jasmine.createSpy('configure'),
       initLoginFlow: jasmine.createSpy('initLoginFlow'),
+      oidc: true,
     };
     peladaContext = {
       refreshFromStorage: jasmine.createSpy('refreshFromStorage'),
@@ -118,6 +120,31 @@ describe('AuthService.loginWithPassword', () => {
       jasmine.objectContaining({ sub: 'keycloak-sub-login' }),
     );
     expect(peladaContext.refreshFromStorage).toHaveBeenCalled();
+  });
+
+  it('desliga oidc só durante o grant password, restaurando depois (issue #193)', async () => {
+    let oidcDuringCall: boolean | undefined;
+    oauth.fetchTokenUsingPasswordFlowAndLoadUserProfile.and.callFake(() => {
+      oidcDuringCall = oauth.oidc;
+      return Promise.resolve({});
+    });
+
+    await service.loginWithPassword('dev@pelada.local', 'pass-ok');
+
+    expect(oidcDuringCall).toBe(false);
+    expect(oauth.oidc).toBe(true);
+  });
+
+  it('restaura oidc mesmo quando o grant password falha', async () => {
+    oauth.fetchTokenUsingPasswordFlowAndLoadUserProfile.and.rejectWith(
+      new Error('invalid_grant'),
+    );
+
+    await expectAsync(
+      service.loginWithPassword('dev@pelada.local', 'senha-errada'),
+    ).toBeRejected();
+
+    expect(oauth.oidc).toBe(true);
   });
 
   it('loginWithGoogle inicia o code flow com kc_idp_hint=google', async () => {
