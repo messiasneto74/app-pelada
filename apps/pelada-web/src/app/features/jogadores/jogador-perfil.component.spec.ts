@@ -197,6 +197,7 @@ describe('JogadorPerfilComponent modo nota (issue #186)', () => {
         ]),
         routeProvider,
         peladaContextProvider,
+        rosterServiceProvider,
         profileServiceProvider,
         {
           provide: PeladaRulesApiService,
