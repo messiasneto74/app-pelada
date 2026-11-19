@@ -53,7 +53,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       <pelada-screen-header
         eyebrow="Elenco"
         [title]="editing() ? 'Editar perfil' : 'Perfil do jogador'"
-        subtitle="Nota e atributos usados no sorteio (§3.8)."
+        subtitle="Nota e atributos usados no sorteio."
       />
 
       @if (loading()) {
@@ -203,7 +203,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <pelada-card title="Pagamento">
           <p class="plan-label">{{ paymentLabel() }}</p>
           <p class="pelada-muted plan-hint">
-            Modelo individual do jogador (caixa §3.9).
+            Modelo individual do jogador no caixa.
           </p>
         </pelada-card>
 

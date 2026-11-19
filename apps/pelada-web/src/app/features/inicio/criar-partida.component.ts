@@ -35,7 +35,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       <pelada-screen-header
         eyebrow="Início"
         title="Criar partida"
-        subtitle="Marca data, local e como a galera confirma presença (§3.3)."
+        subtitle="Marca data, local e como a galera confirma presença."
       />
 
       @if (formError()) {
