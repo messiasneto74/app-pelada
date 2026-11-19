@@ -15,6 +15,9 @@ apps/pelada-web/src/environments/environment.staging.generated.ts
 # Uploads locais (L1-API / STORAGE)
 uploads/
 
+# Credenciais geradas por scripts/seed-test-users.mjs
+.seed-output/
+
 # SO / IDE
 .DS_Store
 Thumbs.db
