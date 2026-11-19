@@ -464,10 +464,11 @@ export class JogadoresListaComponent implements OnInit {
 
   readonly inviteModalOpen = signal(false);
   readonly inviteLoading = signal(false);
+  readonly inviteToken = signal<string | null>(null);
   readonly inviteLink = signal<string | null>(null);
   readonly inviteError = signal('');
   readonly inviteCopied = signal(false);
-  /** Issue #179b — convite também por e-mail. */
+  /** Issue #179b — mesmo convite (token) também reenviado por e-mail. */
   readonly inviteEmail = signal('');
   readonly sendingEmailInvite = signal(false);
   readonly emailSendMessage = signal<string | null>(null);
@@ -642,6 +643,7 @@ export class JogadoresListaComponent implements OnInit {
     this.inviteModalOpen.set(true);
     this.inviteLoading.set(true);
     this.inviteError.set('');
+    this.inviteToken.set(null);
     this.inviteLink.set(null);
     this.inviteCopied.set(false);
     this.inviteEmail.set('');
@@ -650,6 +652,7 @@ export class JogadoresListaComponent implements OnInit {
     this.peladaApi
       .createInvite(pelada.id)
       .then((created) => {
+        this.inviteToken.set(created.token);
         this.inviteLink.set(`${window.location.origin}/convite/${created.token}`);
         this.inviteLoading.set(false);
       })
@@ -668,22 +671,22 @@ export class JogadoresListaComponent implements OnInit {
     this.emailSendMessage.set(null);
   }
 
+  /** Issue #179b — reenvia o MESMO convite (token já gerado por `openInviteModal`) por e-mail. */
   sendInviteByEmail(): void {
-    const pelada = this.peladaContext.getActivePelada();
+    const token = this.inviteToken();
     const email = this.inviteEmail().trim();
-    if (!pelada || !email) {
+    if (!token || !email) {
       return;
     }
     this.sendingEmailInvite.set(true);
     this.emailSendMessage.set(null);
 
     this.peladaApi
-      .createInvite(pelada.id, email)
-      .then((created) => {
-        this.inviteLink.set(`${window.location.origin}/convite/${created.token}`);
+      .sendInviteEmail(token, email)
+      .then((result) => {
         this.sendingEmailInvite.set(false);
         this.emailSendMessage.set(
-          created.emailSent
+          result.emailSent
             ? `Convite enviado para ${email}.`
             : 'Não foi possível enviar o e-mail agora — use o link ou o QR code.',
         );

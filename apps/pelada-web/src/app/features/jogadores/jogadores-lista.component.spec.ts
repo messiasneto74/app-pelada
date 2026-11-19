@@ -114,12 +114,10 @@ describe('JogadoresListaComponent', () => {
           useValue: {
             createInvite: jasmine
               .createSpy('createInvite')
-              .and.resolveTo({
-                token: 'tok-1',
-                peladaId: 'p1',
-                expiresAt: '',
-                emailSent: false,
-              }),
+              .and.resolveTo({ token: 'tok-1', peladaId: 'p1', expiresAt: '' }),
+            sendInviteEmail: jasmine
+              .createSpy('sendInviteEmail')
+              .and.resolveTo({ emailSent: false }),
           },
         },
       ],
@@ -280,16 +278,12 @@ describe('JogadoresListaComponent', () => {
       expect(fixture.componentInstance.inviteModalOpen()).toBe(false);
     });
 
-    it('issue #179b — envia convite por e-mail e mostra confirmação', async () => {
+    it('issue #179b — envia convite por e-mail reaproveitando o mesmo token do link/QR', async () => {
       const api = TestBed.inject(PeladaApiService) as unknown as {
         createInvite: jasmine.Spy;
+        sendInviteEmail: jasmine.Spy;
       };
-      api.createInvite.and.resolveTo({
-        token: 'tok-2',
-        peladaId: 'p1',
-        expiresAt: '',
-        emailSent: true,
-      });
+      api.sendInviteEmail.and.resolveTo({ emailSent: true });
 
       fixture.componentInstance.openInviteModal();
       await fixture.whenStable();
@@ -302,7 +296,8 @@ describe('JogadoresListaComponent', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      expect(api.createInvite).toHaveBeenCalledWith('p1', 'convidado@example.com');
+      expect(api.createInvite).toHaveBeenCalledTimes(1);
+      expect(api.sendInviteEmail).toHaveBeenCalledWith('tok-1', 'convidado@example.com');
       expect(fixture.componentInstance.emailSendMessage()).toContain(
         'convidado@example.com',
       );
@@ -310,14 +305,9 @@ describe('JogadoresListaComponent', () => {
 
     it('issue #179b — sem SMTP configurado, avisa que o e-mail não foi enviado', async () => {
       const api = TestBed.inject(PeladaApiService) as unknown as {
-        createInvite: jasmine.Spy;
+        sendInviteEmail: jasmine.Spy;
       };
-      api.createInvite.and.resolveTo({
-        token: 'tok-2',
-        peladaId: 'p1',
-        expiresAt: '',
-        emailSent: false,
-      });
+      api.sendInviteEmail.and.resolveTo({ emailSent: false });
 
       fixture.componentInstance.openInviteModal();
       await fixture.whenStable();

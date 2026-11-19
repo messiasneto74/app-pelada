@@ -18,7 +18,9 @@ export type CreatedInviteDto = {
   token: string;
   peladaId: string;
   expiresAt: string;
-  /** Issue #179b — true quando o e-mail foi de fato enviado (SMTP configurado + e-mail informado). */
+};
+
+export type SendInviteEmailResultDto = {
   emailSent: boolean;
 };
 
@@ -68,10 +70,9 @@ export class PeladaInvitesService {
   async createInvite(
     auth: AuthUserPayload,
     peladaId: string,
-    email?: string,
   ): Promise<CreatedInviteDto> {
     const user = await this.meService.getOrCreateUser(auth);
-    const pelada = await this.assertOrganizador(peladaId, user.id);
+    await this.assertOrganizador(peladaId, user.id);
 
     const expiresAt = new Date(Date.now() + INVITE_VALIDITY_MS);
     const invite = await this.prisma.peladaInvite.create({
@@ -83,23 +84,43 @@ export class PeladaInvitesService {
       },
     });
 
-    let emailSent = false;
-    if (email && this.mailService.isConfigured()) {
-      await this.mailService.sendInviteEmail({
-        to: email,
-        peladaName: pelada.name,
-        inviteUrl: this.buildInviteUrl(invite.token),
-        expiresAt,
-      });
-      emailSent = true;
-    }
-
     return {
       token: invite.token,
       peladaId: invite.peladaId,
       expiresAt: invite.expiresAt.toISOString(),
-      emailSent,
     };
+  }
+
+  /**
+   * Issue #179b — reenvia o convite **já existente** (mesmo token do
+   * link/QR) por e-mail. Nunca cria um novo convite: evita tokens
+   * concorrentes e mantém persistência/envio desacoplados (falha de SMTP
+   * não invalida nem duplica o convite já em uso).
+   */
+  async sendInviteEmail(
+    auth: AuthUserPayload,
+    token: string,
+    email: string,
+  ): Promise<SendInviteEmailResultDto> {
+    const invite = await this.findValidInviteOrThrow(token);
+    const user = await this.meService.getOrCreateUser(auth);
+    await this.assertOrganizador(invite.peladaId, user.id);
+
+    if (!this.mailService.isConfigured()) {
+      return { emailSent: false };
+    }
+
+    try {
+      await this.mailService.sendInviteEmail({
+        to: email,
+        peladaName: invite.pelada.name,
+        inviteUrl: this.buildInviteUrl(invite.token),
+        expiresAt: invite.expiresAt,
+      });
+      return { emailSent: true };
+    } catch {
+      return { emailSent: false };
+    }
   }
 
   private buildInviteUrl(token: string): string {
