@@ -123,8 +123,13 @@ export class MatchDrawService {
     await this.assertOrganizador(peladaId, user.id);
     const { match, defaults } = await this.loadMatch(peladaId, matchId);
 
-    if (match.status !== 'LIST_CLOSED') {
-      throw new BadRequestException('Feche a lista de presença antes de sortear.');
+    // DRAWN: re-sorteio antes de ir a campo — persistDraw substitui o sorteio anterior.
+    if (match.status !== 'LIST_CLOSED' && match.status !== 'DRAWN') {
+      throw new BadRequestException(
+        match.status === 'SCHEDULED'
+          ? 'Feche a lista de presença antes de sortear.'
+          : 'Não é possível sortear depois que a partida foi a campo.',
+      );
     }
 
     const effective = mergeEffectiveMatchRules(
