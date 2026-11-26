@@ -204,3 +204,25 @@ export function readFixedGkRotation(extra: unknown): FixedGkRotation | null {
   }
   return null;
 }
+
+/**
+ * Issue #217 — a rodada em andamento só entra no histórico ao encerrar a
+ * partida se foi jogada: teve gol ou o cronômetro rodou nela (ou está rodando).
+ * Sem isso, "Encerrar rodada" + "Encerrar partida" gravava um 0×0 fantasma,
+ * contado como empate na tabela do dia e no histórico dos jogadores.
+ */
+export function wasRoundPlayed(round: {
+  scoreHome: number;
+  scoreAway: number;
+  goalCount: number;
+  durationMs: number;
+  timerRunning: boolean;
+}): boolean {
+  return (
+    round.scoreHome > 0 ||
+    round.scoreAway > 0 ||
+    round.goalCount > 0 ||
+    round.durationMs > 0 ||
+    round.timerRunning
+  );
+}

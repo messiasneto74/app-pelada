@@ -29,6 +29,7 @@ import {
   readFixedGkRotation,
   readRotationPolicy,
   snapshotElapsedMs,
+  wasRoundPlayed,
   updateFixedGkMeta,
   type FieldRotationPolicy,
 } from './match-field-rotation.logic';
@@ -687,7 +688,10 @@ export class MatchFieldSessionService {
         now,
       );
 
-      await this.persistRoundHistory(tx, session, draw.teams, elapsedMs);
+      // Issue #217: não grava a rodada em andamento se ela nem foi jogada.
+      await this.persistRoundHistory(tx, session, draw.teams, elapsedMs, {
+        skipIfUnplayed: true,
+      });
 
       const row = await tx.matchFieldSession.update({
         where: { id: session.id },
@@ -820,6 +824,7 @@ export class MatchFieldSessionService {
     session: MatchFieldSession,
     teams: DrawWithTeams['teams'],
     cumulativeElapsedMs: number,
+    opts: { skipIfUnplayed?: boolean } = {},
   ): Promise<void> {
     const home = teams.find((t) => t.sortOrder === session.homeTeamSortOrder);
     const away = teams.find((t) => t.sortOrder === session.awayTeamSortOrder);
@@ -834,6 +839,19 @@ export class MatchFieldSessionService {
       0,
       cumulativeElapsedMs - (priorRounds._sum.durationMs ?? 0),
     );
+    const goals = this.parseGoalHistory(session.goalHistory);
+    if (
+      opts.skipIfUnplayed &&
+      !wasRoundPlayed({
+        scoreHome: session.scoreHome,
+        scoreAway: session.scoreAway,
+        goalCount: goals.length,
+        durationMs,
+        timerRunning: session.timerRunningSince != null,
+      })
+    ) {
+      return;
+    }
     await tx.matchFieldRound.create({
       data: {
         matchId: session.matchId,
@@ -843,7 +861,7 @@ export class MatchFieldSessionService {
         awayDrawTeamId: away.id,
         scoreHome: session.scoreHome,
         scoreAway: session.scoreAway,
-        goals: this.parseGoalHistory(session.goalHistory) as object,
+        goals: goals as object,
         durationMs,
       },
     });

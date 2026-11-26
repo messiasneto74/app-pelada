@@ -297,10 +297,41 @@ if (runHarness) {
         .set('Authorization', `Bearer ${orgToken}`)
         .expect(200);
 
+      // Issue #217: a rodada 2 nem começou (sem gol e sem cronômetro) —
+      // encerrar a partida não grava um 0×0 fantasma.
       const allRounds = await prisma.matchFieldRound.findMany({
         where: { matchId: match.id },
       });
-      expect(allRounds).toHaveLength(2);
+      expect(allRounds).toHaveLength(1);
+    });
+
+    it('encerrar a partida no meio de uma rodada com gol grava essa rodada (issue #217)', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session/end-round`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ addGoal: 'AWAY' })
+        .expect(200);
+      await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/field-session/finish`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+
+      const summary = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/field-session/summary`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+      // rodada 1 (0×0 encerrada pelo organizador) + rodada 2 (0×1 em andamento)
+      expect(summary.body.rounds).toBe(2);
     });
 
     it('gol concorrente com end-round não se perde do histórico (C4)', async () => {
@@ -442,7 +473,14 @@ if (runHarness) {
         .set('Authorization', `Bearer ${orgToken}`)
         .expect(200);
 
-      // Rodada 2: empate 0x0 (não deve mudar goleada nem gerar derrota nova).
+      // Rodada 2: empate 0x0 jogado (cronômetro rodando) — não deve mudar
+      // goleada nem gerar derrota nova. Sem cronômetro nem gol ela não
+      // contaria (issue #217).
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/field-session`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ timer: 'start' })
+        .expect(200);
       await request(app.getHttpServer())
         .post(`/peladas/${pelada.id}/matches/${match.id}/field-session/finish`)
         .set('Authorization', `Bearer ${orgToken}`)
