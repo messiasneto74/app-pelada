@@ -7,6 +7,7 @@ import {
 } from '../../core/inicio/inicio-dashboard.model';
 import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
 import { resolveInicioEmptyStates } from '../../core/inicio/inicio-empty-states';
+import { PeladaApiService } from '../../core/pelada/pelada-api.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import { PeladaAvatarComponent } from '../../ui/avatar.component';
@@ -33,6 +34,10 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         [title]="dashboard()?.peladaName ?? 'Bora jogar'"
         subtitle="Próxima partida, atalhos e caixa do mês."
       />
+      @if (otherPeladasCount() > 0) {
+        <!-- Issue #225 — atalho pra quem joga em mais de uma pelada. -->
+        <a routerLink="/perfil" class="switch-pelada-link">Trocar de pelada</a>
+      }
 
       @if (loading()) {
         <p class="pelada-muted">Carregando…</p>
@@ -148,6 +153,13 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
   `,
   styles: [
     `
+      .switch-pelada-link {
+        display: inline-block;
+        margin: calc(-1 * var(--pelada-space-2)) 0 var(--pelada-space-3);
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #486f36;
+      }
       pelada-card {
         display: block;
         margin-bottom: var(--pelada-space-4);
@@ -192,6 +204,10 @@ export class InicioComponent {
   private readonly dashboardRefresh = inject(PeladaDashboardRefreshService);
   private readonly router = inject(Router);
   private readonly orgContext = inject(PeladaOrganizadorContextService);
+  private readonly peladaApi = inject(PeladaApiService);
+
+  /** Issue #225 — quantas outras peladas o usuário tem (mostra "Trocar de pelada"). */
+  readonly otherPeladasCount = signal(0);
 
   /** Jogador (ex.: entrou por convite) não vê atalhos de organizador — a API recusaria. */
   readonly isJogador = computed(() => {
@@ -206,6 +222,10 @@ export class InicioComponent {
   readonly resolveInicioEmptyStates = resolveInicioEmptyStates;
 
   constructor() {
+    this.peladaApi
+      .listMyPeladas()
+      .then((list) => this.otherPeladasCount.set(Math.max(0, list.length - 1)))
+      .catch(() => this.otherPeladasCount.set(0));
     effect(() => {
       const pelada = this.peladaContext.getActivePelada();
       this.dashboardRefresh.refreshToken();
