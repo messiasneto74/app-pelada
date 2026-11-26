@@ -29,6 +29,8 @@ export type MatchFieldSessionDto = {
 export type PatchMatchFieldSessionBody = {
   timer?: 'start' | 'pause';
   addGoal?: 'HOME' | 'AWAY';
+  /** Autor do gol (issue #214) — precisa estar no time em campo do lado `addGoal`. */
+  goalPlayerId?: string;
   undoGoal?: boolean;
 };
 

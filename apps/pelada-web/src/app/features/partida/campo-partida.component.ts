@@ -27,9 +27,13 @@ import {
   awayTeamName,
   displayElapsedMs,
   formatTimerLabel,
+  goalScorerOptions,
   homeTeamName,
   rotationPolicyLabel,
 } from './campo-view.logic';
+import type { MatchDrawTeamDto } from '../../core/match/match-draw-api.model';
+import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
+import type { ActivePelada } from '../../core/pelada/active-pelada.model';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaCardComponent } from '../../ui/card.component';
 import { PeladaProgressComponent } from '../../ui/progress.component';
@@ -231,6 +235,60 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
         }
       }
 
+      @if (goalSide(); as side) {
+        <div
+          class="confirm-modal-backdrop"
+          role="presentation"
+          (click)="cancelGoal()"
+        >
+          <div
+            class="confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="goal-modal-title"
+            (click)="$event.stopPropagation()"
+            (keydown.escape)="cancelGoal()"
+          >
+            <h2 id="goal-modal-title" class="confirm-modal__title">
+              Quem fez o gol do {{ goalTeamName() }}?
+            </h2>
+            <div class="confirm-modal__actions goal-scorers">
+              @for (p of goalScorers(); track p.playerId) {
+                <button
+                  type="button"
+                  peladaButton
+                  variant="secondary"
+                  [peladaButtonBlock]="true"
+                  [disabled]="busy()"
+                  (click)="confirmGoal(p.playerId)"
+                >
+                  {{ p.name }}
+                </button>
+              }
+              <button
+                type="button"
+                peladaButton
+                variant="ghost"
+                [peladaButtonBlock]="true"
+                [disabled]="busy()"
+                (click)="confirmGoal(null)"
+              >
+                Gol contra / sem autor
+              </button>
+              <button
+                type="button"
+                peladaButton
+                variant="ghost"
+                [peladaButtonBlock]="true"
+                (click)="cancelGoal()"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
       @if (confirmAction()) {
         <div
           class="confirm-modal-backdrop"
@@ -307,6 +365,10 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
         display: flex;
         flex-direction: column;
         gap: var(--pelada-space-2);
+      }
+      .goal-scorers {
+        max-height: 60vh;
+        overflow-y: auto;
       }
       .partida-tabs {
         display: flex;
@@ -412,6 +474,7 @@ export class CampoPartidaComponent implements OnInit {
   private readonly dashboardService = inject(PeladaDashboardService);
   private readonly fieldApi = inject(MatchFieldSessionService);
   private readonly drawApi = inject(MatchDrawService);
+  private readonly rosterService = inject(PeladaRosterService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
 
@@ -424,6 +487,27 @@ export class CampoPartidaComponent implements OnInit {
   readonly actionError = signal<string | null>(null);
   /** Issue #191 — confirmação antes de ação difícil de desfazer. */
   readonly confirmAction = signal<'endRound' | 'finishMatch' | null>(null);
+  /** Issue #214 — lado do gol esperando a escolha do autor. */
+  readonly goalSide = signal<'HOME' | 'AWAY' | null>(null);
+  private readonly drawTeams = signal<MatchDrawTeamDto[]>([]);
+  private readonly playerNames = signal<ReadonlyMap<string, string>>(new Map());
+
+  readonly goalScorers = computed(() => {
+    const s = this.fieldSession();
+    const side = this.goalSide();
+    if (!s || !side) {
+      return [];
+    }
+    return goalScorerOptions(s, side, this.drawTeams(), this.playerNames());
+  });
+
+  readonly goalTeamName = computed(() => {
+    const s = this.fieldSession();
+    if (!s) {
+      return '';
+    }
+    return this.goalSide() === 'AWAY' ? awayTeamName(s) : homeTeamName(s);
+  });
   private readonly tickMs = signal(Date.now());
   /** Instante em que `fieldSession` foi recebido da API (anchor do cronômetro). */
   private readonly sessionElapsedAnchorMs = signal(Date.now());
@@ -515,6 +599,7 @@ export class CampoPartidaComponent implements OnInit {
       return;
     }
     this.orgContext.refreshMembership(pelada.id);
+    this.loadPlayerNames(pelada);
     this.dashboardService.loadDashboard(pelada, (dash) => {
       const matchId =
         dash.nextMatch?.matchId ??
@@ -531,7 +616,8 @@ export class CampoPartidaComponent implements OnInit {
       this.listClosed.set(snap?.listClosed ?? true);
 
       this.drawApi.getDraw(pelada.id, matchId).subscribe({
-        next: () => {
+        next: (draw) => {
+          this.drawTeams.set(draw?.teams ?? []);
           this.hasDraw.set(true);
           this.loadFieldSession();
         },
@@ -563,9 +649,26 @@ export class CampoPartidaComponent implements OnInit {
     );
   }
 
+  /** Issue #214 — antes de marcar, pergunta quem fez o gol. */
   addGoal(side: 'HOME' | 'AWAY'): void {
+    this.goalSide.set(side);
+  }
+
+  cancelGoal(): void {
+    this.goalSide.set(null);
+  }
+
+  confirmGoal(playerId: string | null): void {
+    const side = this.goalSide();
+    if (!side) {
+      return;
+    }
+    this.goalSide.set(null);
     this.runMutation((peladaId, matchId) =>
-      this.fieldApi.patchSession(peladaId, matchId, { addGoal: side }),
+      this.fieldApi.patchSession(peladaId, matchId, {
+        addGoal: side,
+        ...(playerId ? { goalPlayerId: playerId } : {}),
+      }),
     );
   }
 
@@ -607,6 +710,17 @@ export class CampoPartidaComponent implements OnInit {
     this.runMutation((peladaId, matchId) =>
       this.fieldApi.finish(peladaId, matchId),
     );
+  }
+
+  /** Nomes do elenco + convidados, pra listar quem fez o gol (issue #214). */
+  private loadPlayerNames(pelada: ActivePelada): void {
+    this.rosterService.loadRoster(pelada, (players) => {
+      this.rosterService.loadGuests(pelada, (guests) => {
+        this.playerNames.set(
+          new Map([...players, ...guests].map((p) => [p.id, p.displayName])),
+        );
+      });
+    });
   }
 
   private applySessionFromApi(session: MatchFieldSessionDto): void {
