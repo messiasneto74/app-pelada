@@ -9,6 +9,8 @@ import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import { PresenceSessionService } from '../../core/presence/presence-session.service';
 import { MatchDrawService } from '../../core/match/match-draw.service';
+import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
+import type { RosterPlayer } from '../../core/roster/roster-player.model';
 import { MatchFieldSessionService } from '../../core/match/match-field-session.service';
 import type { MatchFieldSessionDto } from '../../core/match/match-field-session-api.model';
 import { CampoPartidaComponent } from './campo-partida.component';
@@ -95,7 +97,25 @@ describe('CampoPartidaComponent §3.6', () => {
         {
           provide: MatchDrawService,
           useValue: {
-            getDraw: () => of({ teams: [] }),
+            getDraw: () =>
+              of({
+                teams: [
+                  { id: 't0', name: 'Time A', sortOrder: 0, playerIds: ['p2', 'p1'], players: [] },
+                  { id: 't1', name: 'Time B', sortOrder: 1, playerIds: ['p3'], players: [] },
+                ],
+              }),
+          },
+        },
+        {
+          provide: PeladaRosterService,
+          useValue: {
+            loadRoster: (_p: unknown, cb: (v: RosterPlayer[]) => void) =>
+              cb([
+                { id: 'p1', displayName: 'Zé Linha' },
+                { id: 'p2', displayName: 'Ana Gol' },
+                { id: 'p3', displayName: 'Bia Visitante' },
+              ] as RosterPlayer[]),
+            loadGuests: (_p: unknown, cb: (v: RosterPlayer[]) => void) => cb([]),
           },
         },
         { provide: MatchFieldSessionService, useValue: fieldSpy },
@@ -242,5 +262,56 @@ describe('CampoPartidaComponent §3.6', () => {
     fixture.detectChanges();
 
     expect(fieldSpy.finish).toHaveBeenCalledWith('pel-1', 'm1');
+  });
+
+  describe('autor do gol (issue #214)', () => {
+    const btn = (label: string) =>
+      (Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]).find(
+        (b) => b.textContent?.trim() === label,
+      );
+
+    beforeEach(() => {
+      fieldSpy.patchSession.and.returnValue(of(fieldSession));
+    });
+
+    it('"+1" pergunta quem fez, listando só o time que marcou', () => {
+      btn('+1 Time A')?.click();
+      fixture.detectChanges();
+      const text = fixture.nativeElement.textContent as string;
+      expect(fieldSpy.patchSession).not.toHaveBeenCalled();
+      expect(text).toContain('Quem fez o gol do Time A?');
+      expect(btn('Ana Gol')).toBeDefined();
+      expect(btn('Zé Linha')).toBeDefined();
+      expect(btn('Bia Visitante')).toBeUndefined();
+    });
+
+    it('escolher o jogador marca o gol com autor', () => {
+      btn('+1 Time B')?.click();
+      fixture.detectChanges();
+      btn('Bia Visitante')?.click();
+      fixture.detectChanges();
+      expect(fieldSpy.patchSession).toHaveBeenCalledWith('pel-1', 'm1', {
+        addGoal: 'AWAY',
+        goalPlayerId: 'p3',
+      });
+      expect(fixture.nativeElement.textContent).not.toContain('Quem fez o gol');
+    });
+
+    it('"Gol contra / sem autor" marca o gol sem autor', () => {
+      btn('+1 Time A')?.click();
+      fixture.detectChanges();
+      btn('Gol contra / sem autor')?.click();
+      fixture.detectChanges();
+      expect(fieldSpy.patchSession).toHaveBeenCalledWith('pel-1', 'm1', { addGoal: 'HOME' });
+    });
+
+    it('cancelar não marca gol', () => {
+      btn('+1 Time A')?.click();
+      fixture.detectChanges();
+      btn('Cancelar')?.click();
+      fixture.detectChanges();
+      expect(fieldSpy.patchSession).not.toHaveBeenCalled();
+      expect(fixture.nativeElement.textContent).not.toContain('Quem fez o gol');
+    });
   });
 });

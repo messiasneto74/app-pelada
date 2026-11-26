@@ -45,3 +45,25 @@ export function homeTeamName(session: MatchFieldSessionDto): string {
 export function awayTeamName(session: MatchFieldSessionDto): string {
   return session.teamsOnField.find((t) => t.role === 'AWAY')?.name ?? 'Time B';
 }
+
+export type GoalScorerOption = { playerId: string; name: string };
+
+/**
+ * Issue #214 — quem pode ter feito o gol: os jogadores do time em campo do
+ * lado que marcou (HOME/AWAY), pelo sorteio, em ordem alfabética.
+ */
+export function goalScorerOptions(
+  session: MatchFieldSessionDto,
+  side: 'HOME' | 'AWAY',
+  drawTeams: ReadonlyArray<{ id: string; playerIds: string[] }>,
+  nameById: ReadonlyMap<string, string>,
+): GoalScorerOption[] {
+  const teamId = session.teamsOnField.find((t) => t.role === side)?.drawTeamId;
+  const team = drawTeams.find((t) => t.id === teamId);
+  if (!team) {
+    return [];
+  }
+  return team.playerIds
+    .map((playerId) => ({ playerId, name: nameById.get(playerId) ?? 'Jogador' }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+}
