@@ -67,4 +67,19 @@ describe('inicio dashboard mapper', () => {
     expect(view.rosterPlayerCount).toBe(0);
     expect(view.cashPercent).toBe(0);
   });
+
+  it('mapeia o resumo recente (issue #215)', () => {
+    const view = mapDashboardToView(pelada, {
+      ...buildEmptyDashboardDto('p1'),
+      recentSummary: {
+        matchId: 'm9',
+        scheduledAt: '2026-11-25T22:00:00.000Z',
+        finishedAt: '2026-11-26T00:30:00.000Z',
+      },
+    });
+    expect(view.recentSummary?.matchId).toBe('m9');
+    expect(view.recentSummary?.link).toBe('/partida/resumo');
+    expect(view.recentSummary?.dateLabel).toBeTruthy();
+    expect(mapDashboardToView(pelada, buildEmptyDashboardDto('p1')).recentSummary).toBeNull();
+  });
 });

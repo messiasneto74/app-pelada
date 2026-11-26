@@ -5,6 +5,9 @@ import { of, Subject, throwError } from 'rxjs';
 import type { MatchDaySummaryDto } from '../../core/match/match-field-session-api.model';
 import { MatchFieldSessionService } from '../../core/match/match-field-session.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
+import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
+import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
+import type { InicioDashboardView } from '../../core/inicio/inicio-dashboard.model';
 import { DEFAULT_PELADA_RULES } from '../../core/pelada/pelada-rules.model';
 import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
 import type { PeladaRulesApiDto } from '../../core/pelada/pelada-rules-api.mapper';
@@ -57,7 +60,9 @@ function setup(
   fieldSpy: jasmine.SpyObj<MatchFieldSessionService>,
   matchId: string | null,
   rulesApiSpy?: jasmine.SpyObj<PeladaRulesApiService>,
+  opts: { isOrganizador?: boolean; recentMatchId?: string | null } = {},
 ): ComponentFixture<ResumoPartidaComponent> {
+  const recentMatchId = opts.recentMatchId ?? null;
   TestBed.configureTestingModule({
     imports: [ResumoPartidaComponent],
     providers: [
@@ -66,6 +71,24 @@ function setup(
       {
         provide: OAuthService,
         useValue: { getIdentityClaims: () => ({ sub: 'user-resumo' }) },
+      },
+      {
+        provide: PeladaOrganizadorContextService,
+        useValue: {
+          isOrganizador: () => opts.isOrganizador ?? true,
+          refreshMembership: () => undefined,
+        },
+      },
+      {
+        provide: PeladaDashboardService,
+        useValue: {
+          loadDashboard: (_p: unknown, cb: (v: InicioDashboardView) => void) =>
+            cb({
+              recentSummary: recentMatchId
+                ? { matchId: recentMatchId, dateLabel: 'qua., 26 de nov.', link: '/partida/resumo' }
+                : null,
+            } as InicioDashboardView),
+        },
       },
       {
         provide: ActivatedRoute,
@@ -104,11 +127,41 @@ describe('ResumoPartidaComponent', () => {
     expect(text).toContain('2 gol(s)');
   });
 
-  it('sem matchId na URL, mostra erro', () => {
+  it('pelo menu (sem matchId): abre o resumo da partida encerrada nas últimas 48h (issue #215)', () => {
+    const fieldSpy = jasmine.createSpyObj('MatchFieldSessionService', ['getDaySummary']);
+    fieldSpy.getDaySummary.and.returnValue(of(summary));
+    const fixture = setup(fieldSpy, null, undefined, { recentMatchId: 'm-recente' });
+    expect(fieldSpy.getDaySummary).toHaveBeenCalledWith('pel-1', 'm-recente');
+    expect(fixture.nativeElement.textContent).toContain('Resumo do dia: Fulano foi o artilheiro!');
+  });
+
+  it('pelo menu sem partida nas últimas 48h: avisa que não há resumo (issue #215)', () => {
     const fieldSpy = jasmine.createSpyObj('MatchFieldSessionService', ['getDaySummary']);
     const fixture = setup(fieldSpy, null);
-    expect(fixture.nativeElement.textContent).toContain('Partida não encontrada');
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Nenhum resumo disponível');
+    expect(text).toContain('48 horas');
+    expect(text).not.toContain('Partida não encontrada');
     expect(fieldSpy.getDaySummary).not.toHaveBeenCalled();
+  });
+
+  it('jogador comum vê o resumo mas não o botão "Editar texto do resumo" (issue #215)', () => {
+    const fieldSpy = jasmine.createSpyObj('MatchFieldSessionService', ['getDaySummary']);
+    fieldSpy.getDaySummary.and.returnValue(of(summary));
+    const fixture = setup(fieldSpy, 'm1', undefined, { isOrganizador: false });
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Resumo do dia: Fulano foi o artilheiro!');
+    expect(text).not.toContain('Editar texto do resumo');
+  });
+
+  it('mostra a aba Resumo no menu da partida (issue #215)', () => {
+    const fieldSpy = jasmine.createSpyObj('MatchFieldSessionService', ['getDaySummary']);
+    fieldSpy.getDaySummary.and.returnValue(of(summary));
+    const fixture = setup(fieldSpy, 'm1');
+    const tabs = Array.from(
+      fixture.nativeElement.querySelectorAll('nav.partida-tabs a'),
+    ).map((a) => (a as HTMLElement).textContent?.trim());
+    expect(tabs).toEqual(['Presença', 'Sorteio', 'Em campo', 'Resumo']);
   });
 
   it('erro da API mostra mensagem amigável', () => {
