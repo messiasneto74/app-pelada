@@ -313,5 +313,20 @@ describe('CampoPartidaComponent §3.6', () => {
       expect(fieldSpy.patchSession).not.toHaveBeenCalled();
       expect(fixture.nativeElement.textContent).not.toContain('Quem fez o gol');
     });
+
+    it('"Desfazer último gol" continua funcionando direto, sem abrir a pergunta', () => {
+      btn('+1 Time A')?.click();
+      fixture.detectChanges();
+      btn('Ana Gol')?.click();
+      fixture.detectChanges();
+      fieldSpy.patchSession.calls.reset();
+      fieldSpy.patchSession.and.returnValue(of({ ...fieldSession, scoreHome: 0 }));
+
+      btn('Desfazer último gol')?.click();
+      fixture.detectChanges();
+
+      expect(fieldSpy.patchSession).toHaveBeenCalledOnceWith('pel-1', 'm1', { undoGoal: true });
+      expect(fixture.nativeElement.textContent).not.toContain('Quem fez o gol');
+    });
   });
 });
