@@ -27,6 +27,7 @@ import {
   resolveGuest,
   selfSetPlayerStatus,
   segmentOptionsWithCounts,
+  sortRowsByQueueOrder,
   statusChipLabel,
   vacancyFillPercent,
   vacancySummary,
@@ -494,9 +495,12 @@ export class PresencaPartidaComponent implements OnInit {
   readonly vacancyTitle = computed(() => 'Quem fecha com a gente?');
   readonly modeHint = computed(() => presenceModeHint(this.presenceMode()));
   readonly segmentOptions = computed(() => segmentOptionsWithCounts(this.counts()));
-  readonly visibleRows = computed(() =>
-    filterPresenceBySegment(this.rows(), this.segment()),
-  );
+  readonly visibleRows = computed(() => {
+    const rows = filterPresenceBySegment(this.rows(), this.segment());
+    return this.segment() === 'queue'
+      ? sortRowsByQueueOrder(rows, this.queueOrder())
+      : rows;
+  });
 
   readonly isOrganizador = computed(() => {
     const pelada = this.peladaContext.getActivePelada();
@@ -513,7 +517,9 @@ export class PresencaPartidaComponent implements OnInit {
 
   readonly formatRosterRating = formatRosterRating;
   readonly rosterPositionLabel = rosterPositionLabel;
-  readonly statusChipLabel = statusChipLabel;
+  statusChipLabel(row: PresenceRow): string {
+    return statusChipLabel(row, this.queueOrder());
+  }
 
   ngOnInit(): void {
     const pelada = this.peladaContext.getActivePelada();
