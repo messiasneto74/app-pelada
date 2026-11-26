@@ -4,6 +4,7 @@ import {
   readRotationPolicy,
   snapshotElapsedMs,
   updateFixedGkMeta,
+  wasRoundPlayed,
 } from './match-field-rotation.logic';
 
 describe('match-field-rotation.logic', () => {
@@ -70,5 +71,17 @@ describe('match-field-rotation.logic', () => {
       },
     );
     expect(meta['gkTeamSortOrder']).toBe(0);
+  });
+
+  describe('wasRoundPlayed (issue #217)', () => {
+    const base = { scoreHome: 0, scoreAway: 0, goalCount: 0, durationMs: 0, timerRunning: false };
+    it('rodada sem gol e sem cronômetro não foi jogada', () => {
+      expect(wasRoundPlayed(base)).toBe(false);
+    });
+    it('gol, tempo corrido ou cronômetro rodando contam como jogada', () => {
+      expect(wasRoundPlayed({ ...base, scoreHome: 1, goalCount: 1 })).toBe(true);
+      expect(wasRoundPlayed({ ...base, durationMs: 1500 })).toBe(true);
+      expect(wasRoundPlayed({ ...base, timerRunning: true })).toBe(true);
+    });
   });
 });
