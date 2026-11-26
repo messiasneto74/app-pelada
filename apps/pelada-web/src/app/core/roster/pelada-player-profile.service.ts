@@ -34,4 +34,11 @@ export class PeladaPlayerProfileService {
       body,
     );
   }
+
+  /** Issue #223 — remove o jogador da pelada (histórico e vínculo da conta junto). */
+  removePlayer(peladaId: string, playerId: string) {
+    return this.http.delete<void>(
+      `${environment.apiUrl}/peladas/${peladaId}/players/${playerId}`,
+    );
+  }
 }

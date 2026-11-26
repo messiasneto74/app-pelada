@@ -205,7 +205,99 @@ if (runHarness) {
       expect(list.body.players).toHaveLength(0);
     });
 
-    it('GET /players/:playerId returns profile with attributes', async () => {
+    describe('sair / ser removido da pelada (issue #223)', () => {
+      async function seedMemberWithPlayer(sub: string) {
+        const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+        const member = await createUser(prisma, { keycloakSub: `${sub}-mem` });
+        const pelada = await createPelada(prisma, { owner: org });
+        await prisma.peladaMember.create({
+          data: { peladaId: pelada.id, userId: member.id, role: 'JOGADOR' },
+        });
+        const player = await prisma.player.create({
+          data: { peladaId: pelada.id, displayName: 'Com Conta', userId: member.id },
+        });
+        return {
+          pelada,
+          member,
+          player,
+          orgToken: signTestJwt({ sub: `${sub}-org`, email: org.email ?? 'o@x.y' }),
+          memberToken: signTestJwt({ sub: `${sub}-mem`, email: member.email ?? 'm@x.y' }),
+        };
+      }
+
+      it('organizador remove jogador com conta: some o jogador e o vínculo da conta', async () => {
+        const { pelada, member, player, orgToken, memberToken } =
+          await seedMemberWithPlayer('leave-org-del');
+        await request(app.getHttpServer())
+          .delete(`/peladas/${pelada.id}/players/${player.id}`)
+          .set('Authorization', `Bearer ${orgToken}`)
+          .expect(204);
+
+        expect(await prisma.player.count({ where: { id: player.id } })).toBe(0);
+        expect(
+          await prisma.peladaMember.count({ where: { peladaId: pelada.id, userId: member.id } }),
+        ).toBe(0);
+        await request(app.getHttpServer())
+          .get(`/peladas/${pelada.id}/dashboard`)
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(403);
+        // a conta continua existindo
+        expect(await prisma.user.count({ where: { id: member.id } })).toBe(1);
+      });
+
+      it('organizador apagando o próprio jogador continua organizador', async () => {
+        const { pelada, orgToken } = await seedMemberWithPlayer('leave-org-self');
+        const owner = await prisma.peladaMember.findFirstOrThrow({
+          where: { peladaId: pelada.id, role: 'ORGANIZADOR' },
+        });
+        const own = await prisma.player.create({
+          data: { peladaId: pelada.id, displayName: 'Dono', userId: owner.userId },
+        });
+        await request(app.getHttpServer())
+          .delete(`/peladas/${pelada.id}/players/${own.id}`)
+          .set('Authorization', `Bearer ${orgToken}`)
+          .expect(204);
+        const still = await prisma.peladaMember.findUnique({ where: { id: owner.id } });
+        expect(still?.role).toBe('ORGANIZADOR');
+      });
+
+      it('jogador sai da pelada (DELETE /membership): apaga jogador e vínculo', async () => {
+        const { pelada, member, player, memberToken } = await seedMemberWithPlayer('leave-self');
+        await request(app.getHttpServer())
+          .delete(`/peladas/${pelada.id}/membership`)
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(204);
+
+        expect(await prisma.player.count({ where: { id: player.id } })).toBe(0);
+        expect(
+          await prisma.peladaMember.count({ where: { peladaId: pelada.id, userId: member.id } }),
+        ).toBe(0);
+        await request(app.getHttpServer())
+          .get(`/peladas/${pelada.id}/dashboard`)
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(403);
+      });
+
+      it('único organizador não pode sair', async () => {
+        const { pelada, orgToken } = await seedMemberWithPlayer('leave-last-org');
+        const res = await request(app.getHttpServer())
+          .delete(`/peladas/${pelada.id}/membership`)
+          .set('Authorization', `Bearer ${orgToken}`)
+          .expect(400);
+        expect(res.body.message).toContain('único organizador');
+      });
+
+      it('quem não é membro recebe 403 ao tentar sair', async () => {
+        const { pelada } = await seedMemberWithPlayer('leave-outsider');
+        await createUser(prisma, { keycloakSub: 'leave-outsider-x' });
+        await request(app.getHttpServer())
+          .delete(`/peladas/${pelada.id}/membership`)
+          .set('Authorization', `Bearer ${signTestJwt({ sub: 'leave-outsider-x', email: 'x@x.y' })}`)
+          .expect(403);
+      });
+    });
+
+        it('GET /players/:playerId returns profile with attributes', async () => {
       const sub = 'roster-get-one';
       const user = await createUser(prisma, { keycloakSub: sub });
       const pelada = await createPelada(prisma, { owner: user });
