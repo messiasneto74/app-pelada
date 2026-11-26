@@ -187,7 +187,9 @@ describe('CampoPartidaComponent §3.6', () => {
     f2.detectChanges();
     const text = f2.nativeElement.textContent as string;
     expect(text).toContain('Ver resumo do dia');
-    const link = f2.nativeElement.querySelector('a[href^="/partida/resumo"]') as HTMLAnchorElement;
+    const link = (
+      Array.from(f2.nativeElement.querySelectorAll('a[href^="/partida/resumo"]')) as HTMLAnchorElement[]
+    ).find((a) => a.textContent?.includes('Ver resumo do dia')) as HTMLAnchorElement;
     expect(link).not.toBeNull();
     expect(link.getAttribute('href')).toContain('matchId=m1');
     f2.destroy();

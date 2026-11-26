@@ -18,6 +18,7 @@ import {
   computeMatchCapacity,
   effectiveModalityForMatch,
   monthUtcBounds,
+  RECENT_SUMMARY_WINDOW_MS,
   type PeladaDashboardResponse,
 } from './pelada-dashboard.logic';
 
@@ -215,7 +216,7 @@ export class PeladasService {
     const now = new Date();
     const { start: monthStart, end: monthEnd } = monthUtcBounds(now);
 
-    const [rosterPlayerCount, nextMatch, receivedAgg, expectedAgg] =
+    const [rosterPlayerCount, nextMatch, receivedAgg, expectedAgg, recentSession] =
       await Promise.all([
         this.prisma.player.count({ where: { peladaId, isGuest: false } }),
         this.prisma.match.findFirst({
@@ -249,6 +250,14 @@ export class PeladasService {
           },
           _sum: { amountCents: true },
         }),
+        this.prisma.matchFieldSession.findFirst({
+          where: {
+            finishedAt: { gte: new Date(now.getTime() - RECENT_SUMMARY_WINDOW_MS) },
+            match: { peladaId },
+          },
+          orderBy: { finishedAt: 'desc' },
+          include: { match: { select: { id: true, scheduledAt: true } } },
+        }),
       ]);
 
     let nextMatchJson: PeladaDashboardResponse['nextMatch'] = null;
@@ -281,6 +290,14 @@ export class PeladasService {
     return {
       peladaId,
       nextMatch: nextMatchJson,
+      recentSummary:
+        recentSession?.finishedAt != null
+          ? {
+              matchId: recentSession.match.id,
+              scheduledAt: recentSession.match.scheduledAt.toISOString(),
+              finishedAt: recentSession.finishedAt.toISOString(),
+            }
+          : null,
       rosterPlayerCount,
       cashMonth: {
         receivedCents: receivedAgg._sum.amountCents ?? 0,

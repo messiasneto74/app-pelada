@@ -88,6 +88,25 @@ describe('InicioComponent', () => {
     expect(text).toContain('Abrir lista de presença');
   });
 
+  it('sem partida encerrada nas últimas 48h, não mostra o card de resumo (issue #215)', () => {
+    expect(fixture.nativeElement.textContent).not.toContain('Resumo da última partida');
+  });
+
+  it('mostra o card "Resumo da última partida" com link pro resumo (issue #215)', () => {
+    fixture.componentInstance.dashboard.set({
+      ...mockView,
+      recentSummary: { matchId: 'm7', dateLabel: 'qua., 26 nov.', link: '/partida/resumo' },
+    });
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Resumo da última partida');
+    expect(text).toContain('qua., 26 nov.');
+    const link = fixture.nativeElement.querySelector(
+      'a[href^="/partida/resumo"]',
+    ) as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toContain('matchId=m7');
+  });
+
   it('renderiza atalhos §3.1', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Regras');

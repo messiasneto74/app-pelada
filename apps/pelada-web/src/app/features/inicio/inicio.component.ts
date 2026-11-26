@@ -89,6 +89,24 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           </pelada-card>
         }
 
+        @if (dash.recentSummary; as rs) {
+          <pelada-card title="Resumo da última partida">
+            <p class="pelada-muted">
+              Partida de {{ rs.dateLabel }} — artilheiro, goleadas e tabela do dia.
+              Fica disponível por 48 horas.
+            </p>
+            <a
+              [routerLink]="rs.link"
+              [queryParams]="{ matchId: rs.matchId }"
+              peladaButton
+              variant="secondary"
+              [peladaButtonBlock]="true"
+            >
+              Ver resumo do dia
+            </a>
+          </pelada-card>
+        }
+
         @if (resolveInicioEmptyStates(dash).showNoRoster) {
           <pelada-card title="Elenco vazio">
             <p class="pelada-muted">

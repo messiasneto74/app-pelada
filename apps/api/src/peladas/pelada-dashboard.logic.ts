@@ -11,9 +11,20 @@ export type DashboardNextMatchJson = {
   confirmedPlayers: { id: string; displayName: string }[];
 };
 
+/** Issue #215 — partida encerrada cujo resumo do dia ainda está disponível. */
+export type DashboardRecentSummaryJson = {
+  matchId: string;
+  scheduledAt: string;
+  finishedAt: string;
+};
+
+/** Por quanto tempo o resumo do dia fica no menu depois de encerrada (issue #215). */
+export const RECENT_SUMMARY_WINDOW_MS = 48 * 60 * 60 * 1000;
+
 export type PeladaDashboardResponse = {
   peladaId: string;
   nextMatch: DashboardNextMatchJson | null;
+  recentSummary: DashboardRecentSummaryJson | null;
   rosterPlayerCount: number;
   cashMonth: {
     receivedCents: number;

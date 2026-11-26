@@ -1,9 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
 import type { MatchDaySummaryDto } from '../../core/match/match-field-session-api.model';
 import { MatchFieldSessionService } from '../../core/match/match-field-session.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
+import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
+import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import {
   mapPeladaRulesApiError,
   type PeladaRulesFormValues,
@@ -21,6 +23,7 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
   standalone: true,
   imports: [
     RouterLink,
+    RouterLinkActive,
     ScreenHeaderComponent,
     PeladaCardComponent,
     PeladaFieldComponent,
@@ -35,14 +38,30 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         subtitle="Vitórias, goleadas e artilheiro a partir do histórico de rodadas."
       />
 
+      <nav class="partida-tabs" aria-label="Abas da partida">
+        <a routerLink="/partida/presenca" routerLinkActive="active">Presença</a>
+        <a routerLink="/partida/sorteio" routerLinkActive="active">Sorteio</a>
+        <a routerLink="/partida/campo" routerLinkActive="active">Em campo</a>
+        <a routerLink="/partida/resumo" routerLinkActive="active">Resumo</a>
+      </nav>
+
       @if (loading()) {
         <p class="pelada-muted">Carregando…</p>
       } @else if (error()) {
         <p class="pelada-error" role="alert">{{ error() }}</p>
+      } @else if (noRecentSummary()) {
+        <pelada-card title="Nenhum resumo disponível">
+          <p class="pelada-muted">
+            Nenhuma partida foi encerrada nas últimas 48 horas. O resumo do dia aparece aqui
+            assim que o organizador encerrar a partida.
+          </p>
+        </pelada-card>
       } @else if (summary(); as s) {
         <pelada-card title="Texto do resumo">
           <p class="summary-text">{{ s.text }}</p>
-          @if (rulesLoadError()) {
+          @if (!isOrganizador()) {
+            <!-- Issue #215: só o organizador edita o modelo do texto. -->
+          } @else if (rulesLoadError()) {
             <p class="pelada-field__error" role="alert">{{ rulesLoadError() }}</p>
           } @else if (!rulesReady()) {
             <p class="pelada-muted">Carregando regras…</p>
@@ -149,11 +168,36 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         }
       }
 
-      <a routerLink="/partida/campo" class="back-link">Voltar pra Em campo</a>
     </section>
   `,
   styles: [
     `
+      .partida-tabs {
+        display: flex;
+        gap: var(--pelada-space-2);
+        margin-bottom: var(--pelada-space-4);
+        overflow-x: auto;
+      }
+      .partida-tabs a {
+        flex: 1;
+        text-align: center;
+        padding: var(--pelada-space-2) var(--pelada-space-3);
+        border-radius: var(--pelada-radius-md);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        color: var(--pelada-muted);
+        border: 1px solid var(--pelada-line);
+        min-height: var(--pelada-touch-min);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .partida-tabs a.active {
+        background: #f0f5e6;
+        color: #486f36;
+        border-color: #c5d9a8;
+      }
       pelada-card {
         display: block;
         margin-bottom: var(--pelada-space-4);
@@ -187,6 +231,16 @@ export class ResumoPartidaComponent implements OnInit {
   private readonly peladaContext = inject(PeladaContextService);
   private readonly fieldApi = inject(MatchFieldSessionService);
   private readonly rulesApi = inject(PeladaRulesApiService);
+  private readonly dashboardService = inject(PeladaDashboardService);
+  private readonly orgContext = inject(PeladaOrganizadorContextService);
+
+  /** Issue #215 — sem partida encerrada nas últimas 48h. */
+  readonly noRecentSummary = signal(false);
+
+  readonly isOrganizador = computed(() => {
+    const pelada = this.peladaContext.getActivePelada();
+    return pelada ? this.orgContext.isOrganizador(pelada.id) : false;
+  });
 
   readonly summary = signal<MatchDaySummaryDto | null>(null);
   readonly loading = signal(true);
@@ -206,13 +260,31 @@ export class ResumoPartidaComponent implements OnInit {
 
   ngOnInit(): void {
     const pelada = this.peladaContext.getActivePelada();
-    const matchId = this.route.snapshot.queryParamMap.get('matchId');
-    if (!pelada || !matchId) {
+    if (!pelada) {
       this.loading.set(false);
-      this.error.set('Partida não encontrada. Volte pra "Em campo" e tente de novo.');
+      this.error.set('Nenhuma pelada selecionada.');
       return;
     }
-    this.fieldApi.getDaySummary(pelada.id, matchId).subscribe({
+    this.orgContext.refreshMembership(pelada.id);
+    const matchId = this.route.snapshot.queryParamMap.get('matchId');
+    if (matchId) {
+      this.loadSummary(pelada.id, matchId);
+      return;
+    }
+    // Issue #215 — pelo menu (sem matchId): resumo da partida encerrada nas últimas 48h.
+    this.dashboardService.loadDashboard(pelada, (dash) => {
+      const recent = dash.recentSummary?.matchId;
+      if (!recent) {
+        this.noRecentSummary.set(true);
+        this.loading.set(false);
+        return;
+      }
+      this.loadSummary(pelada.id, recent);
+    });
+  }
+
+  private loadSummary(peladaId: string, matchId: string): void {
+    this.fieldApi.getDaySummary(peladaId, matchId).subscribe({
       next: (dto) => {
         this.summary.set(dto);
         this.loading.set(false);
@@ -222,7 +294,7 @@ export class ResumoPartidaComponent implements OnInit {
         this.loading.set(false);
       },
     });
-    this.rulesApi.fetchRules(pelada.id).subscribe({
+    this.rulesApi.fetchRules(peladaId).subscribe({
       next: (dto) => {
         this.loadedRules = this.rulesApi.mapFromApi(dto);
         this.rulesReady.set(true);

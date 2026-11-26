@@ -68,6 +68,7 @@ type TeamListState = { sortOrder: number; players: RosterPlayer[] };
         <a [routerLink]="presencaPath" routerLinkActive="active">Presença</a>
         <a routerLink="/partida/sorteio" routerLinkActive="active">Sorteio</a>
         <a routerLink="/partida/campo" routerLinkActive="active">Em campo</a>
+        <a routerLink="/partida/resumo" routerLinkActive="active">Resumo</a>
       </nav>
 
       @if (loading()) {

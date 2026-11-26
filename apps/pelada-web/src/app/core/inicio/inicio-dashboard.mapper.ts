@@ -20,6 +20,13 @@ export function mapDashboardToView(
   return {
     peladaName: pelada.name,
     nextMatch: next,
+    recentSummary: dto.recentSummary
+      ? {
+          matchId: dto.recentSummary.matchId,
+          dateLabel: formatMatchDateParts(dto.recentSummary.scheduledAt).dateLabel,
+          link: '/partida/resumo',
+        }
+      : null,
     rosterPlayerCount: dto.rosterPlayerCount,
     cashReceivedLabel: formatMoneyBrl(dto.cashMonth.receivedCents),
     cashExpectedLabel: formatMoneyBrl(dto.cashMonth.expectedCents),
@@ -51,6 +58,7 @@ export function buildEmptyDashboardDto(peladaId: string): PeladaDashboardDto {
   return {
     peladaId,
     nextMatch: null,
+    recentSummary: null,
     rosterPlayerCount: 0,
     cashMonth: { receivedCents: 0, expectedCents: 0 },
   };

@@ -2,6 +2,8 @@
 export type PeladaDashboardDto = {
   peladaId: string;
   nextMatch: NextMatchDto | null;
+  /** Issue #215 — partida encerrada nas últimas 48h (resumo do dia ainda disponível). */
+  recentSummary?: RecentSummaryDto | null;
   rosterPlayerCount: number;
   cashMonth: {
     receivedCents: number;
@@ -19,6 +21,12 @@ export type NextMatchDto = {
   confirmedPlayers: { id: string; displayName: string }[];
 };
 
+export type RecentSummaryDto = {
+  matchId: string;
+  scheduledAt: string;
+  finishedAt: string;
+};
+
 export type InicioDashboardView = {
   peladaName: string;
   nextMatch: {
@@ -32,6 +40,12 @@ export type InicioDashboardView = {
     vacancyPercent: number;
     confirmedPlayers: { id: string; displayName: string }[];
     presenceLink: string;
+  } | null;
+  /** Issue #215 — atalho pro resumo do dia (48h depois de encerrada). */
+  recentSummary?: {
+    matchId: string;
+    dateLabel: string;
+    link: string;
   } | null;
   rosterPlayerCount: number;
   cashReceivedLabel: string;

@@ -145,6 +145,62 @@ if (runHarness) {
       expect(res.body.nextMatch?.id).toBe(match.id);
     });
 
+    describe('recentSummary (issue #215)', () => {
+      async function finishedMatch(
+        pelada: Awaited<ReturnType<typeof createPelada>>,
+        finishedAt: Date,
+      ) {
+        const match = await createMatch(prisma, { pelada, scheduledAt: finishedAt });
+        await prisma.match.update({ where: { id: match.id }, data: { status: 'FINISHED' } });
+        await prisma.matchFieldSession.create({
+          data: {
+            matchId: match.id,
+            homeTeamSortOrder: 0,
+            awayTeamSortOrder: 1,
+            finishedAt,
+          },
+        });
+        return match;
+      }
+
+      it('traz a partida encerrada há menos de 48h (a mais recente)', async () => {
+        const sub = 'dash-215-a';
+        const user = await createUser(prisma, { keycloakSub: sub });
+        const pelada = await createPelada(prisma, { owner: user });
+        const token = signTestJwt({ sub, email: user.email ?? 'r@sh.c' });
+        await finishedMatch(pelada, new Date(Date.now() - 30 * 60 * 60 * 1000));
+        const recent = await finishedMatch(pelada, new Date(Date.now() - 2 * 60 * 60 * 1000));
+
+        const res = await request(app.getHttpServer())
+          .get(`/peladas/${pelada.id}/dashboard`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        expect(res.body.recentSummary?.matchId).toBe(recent.id);
+        expect(typeof res.body.recentSummary?.finishedAt).toBe('string');
+      });
+
+      it('some depois de 48h e não existe sem partida encerrada', async () => {
+        const sub = 'dash-215-b';
+        const user = await createUser(prisma, { keycloakSub: sub });
+        const pelada = await createPelada(prisma, { owner: user });
+        const token = signTestJwt({ sub, email: user.email ?? 'r2@sh.c' });
+
+        let res = await request(app.getHttpServer())
+          .get(`/peladas/${pelada.id}/dashboard`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+        expect(res.body.recentSummary).toBeNull();
+
+        await finishedMatch(pelada, new Date(Date.now() - 49 * 60 * 60 * 1000));
+        res = await request(app.getHttpServer())
+          .get(`/peladas/${pelada.id}/dashboard`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+        expect(res.body.recentSummary).toBeNull();
+      });
+    });
+
     it('GET /peladas/:id/dashboard aggregates cash for current UTC month', async () => {
       const sub = 'dash-cash';
       const user = await createUser(prisma, { keycloakSub: sub });
