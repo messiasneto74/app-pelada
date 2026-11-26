@@ -89,6 +89,8 @@ const sampleDraw: MatchDrawDetailDto = {
   ],
 };
 
+let isOrgForTest = true;
+
 describe('SorteioPartidaComponent §3.5', () => {
   let fixture: ComponentFixture<SorteioPartidaComponent>;
   let matchDrawSpy: jasmine.SpyObj<MatchDrawService>;
@@ -139,7 +141,7 @@ describe('SorteioPartidaComponent §3.5', () => {
         {
           provide: PeladaOrganizadorContextService,
           useValue: {
-            isOrganizador: () => true,
+            isOrganizador: () => isOrgForTest,
             refreshMembership: jasmine.createSpy('refreshMembership'),
           },
         },
@@ -178,7 +180,30 @@ describe('SorteioPartidaComponent §3.5', () => {
     fixture.detectChanges();
   });
 
-  it('mostra métricas e times após GET /draw', () => {
+  it('organizador vê a dica de arrastar e pode arrastar (issue #221)', () => {
+    expect(fixture.nativeElement.textContent).toContain('Segure e arraste');
+    expect(fixture.nativeElement.querySelector('.cdk-drag-disabled')).toBeNull();
+  });
+
+  it('jogador comum não vê a dica de arrastar e não arrasta (issue #221)', () => {
+    isOrgForTest = false;
+    try {
+      const f2 = TestBed.createComponent(SorteioPartidaComponent);
+      f2.detectChanges();
+      expect(f2.nativeElement.textContent).toContain('Time A');
+      expect(f2.nativeElement.textContent).not.toContain('Segure e arraste');
+      const pills = f2.nativeElement.querySelectorAll('.player-pill');
+      expect(pills.length).toBeGreaterThan(0);
+      expect(f2.nativeElement.querySelectorAll('.player-pill.cdk-drag-disabled').length).toBe(
+        pills.length,
+      );
+      f2.destroy();
+    } finally {
+      isOrgForTest = true;
+    }
+  });
+
+    it('mostra métricas e times após GET /draw', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('80%');
     expect(text).toContain('Time A');
