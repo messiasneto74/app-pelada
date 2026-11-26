@@ -233,6 +233,97 @@ if (runHarness) {
       expect(nt1.playerIds).toContain(a);
     });
 
+    it('POST /draw de novo com a partida DRAWN substitui o sorteio (equilibrado e aleatório)', async () => {
+      const { pelada, match, token } = await seedDrawableMatch();
+      const url = `/peladas/${pelada.id}/matches/${match.id}/draw`;
+
+      await request(app.getHttpServer())
+        .post(url)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ mode: 'BALANCED', seed: 1 })
+        .expect(201);
+
+      const balanced = await request(app.getHttpServer())
+        .post(url)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ mode: 'BALANCED', seed: 2 })
+        .expect(201);
+      expect(balanced.body.seed).toBe('2');
+
+      const random = await request(app.getHttpServer())
+        .post(url)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ mode: 'RANDOM', seed: 3 })
+        .expect(201);
+      expect(random.body.seed).toBe('3');
+      expect(random.body.teams).toHaveLength(2);
+      const ids = random.body.teams.flatMap(
+        (t: { playerIds: string[] }) => t.playerIds,
+      );
+      expect(ids).toHaveLength(6);
+      expect(new Set(ids).size).toBe(6);
+
+      expect(await prisma.draw.count({ where: { matchId: match.id } })).toBe(1);
+      const m = await prisma.match.findUnique({ where: { id: match.id } });
+      expect(m?.status).toBe('DRAWN');
+
+      const get = await request(app.getHttpServer())
+        .get(url)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(get.body.drawId).toBe(random.body.drawId);
+      expect(get.body.seed).toBe('3');
+    });
+
+    it('POST /draw de novo com pinnedByTeam respeita os fixos', async () => {
+      const { pelada, match, token, p3, p4 } = await seedDrawableMatch();
+      const url = `/peladas/${pelada.id}/matches/${match.id}/draw`;
+
+      await request(app.getHttpServer())
+        .post(url)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ mode: 'BALANCED', seed: 1 })
+        .expect(201);
+
+      const res = await request(app.getHttpServer())
+        .post(url)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ mode: 'RANDOM', seed: 5, pinnedByTeam: { '0': [p4.id], '1': [p3.id] } })
+        .expect(201);
+
+      const t0 = res.body.teams.find(
+        (t: { sortOrder: number }) => t.sortOrder === 0,
+      )!;
+      const t1 = res.body.teams.find(
+        (t: { sortOrder: number }) => t.sortOrder === 1,
+      )!;
+      expect(t0.playerIds).toContain(p4.id);
+      expect(t1.playerIds).toContain(p3.id);
+    });
+
+    it('POST /draw com a partida em campo ou encerrada retorna 400', async () => {
+      const { pelada, match, token } = await seedDrawableMatch();
+      const url = `/peladas/${pelada.id}/matches/${match.id}/draw`;
+
+      await request(app.getHttpServer())
+        .post(url)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ mode: 'BALANCED', seed: 1 })
+        .expect(201);
+
+      for (const status of ['IN_PROGRESS', 'FINISHED'] as const) {
+        await prisma.match.update({ where: { id: match.id }, data: { status } });
+        const res = await request(app.getHttpServer())
+          .post(url)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ mode: 'BALANCED', seed: 2 })
+          .expect(400);
+        expect(res.body.message).toBe(
+          'Não é possível sortear depois que a partida foi a campo.',
+        );
+      }
+    });
+
     it('POST /draw antes de fechar lista retorna 400', async () => {
       const sub = `draw-bad-${Math.random().toString(36).slice(2, 8)}`;
       const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
