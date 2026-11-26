@@ -113,7 +113,9 @@ type TeamListState = { sortOrder: number; players: RosterPlayer[] };
             <p class="pelada-muted share-hint" role="status">{{ shareHint() }}</p>
           }
 
-          <p class="pelada-muted drag-hint">Segure e arraste um jogador para trocar de time.</p>
+          @if (isOrganizador()) {
+            <p class="pelada-muted drag-hint">Segure e arraste um jogador para trocar de time.</p>
+          }
 
           <div cdkDropListGroup class="teams-grid">
             @for (meta of teamMeta(); track meta.sortOrder) {
@@ -126,7 +128,7 @@ type TeamListState = { sortOrder: number; players: RosterPlayer[] };
                   (cdkDropListDropped)="onTeamDrop($event, meta.sortOrder)"
                 >
                   @for (p of playersForTeam(meta.sortOrder); track p.id) {
-                    <div class="player-pill" cdkDrag [cdkDragData]="p">
+                    <div class="player-pill" cdkDrag [cdkDragData]="p" [cdkDragDisabled]="!isOrganizador()">
                       <span class="drag-handle" cdkDragHandle aria-label="Arrastar">⋮⋮</span>
                       <pelada-avatar [name]="p.displayName" size="small" tone="lime" />
                       <span class="player-pill__main">

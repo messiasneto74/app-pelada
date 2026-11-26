@@ -324,7 +324,28 @@ if (runHarness) {
       }
     });
 
-    it('POST /draw antes de fechar lista retorna 400', async () => {
+    it('PATCH /draw/swap com a partida em campo explica o motivo (issue #221)', async () => {
+      const { pelada, match, token } = await seedDrawableMatch();
+      const draw = await request(app.getHttpServer())
+        .post(`/peladas/${pelada.id}/matches/${match.id}/draw`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ mode: 'BALANCED', seed: 1 })
+        .expect(201);
+      await prisma.match.update({ where: { id: match.id }, data: { status: 'IN_PROGRESS' } });
+      const t0 = draw.body.teams.find((t: { sortOrder: number }) => t.sortOrder === 0)!;
+      const t1 = draw.body.teams.find((t: { sortOrder: number }) => t.sortOrder === 1)!;
+
+      const res = await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/draw/swap`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ playerAId: t0.playerIds[1], playerBId: t1.playerIds[1] })
+        .expect(400);
+      expect(res.body.message).toBe(
+        'Não é possível trocar jogadores depois que a partida foi a campo.',
+      );
+    });
+
+        it('POST /draw antes de fechar lista retorna 400', async () => {
       const sub = `draw-bad-${Math.random().toString(36).slice(2, 8)}`;
       const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
       const pelada = await createPelada(prisma, { owner: org });

@@ -171,6 +171,12 @@ export class MatchDrawService {
     await this.assertOrganizador(peladaId, user.id);
     const { match, defaults } = await this.loadMatch(peladaId, matchId);
 
+    if (match.status === 'IN_PROGRESS' || match.status === 'FINISHED') {
+      // Issue #221 — antes dizia "Sorteio ainda não foi realizado", o que é falso.
+      throw new BadRequestException(
+        'Não é possível trocar jogadores depois que a partida foi a campo.',
+      );
+    }
     if (match.status !== 'DRAWN') {
       throw new BadRequestException('Sorteio ainda não foi realizado nesta partida.');
     }

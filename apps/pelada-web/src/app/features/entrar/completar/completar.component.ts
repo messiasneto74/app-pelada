@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../auth/auth.service';
@@ -95,12 +96,22 @@ export class CompletarComponent {
 
   async submit(): Promise<void> {
     this.error.set(null);
+    // Issue #221 — mensagem clara pra cada caso, sem citar "API".
+    const invalid = phoneValidationMessage(this.phone);
+    if (invalid) {
+      this.error.set(invalid);
+      return;
+    }
     this.saving.set(true);
     try {
       await this.auth.patchMe(this.phone.trim());
       await this.auth.continueAfterLogin();
-    } catch {
-      this.error.set('Não foi possível salvar. Verifique o número e a API.');
+    } catch (err) {
+      this.error.set(
+        err instanceof HttpErrorResponse && err.status === 400
+          ? 'Telefone inválido. Use só números, com DDD (ex.: 11 99999-0000).'
+          : 'Não foi possível salvar agora. Confira sua internet e tente de novo.',
+      );
     } finally {
       this.saving.set(false);
     }
@@ -109,4 +120,16 @@ export class CompletarComponent {
   logout(): void {
     this.auth.logout();
   }
+}
+
+/** Issue #221 — validação local do telefone (mesma regra da API: 8+ caracteres, só dígitos e + ( ) - espaço). */
+export function phoneValidationMessage(raw: string): string | null {
+  const phone = raw.trim();
+  if (!phone) {
+    return 'Informe seu telefone com DDD.';
+  }
+  if (!/^[0-9+()\-\s]+$/.test(phone) || phone.replace(/\D/g, '').length < 8) {
+    return 'Telefone inválido. Use só números, com DDD (ex.: 11 99999-0000).';
+  }
+  return null;
 }
