@@ -417,13 +417,33 @@ export function redrawDrawTeams(input: RedrawDrawTeamsInput): DrawTeamsResult {
     }
   }
 
+  // Issue #220 — um goleiro por time: cada time fica com o seu goleiro.
+  // Fixar dois goleiros no mesmo time deixaria outro time sem goleiro.
+  if (gkMode === 'ONE_PER_TEAM') {
+    for (let i = 0; i < teamCount; i++) {
+      const pinnedGks = teams[i].filter((id) => playersById.get(id)?.isGoalkeeper);
+      if (pinnedGks.length > 1) {
+        throw new DrawValidationError(
+          `Modo um goleiro por time: o Time ${String.fromCharCode(65 + i)} não pode ter ${pinnedGks.length} goleiros fixos — cada time fica com o seu goleiro.`,
+        );
+      }
+    }
+  }
+
   const pool = players.filter((p) => !pinnedSet.has(p.id));
 
   let poolOrder: DrawPlayerInput[];
   if (mode === 'RANDOM') {
-    const drawable =
-      gkMode === 'FIXED_OFF_LINE' ? pool.filter((p) => !p.isGoalkeeper) : pool;
-    poolOrder = shuffle(drawable, random);
+    if (gkMode === 'FIXED_OFF_LINE') {
+      poolOrder = shuffle(pool.filter((p) => !p.isGoalkeeper), random);
+    } else {
+      // Issue #220 — goleiros primeiro: cada um vai pro time que ainda não tem
+      // goleiro antes que os de linha lotem esse time.
+      poolOrder = [
+        ...shuffle(pool.filter((p) => p.isGoalkeeper), random),
+        ...shuffle(pool.filter((p) => !p.isGoalkeeper), random),
+      ];
+    }
   } else if (gkMode === 'FIXED_OFF_LINE') {
     const lineOnly = pool.filter((p) => !p.isGoalkeeper);
     poolOrder = sortLineForBalance(lineOnly, random, playersById, weights);
@@ -434,7 +454,9 @@ export function redrawDrawTeams(input: RedrawDrawTeamsInput): DrawTeamsResult {
       random,
     );
     const orderedLine = sortLineForBalance(linePool, random, playersById, weights);
-    poolOrder = [...orderedLine, ...gkPool];
+    // Issue #220 — goleiros antes da linha: com um goleiro fixo num time, o
+    // outro goleiro precisa achar vaga no time que está sem goleiro.
+    poolOrder = [...gkPool, ...orderedLine];
   }
 
   for (const p of poolOrder) {

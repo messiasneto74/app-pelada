@@ -220,6 +220,78 @@ describe('redrawDrawTeams (CORE-3)', () => {
     );
   });
 
+  describe('um goleiro por time (issue #220)', () => {
+    const players = [
+      mk(1, 9),
+      mk(2, 5),
+      mk(3, 5),
+      mk(4, 5),
+      mk(5, 6, true),
+      mk(6, 6, true),
+    ];
+    const gksPerTeam = (r: ReturnType<typeof redrawDrawTeams>) =>
+      r.teams.map((t) => t.playerIds.filter((id) => id === 'p5' || id === 'p6').length);
+
+    it('rejeita fixar os dois goleiros no mesmo time', () => {
+      expect(() =>
+        redrawDrawTeams({
+          players,
+          teamCount: 2,
+          mode: 'BALANCED',
+          goalkeepersMode: 'ONE_PER_TEAM',
+          pinnedByTeam: { 0: ['p5', 'p6'] },
+        }),
+      ).toThrowError(/Time A não pode ter 2 goleiros fixos/);
+    });
+
+    it('goleiro fixo num time: o outro goleiro vai pro outro time (equilibrado e aleatório)', () => {
+      for (const mode of ['BALANCED', 'RANDOM'] as const) {
+        for (let seed = 1; seed <= 20; seed++) {
+          const r = redrawDrawTeams({
+            players,
+            teamCount: 2,
+            mode,
+            seed,
+            goalkeepersMode: 'ONE_PER_TEAM',
+            pinnedByTeam: { 0: ['p5'] },
+          });
+          expect(gksPerTeam(r)).toEqual([1, 1]);
+        }
+      }
+    });
+
+    it('goleiros no começo da lista (cenário real que falhava): o outro goleiro acha o time sem goleiro', () => {
+      const ps = [mk(1, 8, true), mk(2, 7, true), mk(3, 6), mk(4, 6), mk(5, 5), mk(6, 5)];
+      for (const mode of ['BALANCED', 'RANDOM'] as const) {
+        for (let seed = 1; seed <= 200; seed++) {
+          const r = redrawDrawTeams({
+            players: ps,
+            teamCount: 2,
+            mode,
+            seed,
+            goalkeepersMode: 'ONE_PER_TEAM',
+            pinnedByTeam: { 0: ['p1'] },
+          });
+          expect(
+            r.teams.map((t) => t.playerIds.filter((id) => id === 'p1' || id === 'p2').length),
+          ).toEqual([1, 1]);
+          expect(r.teams.map((t) => t.playerIds.length)).toEqual([3, 3]);
+        }
+      }
+    });
+
+        it('cada goleiro fixo no seu time é aceito', () => {
+      const r = redrawDrawTeams({
+        players,
+        teamCount: 2,
+        mode: 'BALANCED',
+        goalkeepersMode: 'ONE_PER_TEAM',
+        pinnedByTeam: { 0: ['p5'], 1: ['p6'] },
+      });
+      expect(gksPerTeam(r)).toEqual([1, 1]);
+    });
+  });
+
   it('rejeita fixar o mesmo jogador em dois times', () => {
     const players = [mk(1, 7), mk(2, 7), mk(3, 7), mk(4, 7)];
     expect(() =>
