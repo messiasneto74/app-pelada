@@ -157,18 +157,39 @@ export function promoteNextFromQueue(
   return applyPlayerStatusChange(rows, queueOrder, nextId, 'confirmed', capacity);
 }
 
-export function statusChipLabel(row: PresenceRow): string {
+export function statusChipLabel(
+  row: PresenceRow,
+  queueOrder: readonly string[] = [],
+): string {
   if (row.kind === 'guest') {
     return row.status === 'guest_pending' ? 'Convidado' : 'Recusado';
   }
   switch (row.status) {
     case 'confirmed':
       return 'Confirmou';
-    case 'queue':
-      return 'Na fila';
+    case 'queue': {
+      // Issue #218 — posição na fila (1º, 2º…), sempre contada a partir de 1.
+      const idx = queueOrder.indexOf(row.player.id);
+      return idx >= 0 ? `${idx + 1}º na fila` : 'Na fila';
+    }
     default:
       return 'Sem resposta';
   }
+}
+
+/**
+ * Issue #218 — a aba Fila segue a ordem de chegada (quem confirmou ou pôs o
+ * nome primeiro), não a ordem alfabética do elenco.
+ */
+export function sortRowsByQueueOrder(
+  rows: PresenceRow[],
+  queueOrder: readonly string[],
+): PresenceRow[] {
+  const pos = (row: PresenceRow) => {
+    const idx = row.kind === 'player' ? queueOrder.indexOf(row.player.id) : -1;
+    return idx >= 0 ? idx : Number.MAX_SAFE_INTEGER;
+  };
+  return [...rows].sort((a, b) => pos(a) - pos(b));
 }
 
 export function assemblePresenceRows(

@@ -11,6 +11,7 @@ import {
   promoteNextFromQueue,
   resolveGuest,
   setPlayerPresenceStatus,
+  sortRowsByQueueOrder,
   statusChipLabel,
   vacancyFillPercent,
 } from './presence-list.logic';
@@ -123,6 +124,26 @@ describe('presence-list.logic', () => {
     const { rows: next } = orgTogglePlayer(rows, order, 'p1', 2);
     const p2 = next.find((r) => r.kind === 'player' && r.player.id === 'p2');
     expect(p2?.kind === 'player' && p2.status).toBe('confirmed');
+  });
+
+  it('fila segue a ordem de chegada e numera a partir de 1 (issue #218)', () => {
+    const rows: PresenceRow[] = [
+      { kind: 'player', player: roster[0], status: 'queue' },
+      { kind: 'player', player: roster[1], status: 'queue' },
+      { kind: 'player', player: roster[2], status: 'queue' },
+    ];
+    const order = [roster[2].id, roster[0].id, roster[1].id];
+    const sorted = sortRowsByQueueOrder(rows, order);
+    expect(sorted.map((r) => (r.kind === 'player' ? r.player.id : ''))).toEqual(order);
+    expect(sorted.map((r) => statusChipLabel(r, order))).toEqual([
+      '1º na fila',
+      '2º na fila',
+      '3º na fila',
+    ]);
+    // alguém da frente sobe: a numeração recomeça em 1
+    const after = order.slice(1);
+    expect(statusChipLabel(rows[0], after)).toBe('1º na fila');
+    expect(statusChipLabel(rows[2], [])).toBe('Na fila');
   });
 
   it('filterPresenceBySegment inclui convidado pendente em Pendentes', () => {
