@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnDestroy, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { AuthService } from '../../auth/auth.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaApiService } from '../../core/pelada/pelada-api.service';
 import {
@@ -93,10 +94,23 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           Continuar para regras
         </button>
       </form>
+
+      <!-- Issue #224 — quem não tem pelada (ex.: foi removido) também precisa conseguir sair. -->
+      <button type="button" class="logout-link" (click)="logout()">Sair da conta</button>
     </section>
   `,
   styles: [
     `
+      .logout-link {
+        display: block;
+        margin: var(--pelada-space-4) auto 0;
+        background: none;
+        border: none;
+        color: #173d32;
+        font-weight: 600;
+        cursor: pointer;
+        padding: var(--pelada-space-2);
+      }
       .photo-block {
         display: flex;
         flex-direction: column;
@@ -134,6 +148,11 @@ export class CriarPeladaComponent implements OnDestroy {
   private readonly peladaApi = inject(PeladaApiService);
   private readonly router = inject(Router);
   private readonly oauth = inject(OAuthService);
+  private readonly auth = inject(AuthService);
+
+  logout(): void {
+    this.auth.logout();
+  }
 
   readonly photoAccept = PHOTO_ACCEPT;
   readonly weekdays = WEEKDAY_OPTIONS;
