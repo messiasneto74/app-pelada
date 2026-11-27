@@ -8,6 +8,8 @@ export type RoundSideInput = {
   awayTeamSortOrder: number;
   scoreHome: number;
   scoreAway: number;
+  /** Issue #227 — no empate, o time que venceu o desempate (sortOrder). */
+  tieWinnerSortOrder?: number | null;
 };
 
 export type RoundSideResult = {
@@ -68,6 +70,9 @@ function winnerIndex(input: RoundSideInput): number {
   }
   if (input.scoreAway > input.scoreHome) {
     return input.awayTeamSortOrder;
+  }
+  if (input.tieWinnerSortOrder != null) {
+    return input.tieWinnerSortOrder;
   }
   return input.awayTeamSortOrder;
 }
@@ -175,6 +180,8 @@ export function updateFixedGkMeta(
     awayTeamSortOrder: number;
     scoreHome: number;
     scoreAway: number;
+    /** Issue #227 — vencedor do desempate, se a rodada empatou. */
+    tieWinnerSortOrder?: number | null;
   },
 ): Record<string, unknown> {
   if (
@@ -184,9 +191,11 @@ export function updateFixedGkMeta(
     return existing;
   }
   const winner =
-    input.scoreHome >= input.scoreAway
-      ? input.homeTeamSortOrder
-      : input.awayTeamSortOrder;
+    input.scoreHome === input.scoreAway && input.tieWinnerSortOrder != null
+      ? input.tieWinnerSortOrder
+      : input.scoreHome >= input.scoreAway
+        ? input.homeTeamSortOrder
+        : input.awayTeamSortOrder;
   return {
     ...existing,
     gkTeamSortOrder: winner,
@@ -256,4 +265,80 @@ export function capRoundClock(
     roundElapsedMs,
     timeUp: round >= limitMs,
   };
+}
+
+/**
+ * Issue #227 — critério de desempate escolhido nas Regras:
+ * - `PAR_IMPAR`: no empate o adm escolhe na tela quem venceu no par ou ímpar;
+ * - `PENALTIS`: idem, quem venceu nos pênaltis;
+ * - `LAST_IN`: quem entrou por último (o time de fora) fica;
+ * - `STAYED`: quem já estava (ganhou a anterior) fica.
+ * Na 1ª rodada ninguém "já estava": o adm decide (par ou ímpar ou pênaltis).
+ * Quem vence o desempate conta como vitória na tabela.
+ */
+export type TieBreakRule = 'PAR_IMPAR' | 'PENALTIS' | 'LAST_IN' | 'STAYED';
+export type TieChoiceMethod = 'PAR_IMPAR' | 'PENALTIS';
+export type TieSide = 'HOME' | 'AWAY';
+
+/**
+ * `null` = a pelada ainda não escolheu nas Regras: empate continua empate
+ * (como antes do #227) e fica o time de fora.
+ */
+export function readTieBreakRule(extra: unknown): TieBreakRule | null {
+  const bag = extra && typeof extra === 'object' ? (extra as Record<string, unknown>) : {};
+  const raw = bag['tieBreak'];
+  return raw === 'PAR_IMPAR' || raw === 'PENALTIS' || raw === 'STAYED' || raw === 'LAST_IN'
+    ? raw
+    : null;
+}
+
+export type TieResolution =
+  | { kind: 'no-tie' }
+  | { kind: 'need-choice'; methods: TieChoiceMethod[] }
+  | { kind: 'decided'; winner: TieSide; method: TieBreakRule };
+
+export function resolveTie(input: {
+  rule: TieBreakRule | null;
+  roundNumber: number;
+  scoreHome: number;
+  scoreAway: number;
+  chosen?: { winner?: TieSide | null; method?: TieChoiceMethod | null } | null;
+}): TieResolution {
+  if (input.scoreHome !== input.scoreAway || input.rule === null) {
+    return { kind: 'no-tie' };
+  }
+  const chosenWinner = input.chosen?.winner ?? null;
+  const adminPicks: TieChoiceMethod[] =
+    input.rule === 'PAR_IMPAR' || input.rule === 'PENALTIS'
+      ? [input.rule]
+      : input.roundNumber <= 1
+        ? ['PAR_IMPAR', 'PENALTIS']
+        : [];
+  if (adminPicks.length > 0) {
+    if (!chosenWinner) {
+      return { kind: 'need-choice', methods: adminPicks };
+    }
+    const method =
+      input.chosen?.method && adminPicks.includes(input.chosen.method)
+        ? input.chosen.method
+        : adminPicks[0]!;
+    return { kind: 'decided', winner: chosenWinner, method };
+  }
+  return {
+    kind: 'decided',
+    winner: input.rule === 'STAYED' ? 'HOME' : 'AWAY',
+    method: input.rule,
+  };
+}
+
+/** Issue #227 — resultado da rodada pra tabela (empate decidido conta como vitória). */
+export function roundOutcome(round: {
+  scoreHome: number;
+  scoreAway: number;
+  tieWinner?: string | null;
+}): 'HOME' | 'AWAY' | 'DRAW' {
+  if (round.scoreHome > round.scoreAway) return 'HOME';
+  if (round.scoreAway > round.scoreHome) return 'AWAY';
+  if (round.tieWinner === 'HOME' || round.tieWinner === 'AWAY') return round.tieWinner;
+  return 'DRAW';
 }

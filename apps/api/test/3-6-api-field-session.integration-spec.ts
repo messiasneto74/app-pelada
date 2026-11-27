@@ -434,6 +434,108 @@ if (runHarness) {
       expect(rounds[1]!.durationMs).toBeLessThan(rounds[0]!.durationMs);
     });
 
+    describe('desempate (issue #227)', () => {
+      async function startTied(tieBreak: string) {
+        const ctx = await seedThreeTeamDraw();
+        await prisma.peladaRules.update({
+          where: { peladaId: ctx.pelada.id },
+          data: { extra: { tieBreak } },
+        });
+        const base = `/peladas/${ctx.pelada.id}/matches/${ctx.match.id}/field-session`;
+        await request(app.getHttpServer())
+          .post(base)
+          .set('Authorization', `Bearer ${ctx.orgToken}`)
+          .send({})
+          .expect(201);
+        const tieNow = () =>
+          prisma.matchFieldSession.update({
+            where: { matchId: ctx.match.id },
+            data: { scoreHome: 1, scoreAway: 1, elapsedMs: 60_000 },
+          });
+        await tieNow();
+        return { ...ctx, base, tieNow };
+      }
+      const endRound = (base: string, token: string, body: object = {}) =>
+        request(app.getHttpServer()).post(`${base}/end-round`).set('Authorization', `Bearer ${token}`).send(body);
+
+      it('par ou ímpar: sem escolha → 400; com escolha conta como vitória e o vencedor fica', async () => {
+        const { base, orgToken, match, tieNow } = await startTied('PAR_IMPAR');
+        const need = await endRound(base, orgToken).expect(400);
+        expect(need.body.message).toBe('Empate! Escolha quem venceu no par ou ímpar.');
+        const s1 = await prisma.matchFieldSession.findUniqueOrThrow({ where: { matchId: match.id } });
+        expect(s1.roundNumber).toBe(1); // nada gravado
+
+        await endRound(base, orgToken, { winner: 'AWAY' }).expect(200);
+        const after1 = await prisma.matchFieldSession.findUniqueOrThrow({ where: { matchId: match.id } });
+        expect(after1.homeTeamSortOrder).toBe(s1.awayTeamSortOrder); // vencedor do desempate fica
+        const round1 = await prisma.matchFieldRound.findFirstOrThrow({ where: { matchId: match.id, roundNumber: 1 } });
+        expect([round1.tieWinner, round1.tieMethod]).toEqual(['AWAY', 'PAR_IMPAR']);
+
+        // rodada 2 empatada de novo: par ou ímpar pede escolha sempre
+        await tieNow();
+        await endRound(base, orgToken).expect(400);
+        await endRound(base, orgToken, { winner: 'HOME' }).expect(200);
+
+        const summary = await request(app.getHttpServer())
+          .get(`${base}/summary`)
+          .set('Authorization', `Bearer ${orgToken}`)
+          .expect(200);
+        const totals = summary.body.teams.reduce(
+          (acc: { w: number; d: number; l: number }, t: { wins: number; draws: number; losses: number }) => ({
+            w: acc.w + t.wins,
+            d: acc.d + t.draws,
+            l: acc.l + t.losses,
+          }),
+          { w: 0, d: 0, l: 0 },
+        );
+        expect(totals).toEqual({ w: 2, d: 0, l: 2 }); // 2 rodadas, nenhuma como empate
+      });
+
+      it('quem já estava: 1ª rodada o adm decide (pênaltis); depois fica quem estava sozinho', async () => {
+        const { base, orgToken, match, tieNow } = await startTied('STAYED');
+        const need = await endRound(base, orgToken).expect(400);
+        expect(need.body.message).toBe('Empate! Escolha quem venceu no par ou ímpar ou nos pênaltis.');
+        await endRound(base, orgToken, { winner: 'HOME', method: 'PENALTIS' }).expect(200);
+        const r1 = await prisma.matchFieldRound.findFirstOrThrow({ where: { matchId: match.id, roundNumber: 1 } });
+        expect([r1.tieWinner, r1.tieMethod]).toEqual(['HOME', 'PENALTIS']);
+
+        await tieNow();
+        const s2 = await prisma.matchFieldSession.findUniqueOrThrow({ where: { matchId: match.id } });
+        await endRound(base, orgToken).expect(200);
+        const after2 = await prisma.matchFieldSession.findUniqueOrThrow({ where: { matchId: match.id } });
+        expect(after2.homeTeamSortOrder).toBe(s2.homeTeamSortOrder); // quem já estava fica
+        const r2 = await prisma.matchFieldRound.findFirstOrThrow({ where: { matchId: match.id, roundNumber: 2 } });
+        expect([r2.tieWinner, r2.tieMethod]).toEqual(['HOME', 'STAYED']);
+      });
+
+      it('quem entrou por último: a partir da 2ª rodada o time de fora fica', async () => {
+        const { base, orgToken, match, tieNow } = await startTied('LAST_IN');
+        await endRound(base, orgToken, { winner: 'HOME', method: 'PAR_IMPAR' }).expect(200);
+        await tieNow();
+        const s2 = await prisma.matchFieldSession.findUniqueOrThrow({ where: { matchId: match.id } });
+        await endRound(base, orgToken).expect(200);
+        const after2 = await prisma.matchFieldSession.findUniqueOrThrow({ where: { matchId: match.id } });
+        expect(after2.homeTeamSortOrder).toBe(s2.awayTeamSortOrder);
+        const r2 = await prisma.matchFieldRound.findFirstOrThrow({ where: { matchId: match.id, roundNumber: 2 } });
+        expect([r2.tieWinner, r2.tieMethod]).toEqual(['AWAY', 'LAST_IN']);
+      });
+
+      it('encerrar a partida empatada também pede o desempate', async () => {
+        const { base, orgToken } = await startTied('PENALTIS');
+        const need = await request(app.getHttpServer())
+          .post(`${base}/finish`)
+          .set('Authorization', `Bearer ${orgToken}`)
+          .send({})
+          .expect(400);
+        expect(need.body.message).toBe('Empate! Escolha quem venceu nos pênaltis.');
+        await request(app.getHttpServer())
+          .post(`${base}/finish`)
+          .set('Authorization', `Bearer ${orgToken}`)
+          .send({ winner: 'AWAY' })
+          .expect(200);
+      });
+    });
+
     it('cronômetro por rodada: o jogador vê o mesmo tempo que o adm (issue #229)', async () => {
       const { pelada, match, orgToken } = await seedThreeTeamDraw();
       await prisma.peladaRules.update({
