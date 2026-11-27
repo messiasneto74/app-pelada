@@ -1,9 +1,13 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, DestroyRef, inject, model, OnInit, signal } from '@angular/core';
 import { LiveRefreshService } from '../../core/live/live-refresh';
 import { Router, RouterLink } from '@angular/router';
 import type { SuggestFormatResult } from '@pelada/core';
 import { PARTIDA_SORTEIO_PATH } from '../../core/presence/partida-sorteio-route';
-import type { MatchPresenceMode } from '../../core/match/create-match-form.logic';
+import {
+  normalizePresenceMode,
+  type MatchPresenceMode,
+} from '../../core/match/create-match-form.logic';
 import type { InicioDashboardView } from '../../core/inicio/inicio-dashboard.model';
 import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
 import { AuthService } from '../../auth/auth.service';
@@ -14,6 +18,8 @@ import {
   resolveSelfPlayerId,
   rowPrimaryActionLabel,
   selfActionLabels,
+  selfFooterActions,
+  selfStatusLine,
 } from '../../core/presence/presence-action.logic';
 import type { PresenceSegment } from '../../core/presence/presence-attendance.model';
 import {
@@ -29,6 +35,8 @@ import {
   selfSetPlayerStatus,
   segmentOptionsWithCounts,
   sortRowsByQueueOrder,
+  buildPresenceSheet,
+  playersOutOfList,
   statusChipLabel,
   vacancyFillPercent,
   vacancySummary,
@@ -58,11 +66,9 @@ import {
 import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
 import type { RosterPlayer } from '../../core/roster/roster-player.model';
 import { PeladaMatchAttendanceService } from '../../core/match/pelada-match-attendance.service';
-import { PeladaAvatarComponent } from '../../ui/avatar.component';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaCardComponent } from '../../ui/card.component';
 import { PeladaProgressComponent } from '../../ui/progress.component';
-import { PeladaSegmentComponent } from '../../ui/segment.component';
 import { ScreenHeaderComponent } from '../../ui/screen-header.component';
 
 @Component({
@@ -73,9 +79,8 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
     ScreenHeaderComponent,
     PeladaCardComponent,
     PeladaProgressComponent,
-    PeladaSegmentComponent,
     PeladaButtonComponent,
-    PeladaAvatarComponent,
+    NgTemplateOutlet,
   ],
   template: `
     <section class="pelada-shell">
@@ -124,86 +129,144 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           <p class="pelada-muted mode-hint">{{ modeHint() }}</p>
         </pelada-card>
 
-        <pelada-segment [options]="segmentOptions()" [(value)]="segment" />
+        <!-- Issue #234 — lista de presença numerada, igual no grupo do WhatsApp. -->
+        @if (listError()) {
+          <p class="list-error" role="alert">{{ listError() }}</p>
+        }
+        <section class="sheet" aria-label="Lista de presença">
+          @if (sheet().goalkeepers.length > 0) {
+            <h2 class="sheet__title">Goleiros</h2>
+            <ol class="sheet__list">
+              @for (slot of sheet().goalkeepers; track slot.label) {
+                <ng-container *ngTemplateOutlet="slotTpl; context: { $implicit: slot }" />
+              }
+            </ol>
+          }
+          <h2 class="sheet__title">Jogadores de linha</h2>
+          <ol class="sheet__list">
+            @for (slot of sheet().field; track slot.label) {
+              <ng-container *ngTemplateOutlet="slotTpl; context: { $implicit: slot }" />
+            }
+          </ol>
+          @if (sheet().waitlist.length > 0) {
+            <h2 class="sheet__title">Lista de espera</h2>
+            <ol class="sheet__list">
+              @for (slot of sheet().waitlist; track slot.label) {
+                <ng-container *ngTemplateOutlet="slotTpl; context: { $implicit: slot }" />
+              }
+            </ol>
+          }
+        </section>
 
-        @if (visibleRows().length === 0) {
-          <p class="pelada-muted empty-hint">Ninguém neste filtro. A lista está atualizada!</p>
-        } @else {
-          <ul class="presence-list">
-            @for (row of visibleRows(); track rowTrack(row)) {
-              <li class="presence-row">
-                @if (row.kind === 'player') {
-                  <pelada-avatar [name]="row.player.displayName" size="small" tone="lime" />
-                  <span class="presence-row__main">
-                    <span class="presence-row__name">{{ row.player.displayName }}</span>
-                    <span class="presence-row__meta pelada-muted">
-                      @if (row.player.isGuest) {
-                        Convidado ·
-                      }
-                      {{ rosterPositionLabel(row.player) }}
-                      · Nota {{ formatRosterRating(row.player.rating) }}
-                    </span>
-                  </span>
-                  <span class="status-chip">{{ statusChipLabel(row) }}</span>
-                  @if (showOrgActions(row)) {
-                    <button
-                      type="button"
-                      peladaButton
-                      variant="secondary"
-                      (click)="onOrgToggle(row.player.id)"
-                    >
-                      {{ rowActionLabel(row) }}
-                    </button>
+        <ng-template #slotTpl let-slot>
+          <li class="slot" [class.slot--empty]="!slot.row">
+            <span class="slot__n">{{ slot.label }}</span>
+            @if (slot.row; as row) {
+              @if (row.kind === 'player') {
+                <span class="slot__name">
+                  {{ row.player.displayName }}
+                  @if (row.player.isGuest) {
+                    <span class="pelada-muted slot__tag">convidado</span>
                   }
-                  @if (showSelfActions(row)) {
-                    @if (selfLabels(row); as labels) {
-                      <button
-                        type="button"
-                        peladaButton
-                        variant="lime"
-                        (click)="onSelfPresence(row.player.id, true)"
-                      >
-                        {{ labels.confirm }}
-                      </button>
-                      <button
-                        type="button"
-                        peladaButton
-                        variant="secondary"
-                        (click)="onSelfPresence(row.player.id, false)"
-                      >
-                        {{ labels.decline }}
-                      </button>
+                  @if (row.player.id === selfPlayerId()) {
+                    <span class="slot__me">você</span>
+                  }
+                </span>
+                @if (showOrgActions(row)) {
+                  <button
+                    type="button"
+                    class="slot__remove"
+                    [attr.aria-label]="'Tirar ' + row.player.displayName + ' da lista'"
+                    (click)="onOrgToggle(row.player.id)"
+                  >
+                    ✗
+                  </button>
+                }
+              }
+            }
+          </li>
+        </ng-template>
+
+        @if (isOrganizador() && canOrganizerEdit()) {
+          <button
+            type="button"
+            peladaButton
+            variant="secondary"
+            [peladaButtonBlock]="true"
+            class="add-btn"
+            (click)="addOpen.set(true)"
+          >
+            Colocar jogador na lista
+          </button>
+        }
+
+        @if (addOpen()) {
+          <div class="format-modal-backdrop" role="presentation" (click)="addOpen.set(false)">
+            <div
+              class="format-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="add-title"
+              (click)="$event.stopPropagation()"
+              (keydown.escape)="addOpen.set(false)"
+            >
+              <h2 id="add-title" class="format-modal__title">Colocar na lista</h2>
+              @if (outOfList().length === 0) {
+                <p class="pelada-muted">Todo mundo do elenco já está na lista.</p>
+              } @else {
+                <ul class="add-list">
+                  @for (row of outOfList(); track rowTrack(row)) {
+                    @if (row.kind === 'player') {
+                      <li class="add-item">
+                        <span>
+                          {{ row.player.displayName }}
+                          @if (openCharges().has(row.player.id)) {
+                            <span class="lock-tag">🔒 cobrança em aberto</span>
+                          }
+                        </span>
+                        <button
+                          type="button"
+                          peladaButton
+                          variant="lime"
+                          [disabled]="openCharges().has(row.player.id)"
+                          (click)="onOrgToggle(row.player.id)"
+                        >
+                          Colocar
+                        </button>
+                      </li>
                     }
                   }
-                } @else {
-                  <pelada-avatar [name]="row.displayName" size="small" tone="lime" />
-                  <span class="presence-row__main">
-                    <span class="presence-row__name">{{ row.displayName }}</span>
-                    <span class="presence-row__meta pelada-muted">Pediu vaga na partida</span>
-                  </span>
-                  <span class="status-chip">{{ statusChipLabel(row) }}</span>
-                  @if (canOrganizerEdit() && isOrganizador()) {
-                    <button
-                      type="button"
-                      peladaButton
-                      variant="lime"
-                      (click)="onGuest(true, row.guestId)"
-                    >
-                      Aceitar
-                    </button>
-                    <button
-                      type="button"
-                      peladaButton
-                      variant="secondary"
-                      (click)="onGuest(false, row.guestId)"
-                    >
-                      Recusar
-                    </button>
-                  }
+                </ul>
+              }
+              <button
+                type="button"
+                peladaButton
+                variant="secondary"
+                [peladaButtonBlock]="true"
+                (click)="addOpen.set(false)"
+              >
+                Pronto
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (guestRequests().length > 0 && isOrganizador() && canOrganizerEdit()) {
+          <pelada-card title="Pedidos de convidado">
+            <ul class="add-list">
+              @for (row of guestRequests(); track rowTrack(row)) {
+                @if (row.kind === 'guest') {
+                  <li class="add-item">
+                    <span>{{ row.displayName }}</span>
+                    <span class="guest-actions">
+                      <button type="button" peladaButton variant="lime" (click)="onGuest(true, row.guestId)">Aceitar</button>
+                      <button type="button" peladaButton variant="secondary" (click)="onGuest(false, row.guestId)">Recusar</button>
+                    </span>
+                  </li>
                 }
-              </li>
-            }
-          </ul>
+              }
+            </ul>
+          </pelada-card>
         }
 
         @if (listClosed()) {
@@ -228,6 +291,31 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           >
             Fechar lista e sortear
           </button>
+        }
+
+        <!-- Issue #263 — travado por cobrança em aberto. -->
+        @if (selfLockMessage(); as lockMsg) {
+          <div class="self-footer self-footer--locked" role="status">
+            <p class="self-footer__status">🔒 {{ lockMsg }}</p>
+          </div>
+        }
+        <!-- Issue #234 — botão do jogador fixo no rodapé. -->
+        @if (footerActions().length > 0) {
+          <div class="self-footer">
+            <p class="self-footer__status">{{ footerStatus() }}</p>
+            <div class="self-footer__actions">
+              @for (a of footerActions(); track a.label) {
+                <button
+                  type="button"
+                  peladaButton
+                  [variant]="a.variant"
+                  (click)="onSelfPresence(selfPlayerId()!, a.accept)"
+                >
+                  {{ a.label }}
+                </button>
+              }
+            </div>
+          </div>
         }
 
         @if (formatModalOpen() && formatSuggestion(); as hint) {
@@ -326,9 +414,124 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         color: #486f36;
         border-color: #c5d9a8;
       }
-      pelada-segment {
-        display: block;
+      .sheet {
         margin-bottom: var(--pelada-space-4);
+      }
+      .sheet__title {
+        margin: var(--pelada-space-4) 0 var(--pelada-space-2);
+        font-size: 0.8125rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .sheet__list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border: 1px solid var(--pelada-line);
+        border-radius: var(--pelada-radius-md);
+        background: var(--pelada-paper);
+      }
+      .slot {
+        display: flex;
+        align-items: center;
+        gap: var(--pelada-space-2);
+        min-height: 40px;
+        padding: 4px var(--pelada-space-3);
+        border-bottom: 1px solid var(--pelada-line);
+      }
+      .slot:last-child {
+        border-bottom: none;
+      }
+      .slot__n {
+        width: 2.25rem;
+        font-variant-numeric: tabular-nums;
+        font-weight: 700;
+        color: var(--pelada-muted);
+      }
+      .slot--empty .slot__n {
+        opacity: 0.6;
+      }
+      .slot__name {
+        flex: 1;
+        font-weight: 600;
+      }
+      .slot__tag,
+      .slot__me {
+        margin-left: 6px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+      }
+      .slot__me {
+        color: #486f36;
+      }
+      .slot__remove {
+        min-width: var(--pelada-touch-min);
+        min-height: var(--pelada-touch-min);
+        border: none;
+        background: none;
+        color: #b91c1c;
+        font-size: 1.125rem;
+        cursor: pointer;
+      }
+      .add-btn {
+        margin-bottom: var(--pelada-space-3);
+      }
+      .add-list {
+        list-style: none;
+        margin: 0 0 var(--pelada-space-3);
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--pelada-space-2);
+      }
+      .add-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--pelada-space-2);
+      }
+      .guest-actions {
+        display: flex;
+        gap: var(--pelada-space-2);
+      }
+      .list-error {
+        color: #b91c1c;
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+      .self-footer {
+        position: sticky;
+        bottom: calc(70px + env(safe-area-inset-bottom, 0px) + var(--pelada-space-2));
+        z-index: 5;
+        margin-top: var(--pelada-space-4);
+        padding: var(--pelada-space-3);
+        border: 1px solid #c5d9a8;
+        border-radius: var(--pelada-radius-md);
+        background: #f0f5e6;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      }
+      .self-footer__status {
+        margin: 0 0 var(--pelada-space-2);
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+      .self-footer--locked {
+        background: #fff7ed;
+        border-color: #fed7aa;
+      }
+      .lock-tag {
+        margin-left: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #c2410c;
+      }
+      .self-footer__actions {
+        display: flex;
+        gap: var(--pelada-space-2);
+      }
+      .self-footer__actions button {
+        flex: 1;
       }
       .vacancy-row {
         display: flex;
@@ -496,6 +699,72 @@ export class PresencaPartidaComponent implements OnInit {
   readonly vacancyTitle = computed(() => 'Quem fecha com a gente?');
   readonly modeHint = computed(() => presenceModeHint(this.presenceMode()));
   readonly segmentOptions = computed(() => segmentOptionsWithCounts(this.counts()));
+
+  /** Issue #234 — quando cada jogador entrou (ordem da lista numerada). */
+  readonly changedAt = signal<Map<string, string>>(new Map());
+  readonly addOpen = signal(false);
+  readonly listError = signal<string | null>(null);
+  /** Issue #234 — regras da partida vindas da lista (a API aplica essas). */
+  private readonly matchSlots = signal<{ goalkeeperSlots: number; waitlistSlots: number } | null>(null);
+  readonly goalkeeperSlots = computed(
+    () =>
+      this.matchSlots()?.goalkeeperSlots ??
+      (this.formatRules().goalkeeperPerTeam ? this.formatRules().teamCount : 0),
+  );
+  readonly waitlistSlots = computed(
+    () => this.matchSlots()?.waitlistSlots ?? this.formatRules().waitlistSlots,
+  );
+  readonly sheet = computed(() =>
+    buildPresenceSheet({
+      rows: this.rows(),
+      queueOrder: this.queueOrder(),
+      changedAtByPlayerId: this.changedAt(),
+      capacity: this.capacity(),
+      goalkeeperSlots: this.goalkeeperSlots(),
+      waitlistSlots: this.waitlistSlots(),
+    }),
+  );
+  readonly outOfList = computed(() => playersOutOfList(this.rows()));
+  readonly guestRequests = computed(() =>
+    this.rows().filter((r) => r.kind === 'guest' && r.status === 'guest_pending'),
+  );
+  private readonly selfRow = computed(() =>
+    this.rows().find((r) => r.kind === 'player' && r.player.id === this.selfPlayerId()) ?? null,
+  );
+  /** Issue #263 — jogadores travados por cobrança em aberto (Regras → "Trava"). */
+  readonly openCharges = signal<Set<string>>(new Set());
+  private readonly selfLocked = computed(() => {
+    const me = this.selfRow();
+    return (
+      !!me &&
+      me.kind === 'player' &&
+      me.status !== 'confirmed' &&
+      me.status !== 'queue' &&
+      this.openCharges().has(me.player.id)
+    );
+  });
+  readonly footerActions = computed(() => {
+    const me = this.selfRow();
+    if (!me || me.kind !== 'player' || !canPlayerSelfEdit(this.listClosed(), this.presenceMode())) {
+      return [];
+    }
+    if (this.selfLocked()) {
+      return [];
+    }
+    return selfFooterActions(this.presenceMode(), me.status);
+  });
+  /** Issue #263 — aviso no rodapé pra quem está travado. */
+  readonly selfLockMessage = computed(() =>
+    this.selfLocked()
+      ? 'Você tem cobrança em aberto. Só entra na lista depois que o adm confirmar o pagamento.'
+      : null,
+  );
+  readonly footerStatus = computed(() => {
+    const me = this.selfRow();
+    if (!me || me.kind !== 'player') return '';
+    const idx = this.queueOrder().indexOf(me.player.id);
+    return selfStatusLine(me.status, idx >= 0 ? idx + 1 : null);
+  });
   readonly visibleRows = computed(() => {
     const rows = filterPresenceBySegment(this.rows(), this.segment());
     return this.segment() === 'queue'
@@ -662,13 +931,20 @@ export class PresencaPartidaComponent implements OnInit {
     key: string,
     write: () => Observable<MatchAttendanceListApiDto>,
   ): void {
+    this.listError.set(null);
     this.unsaved.set(key, write);
     this.mutationSeq++;
     this.pendingWrites++;
     this.syncQueue.next(
       defer(write).pipe(
         map((dto) => ({ ok: true as const, dto })),
-        catchError(() => of({ ok: false as const, dto: null })),
+        catchError((err: { status?: number; error?: { message?: string } }) => {
+          // Issue #234 — ex.: 409 "A lista está cheia…": mostra o motivo.
+          if (err?.status === 409 && typeof err.error?.message === 'string') {
+            this.listError.set(err.error.message);
+          }
+          return of({ ok: false as const, dto: null });
+        }),
         map((res) => {
           if (res.ok) {
             this.clearUnsaved(key, write);
@@ -761,12 +1037,15 @@ export class PresencaPartidaComponent implements OnInit {
     if (dto.matchId !== this.matchId()) {
       return;
     }
-    const { statusByPlayerId, queueOrder } = presenceFromAttendance(dto.entries);
+    const { statusByPlayerId, queueOrder, changedAtByPlayerId } = presenceFromAttendance(dto.entries);
+    this.changedAt.set(changedAtByPlayerId);
+    this.openCharges.set(new Set(dto.entries.filter((e) => e.openCharge).map((e) => e.playerId)));
+    if (typeof dto.goalkeeperSlots === 'number' && typeof dto.waitlistSlots === 'number') {
+      this.matchSlots.set({ goalkeeperSlots: dto.goalkeeperSlots, waitlistSlots: dto.waitlistSlots });
+    }
     this.capacity.set(dto.capacity);
     this.listClosed.set(dto.listClosed || this.closing);
-    this.presenceMode.set(
-      dto.presenceMode === 'SELF_CONFIRM' ? 'SELF_CONFIRM' : 'ORGANIZER_CLOSES',
-    );
+    this.presenceMode.set(normalizePresenceMode(dto.presenceMode));
     this.rows.update((rows) =>
       rows.map((r) =>
         r.kind === 'player' && statusByPlayerId.has(r.player.id)

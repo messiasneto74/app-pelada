@@ -13,6 +13,8 @@ export type PeladaRulesApiDto = {
   modality: string;
   goalkeeperMode: string;
   fixedListOnly: boolean;
+  /** Issue #234 */
+  presenceMode?: string;
   allowPlayerSelfEdit?: boolean;
   drawWeights: Record<string, unknown>;
   extra: Record<string, unknown>;
@@ -24,6 +26,16 @@ export function peladaRulesFromApi(dto: PeladaRulesApiDto): PeladaRulesFormValue
   const gkMode = dto.goalkeeperMode;
   return {
     unpaidPolicy: extra['unpaidPolicy'] === 'BLOCK' ? 'BLOCK' : 'CHARGE',
+    presenceMode:
+      dto.presenceMode === 'SELF_CONFIRM' || dto.presenceMode === 'NAME_LIST'
+        ? dto.presenceMode
+        : 'ORGANIZER_CLOSES',
+    waitlistSlots:
+      typeof extra['waitlistSlots'] === 'number' &&
+      Number.isFinite(extra['waitlistSlots']) &&
+      (extra['waitlistSlots'] as number) > 0
+        ? Math.floor(extra['waitlistSlots'] as number)
+        : 0,
     playersPerTeam: dto.playersPerTeam,
     teamCount: dto.teamCount,
     modality: (dto.modality as PeladaRulesFormValues['modality']) ?? 'campo',
@@ -79,6 +91,7 @@ export function peladaRulesToPatchBody(
   values: PeladaRulesFormValues,
 ): Record<string, unknown> {
   return {
+    presenceMode: values.presenceMode,
     playersPerTeam: values.playersPerTeam,
     teamCount: values.teamCount,
     modality: values.modality,
@@ -98,6 +111,7 @@ export function peladaRulesToPatchBody(
       feeCents: values.feeCents,
       roundMinutes: values.roundMinutes,
       autoFillQueueOnCapacityIncrease: values.autoFillQueueOnCapacityIncrease,
+      waitlistSlots: values.waitlistSlots,
     },
   };
 }

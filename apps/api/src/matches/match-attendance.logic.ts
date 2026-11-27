@@ -205,3 +205,24 @@ export function readAutoFillQueueOnCapacityIncrease(extra: unknown): boolean {
   const bag = extra && typeof extra === 'object' ? (extra as Record<string, unknown>) : {};
   return bag['autoFillQueueOnCapacityIncrease'] === true;
 }
+
+/**
+ * Issue #234 — tamanho da lista de espera escolhido pelo adm nas Regras
+ * (`extra.waitlistSlots`). 0 ou ausente = sem limite.
+ */
+export function readWaitlistSlots(extra: unknown): number {
+  const bag = extra && typeof extra === 'object' ? (extra as Record<string, unknown>) : {};
+  const raw = bag['waitlistSlots'];
+  return typeof raw === 'number' && Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
+}
+
+/** Issue #234 — `true` se a mudança fez a fila passar do limite das Regras. */
+export function exceedsWaitlist(
+  before: AttendanceRowInput[],
+  after: AttendanceRowInput[],
+  waitlistSlots: number,
+): boolean {
+  if (waitlistSlots <= 0) return false;
+  const queued = (rows: AttendanceRowInput[]) => rows.filter((r) => r.status === 'QUEUE').length;
+  return queued(after) > waitlistSlots && queued(after) > queued(before);
+}

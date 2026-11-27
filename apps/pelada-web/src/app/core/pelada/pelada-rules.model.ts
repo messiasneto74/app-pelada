@@ -27,8 +27,14 @@ export const UNPAID_POLICY_OPTIONS: ReadonlyArray<{ value: UnpaidPolicy; label: 
   },
 ];
 
+/** Issue #234 — como a presença é marcada (padrão das partidas novas). */
+export type PresenceModeRule = 'ORGANIZER_CLOSES' | 'SELF_CONFIRM' | 'NAME_LIST';
+
 export type PeladaRulesFormValues = {
   unpaidPolicy: UnpaidPolicy;
+  presenceMode: PresenceModeRule;
+  /** Issue #234 — vagas na lista de espera (0 = sem limite). */
+  waitlistSlots: number;
   playersPerTeam: number;
   teamCount: number;
   modality: Modality;
@@ -59,6 +65,8 @@ export type PeladaRulesFormValues = {
 
 export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
   unpaidPolicy: 'CHARGE',
+  presenceMode: 'ORGANIZER_CLOSES',
+  waitlistSlots: 0,
   playersPerTeam: 6,
   teamCount: 2,
   modality: 'campo',
@@ -125,6 +133,9 @@ export function validatePeladaRulesForm(values: PeladaRulesFormValues): string |
   }
   if (!Number.isInteger(values.roundMinutes) || values.roundMinutes < 1 || values.roundMinutes > 120) {
     return 'Tempo de cada partida: entre 1 e 120 minutos.';
+  }
+  if (!Number.isInteger(values.waitlistSlots) || values.waitlistSlots < 0 || values.waitlistSlots > 50) {
+    return 'Lista de espera: entre 0 (sem limite) e 50 vagas.';
   }
   if (values.feeCents < 0) {
     return 'Contribuição por partida: valor não pode ser negativo.';

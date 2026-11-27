@@ -96,6 +96,8 @@ enum GoalkeeperMode {
 enum PresenceMode {
   SELF_CONFIRM
   ORGANIZER_CLOSES
+  /// Issue #234 — o jogador coloca o nome na lista (estilo WhatsApp, numerada).
+  NAME_LIST
 }
 
 model PeladaRules {

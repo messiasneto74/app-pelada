@@ -57,6 +57,8 @@ describe('pelada-rules-api.mapper', () => {
   it('mapeia formulário → PATCH', () => {
     const body = peladaRulesToPatchBody({
       unpaidPolicy: 'BLOCK',
+      presenceMode: 'NAME_LIST',
+      waitlistSlots: 7,
       playersPerTeam: 6,
       teamCount: 2,
       modality: 'campo',
@@ -92,9 +94,11 @@ describe('pelada-rules-api.mapper', () => {
     expect(extra['roundMinutes']).toBe(12);
     expect(extra['autoFillQueueOnCapacityIncrease']).toBe(true);
     expect(extra['unpaidPolicy']).toBe('BLOCK');
+    expect(body['presenceMode']).toBe('NAME_LIST');
+    expect(extra['waitlistSlots']).toBe(7);
   });
 
-  it('issue #263 — quem não pagou: padrão "só cobra"; "BLOCK" vira "Trava"', () => {
+  it('issues #234 e #263 — presença, lista de espera e quem não pagou: API → formulário', () => {
     const base = {
       peladaId: 'p1',
       playersPerTeam: 6,
@@ -106,6 +110,12 @@ describe('pelada-rules-api.mapper', () => {
     };
     expect(peladaRulesFromApi({ ...base, extra: {} } as never).unpaidPolicy).toBe('CHARGE');
     expect(peladaRulesFromApi({ ...base, extra: { unpaidPolicy: 'BLOCK' } } as never).unpaidPolicy).toBe('BLOCK');
+    const a = peladaRulesFromApi({ ...base, presenceMode: 'NAME_LIST', extra: { waitlistSlots: 7 } } as never);
+    expect(a.presenceMode).toBe('NAME_LIST');
+    expect(a.waitlistSlots).toBe(7);
+    const b = peladaRulesFromApi({ ...base, presenceMode: 'QUALQUER', extra: { waitlistSlots: -3 } } as never);
+    expect(b.presenceMode).toBe('ORGANIZER_CLOSES');
+    expect(b.waitlistSlots).toBe(0);
   });
 
   it('issue #229 — tempo de cada partida: API → formulário, com padrão e limites', () => {
