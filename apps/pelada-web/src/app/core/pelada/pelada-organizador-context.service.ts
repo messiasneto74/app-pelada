@@ -45,6 +45,16 @@ export class PeladaOrganizadorContextService {
       });
   }
 
+  /**
+   * Issue #225 — ao trocar de pelada o papel já vem na lista "minhas peladas":
+   * grava na hora pra tela nova não mostrar (nem por um instante) atalhos do
+   * papel errado enquanto o GET .../membership não volta.
+   */
+  setKnownRole(peladaId: string, role: string): void {
+    const known: PeladaMemberRole = role === 'ORGANIZADOR' ? 'ORGANIZADOR' : 'JOGADOR';
+    this.roleByPeladaId.update((m) => ({ ...m, [peladaId]: known }));
+  }
+
   /** Apenas testes — injeta papel sem HTTP. */
   setRoleForTests(peladaId: string, role: PeladaMemberRole | undefined): void {
     this.roleByPeladaId.update((m) => {

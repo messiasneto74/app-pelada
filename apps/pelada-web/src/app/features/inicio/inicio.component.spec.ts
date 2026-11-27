@@ -1,3 +1,4 @@
+import { PeladaApiService } from '../../core/pelada/pelada-api.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
@@ -310,5 +311,57 @@ describe('InicioComponent visão do jogador (convidado)', () => {
     expect(el.querySelector('.shortcut-grid a[href="/caixa"]')).toBeNull();
     expect(el.querySelector('.shortcut-grid a[href="/jogadores"]')).not.toBeNull();
     expect(el.textContent).toContain('O organizador ainda não marcou');
+  });
+});
+
+describe('InicioComponent — trocar de pelada (issue #225)', () => {
+  async function render(peladaCount: number) {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [InicioComponent],
+      providers: [
+        provideRouter([{ path: 'perfil', component: InicioComponent }]),
+        { provide: OAuthService, useValue: { getIdentityClaims: () => ({ sub: 'user-inicio' }) } },
+        orgContextStub(),
+        {
+          provide: PeladaDashboardService,
+          useValue: {
+            loadDashboard: (_p: unknown, cb: (v: InicioDashboardView) => void) => cb(mockView),
+          },
+        },
+        {
+          provide: PeladaApiService,
+          useValue: {
+            listMyPeladas: () =>
+              Promise.resolve(Array.from({ length: peladaCount }, (_, i) => ({ id: `p${i}` }))),
+          },
+        },
+      ],
+    }).compileComponents();
+    TestBed.inject(PeladaContextService).setActivePelada({
+      id: 'p1',
+      name: 'Pelada Teste',
+      defaultWeekday: null,
+      defaultLocation: '',
+      photoPreviewUrl: null,
+    });
+    const f = TestBed.createComponent(InicioComponent);
+    f.detectChanges();
+    await f.whenStable();
+    await Promise.resolve();
+    f.detectChanges();
+    return f;
+  }
+
+  it('com 2 peladas mostra "Trocar de pelada" levando pro Meu perfil', async () => {
+    const f = await render(2);
+    const link = f.nativeElement.querySelector('a.switch-pelada-link') as HTMLAnchorElement;
+    expect(link?.textContent).toContain('Trocar de pelada');
+    expect(link.getAttribute('href')).toBe('/perfil');
+  });
+
+  it('com 1 pelada não mostra o atalho', async () => {
+    const f = await render(1);
+    expect(f.nativeElement.querySelector('a.switch-pelada-link')).toBeNull();
   });
 });
