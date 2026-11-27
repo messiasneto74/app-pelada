@@ -1,4 +1,5 @@
-import { Component, computed, inject, model, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, model, OnInit, signal } from '@angular/core';
+import { LiveRefreshService } from '../../core/live/live-refresh';
 import { Router, RouterLink } from '@angular/router';
 import type { SuggestFormatResult } from '@pelada/core';
 import { PARTIDA_SORTEIO_PATH } from '../../core/presence/partida-sorteio-route';
@@ -521,7 +522,12 @@ export class PresencaPartidaComponent implements OnInit {
     return statusChipLabel(row, this.queueOrder());
   }
 
+  private readonly liveDestroyRef = inject(DestroyRef);
+  private readonly live = inject(LiveRefreshService);
+
   ngOnInit(): void {
+    // Issue #233 — a lista se atualiza sozinha pra todos (sem precisar sair e voltar).
+    this.live.start(this.liveDestroyRef, () => this.refreshFromApi());
     const pelada = this.peladaContext.getActivePelada();
     if (!pelada) {
       this.loading.set(false);
