@@ -527,7 +527,7 @@ export class PresencaPartidaComponent implements OnInit {
 
   ngOnInit(): void {
     // Issue #233 — a lista se atualiza sozinha pra todos (sem precisar sair e voltar).
-    this.live.start(this.liveDestroyRef, () => this.refreshFromApi());
+    this.live.start(this.liveDestroyRef, () => this.refreshQuietly());
     const pelada = this.peladaContext.getActivePelada();
     if (!pelada) {
       this.loading.set(false);
@@ -722,6 +722,19 @@ export class PresencaPartidaComponent implements OnInit {
         this.applyServerAttendance(dto);
       }
     });
+
+  /**
+   * Issue #233 — atualização automática. Não busca enquanto há toque do
+   * usuário gravando (ou que falhou e ainda vai ser reenviado), fechando a
+   * lista ou com a pergunta de formato aberta: a lista do servidor ainda não
+   * tem essa mudança e desfaria o que a pessoa acabou de tocar.
+   */
+  refreshQuietly(): void {
+    if (this.pendingWrites > 0 || this.unsaved.size > 0 || this.closing || this.formatModalOpen()) {
+      return;
+    }
+    this.refreshFromApi();
+  }
 
   private refreshFromApi(onApplied?: () => void): void {
     const pelada = this.peladaContext.getActivePelada();
