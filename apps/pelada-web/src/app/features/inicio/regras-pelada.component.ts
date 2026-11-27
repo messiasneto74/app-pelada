@@ -79,6 +79,21 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
             (input)="patchNumber('teamCount', $event)"
           />
         </pelada-field>
+        <pelada-field
+          label="Tempo de cada partida (minutos)"
+          forId="round-minutes"
+          hint="O cronômetro em campo para nesse tempo e zera a cada rodada. Entre 1 e 120."
+        >
+          <input
+            id="round-minutes"
+            type="number"
+            min="1"
+            max="120"
+            peladaInput
+            [value]="values().roundMinutes"
+            (input)="patchNumber('roundMinutes', $event)"
+          />
+        </pelada-field>
         <pelada-field label="Modalidade" forId="modality">
           <select
             id="modality"
@@ -313,7 +328,7 @@ export class RegrasPeladaComponent implements OnInit {
     this.rulesReady.set(true);
   }
 
-  patchNumber(field: 'playersPerTeam' | 'teamCount', event: Event): void {
+  patchNumber(field: 'playersPerTeam' | 'teamCount' | 'roundMinutes', event: Event): void {
     const raw = (event.target as HTMLInputElement).value;
     const n = Number.parseInt(raw, 10);
     this.values.update((v) => ({ ...v, [field]: Number.isNaN(n) ? v[field] : n }));

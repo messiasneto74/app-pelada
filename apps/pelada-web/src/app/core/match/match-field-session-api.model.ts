@@ -18,6 +18,12 @@ export type MatchFieldSessionDto = {
   scoreHome: number;
   scoreAway: number;
   elapsedMs: number;
+  /** Issue #229 — tempo da rodada atual (zera a cada rodada, para no limite). */
+  roundElapsedMs?: number;
+  /** Issue #229 — tempo de cada partida (Regras). */
+  roundLimitMs?: number;
+  /** Issue #229 — a rodada chegou no tempo definido. */
+  timeUp?: boolean;
   timerRunning: boolean;
   timerRunningSince: string | null;
   finishedAt: string | null;
