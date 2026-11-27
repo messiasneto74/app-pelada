@@ -131,17 +131,19 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           }
         </div>
 
-        <pelada-card title="Caixa do mês">
-          <p class="cash-line">
-            {{ dash.cashReceivedLabel }}
-            <span class="pelada-muted">de {{ dash.cashExpectedLabel }}</span>
-          </p>
-          <pelada-progress
-            [value]="dash.cashPercent"
-            startLabel="Recebido no período"
-            [endLabel]="dash.cashPercent + '% do total'"
-          />
-        </pelada-card>
+        @if (dash.showCash !== false) {
+          <pelada-card title="Caixa do mês">
+            <p class="cash-line">
+              {{ dash.cashReceivedLabel }}
+              <span class="pelada-muted">de {{ dash.cashExpectedLabel }}</span>
+            </p>
+            <pelada-progress
+              [value]="dash.cashPercent"
+              startLabel="Recebido no período"
+              [endLabel]="dash.cashPercent + '% do total'"
+            />
+          </pelada-card>
+        }
         }
       }
     </section>

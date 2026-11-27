@@ -143,7 +143,7 @@ if (runHarness) {
         .get(`/peladas/${pelada.id}/membership`)
         .set('Authorization', `Bearer ${orgToken}`)
         .expect(200);
-      expect(orgRes.body).toEqual({ peladaId: pelada.id, role: 'ORGANIZADOR' });
+      expect(orgRes.body).toEqual({ peladaId: pelada.id, role: 'ORGANIZADOR', isOwner: true });
 
       const jogRes = await request(app.getHttpServer())
         .get(`/peladas/${pelada.id}/membership`)

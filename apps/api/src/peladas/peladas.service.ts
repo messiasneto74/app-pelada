@@ -190,13 +190,15 @@ export class PeladasService {
   async getPeladaMembership(
     auth: AuthUserPayload,
     peladaId: string,
-  ): Promise<{ peladaId: string; role: string }> {
+  ): Promise<{ peladaId: string; role: string; isOwner: boolean }> {
     const user = await this.meService.getOrCreateUser(auth);
     await this.assertMember(peladaId, user.id);
     const member = await this.prisma.peladaMember.findUnique({
       where: { peladaId_userId: { peladaId, userId: user.id } },
     });
-    return { peladaId, role: member!.role };
+    const pelada = await this.prisma.pelada.findUniqueOrThrow({ where: { id: peladaId } });
+    // Issue #232 — só quem criou a pelada (dono) define os adms.
+    return { peladaId, role: member!.role, isOwner: pelada.ownerId === user.id };
   }
 
   async getPeladaDashboard(
@@ -205,6 +207,10 @@ export class PeladasService {
   ): Promise<PeladaDashboardResponse> {
     const user = await this.meService.getOrCreateUser(auth);
     await this.assertMember(peladaId, user.id);
+    const viewer = await this.prisma.peladaMember.findUnique({
+      where: { peladaId_userId: { peladaId, userId: user.id } },
+    });
+    const isAdm = viewer?.role === 'ORGANIZADOR';
 
     const rules = await this.prisma.peladaRules.findUnique({
       where: { peladaId },
@@ -299,10 +305,13 @@ export class PeladasService {
             }
           : null,
       rosterPlayerCount,
-      cashMonth: {
-        receivedCents: receivedAgg._sum.amountCents ?? 0,
-        expectedCents: expectedAgg._sum.amountCents ?? 0,
-      },
+      // Issue #232 — o caixa (quem pagou e quem deve) só aparece pro adm.
+      cashMonth: isAdm
+        ? {
+            receivedCents: receivedAgg._sum.amountCents ?? 0,
+            expectedCents: expectedAgg._sum.amountCents ?? 0,
+          }
+        : null,
     };
   }
 

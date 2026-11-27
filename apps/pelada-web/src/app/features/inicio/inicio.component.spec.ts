@@ -107,7 +107,14 @@ describe('InicioComponent', () => {
     expect(link.getAttribute('href')).toContain('matchId=m7');
   });
 
-  it('renderiza atalhos §3.1', () => {
+  it('sem caixa (jogador) não mostra "Caixa do mês" (issue #232)', () => {
+    expect(fixture.nativeElement.textContent).toContain('Caixa do mês');
+    fixture.componentInstance.dashboard.set({ ...mockView, showCash: false });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Caixa do mês');
+  });
+
+    it('renderiza atalhos §3.1', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Regras');
     expect(text).toContain('Elenco');

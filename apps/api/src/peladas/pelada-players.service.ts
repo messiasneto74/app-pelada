@@ -107,7 +107,64 @@ export class PeladaPlayersService {
       throw new NotFoundException('Jogador não encontrado nesta pelada.');
     }
 
-    return toPlayerProfileDto(player);
+    return this.withMemberRole(peladaId, player);
+  }
+
+  /**
+   * Issue #232 — o dono da pelada torna um jogador (com conta) adm ou tira o
+   * cargo. O dono continua sempre adm.
+   */
+  async setMemberRole(
+    auth: AuthUserPayload,
+    peladaId: string,
+    playerId: string,
+    role: 'ORGANIZADOR' | 'JOGADOR',
+  ) {
+    const user = await this.meService.getOrCreateUser(auth);
+    await this.assertMember(peladaId, user.id);
+    const pelada = await this.prisma.pelada.findUniqueOrThrow({ where: { id: peladaId } });
+    if (pelada.ownerId !== user.id) {
+      throw new ForbiddenException('Só quem criou a pelada define quem é adm.');
+    }
+    const player = await this.prisma.player.findFirst({ where: { id: playerId, peladaId } });
+    if (!player) {
+      throw new NotFoundException('Jogador não encontrado nesta pelada.');
+    }
+    if (!player.userId) {
+      throw new BadRequestException('Esse jogador não tem conta no app, então não pode ser adm.');
+    }
+    if (player.userId === pelada.ownerId && role !== 'ORGANIZADOR') {
+      throw new BadRequestException('Quem criou a pelada continua sempre adm.');
+    }
+    const member = await this.prisma.peladaMember.findUnique({
+      where: { peladaId_userId: { peladaId, userId: player.userId } },
+    });
+    if (!member) {
+      throw new BadRequestException('Essa conta não faz parte da pelada.');
+    }
+    await this.prisma.peladaMember.update({ where: { id: member.id }, data: { role } });
+    return this.withMemberRole(peladaId, player);
+  }
+
+  private async withMemberRole(
+    peladaId: string,
+    player: Parameters<typeof toPlayerProfileDto>[0],
+  ) {
+    const dto = toPlayerProfileDto(player);
+    if (!player.userId) {
+      return { ...dto, memberRole: null, isOwner: false };
+    }
+    const [member, pelada] = await Promise.all([
+      this.prisma.peladaMember.findUnique({
+        where: { peladaId_userId: { peladaId, userId: player.userId } },
+      }),
+      this.prisma.pelada.findUnique({ where: { id: peladaId } }),
+    ]);
+    return {
+      ...dto,
+      memberRole: member?.role ?? null,
+      isOwner: pelada?.ownerId === player.userId,
+    };
   }
 
   async createPlayer(

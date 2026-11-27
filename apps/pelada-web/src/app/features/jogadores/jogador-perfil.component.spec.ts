@@ -71,6 +71,7 @@ function rulesApiMock(
 function orgContextMock(isOrganizador: boolean) {
   return {
     isOrganizador: (peladaId: string) => isOrganizador && peladaId === 'p1',
+    isOwner: () => false,
     refreshMembership: () => {},
   };
 }
@@ -624,5 +625,62 @@ describe('JogadorPerfilComponent modo edição (3.8-EDIT)', () => {
       '#profile-tag-suggestions option',
     );
     expect(options.length).toBeGreaterThan(0);
+  });
+});
+
+describe('JogadorPerfilComponent — tornar adm (issue #232)', () => {
+  let setRole: jasmine.Spy;
+  async function render(isOwner: boolean, profileExtra: Partial<PeladaPlayerProfileDto>) {
+    TestBed.resetTestingModule();
+    setRole = jasmine.createSpy('setRole').and.returnValue(of({ ...profile, ...profileExtra, memberRole: 'ORGANIZADOR' }));
+    await TestBed.configureTestingModule({
+      imports: [JogadorPerfilComponent],
+      providers: [
+        provideRouter([{ path: 'jogadores/:playerId', component: JogadorPerfilComponent }]),
+        routeProvider,
+        peladaContextProvider,
+        rosterServiceProvider,
+        {
+          provide: PeladaPlayerProfileService,
+          useValue: {
+            loadProfile: (_p: unknown, _id: string, cb: (dto: PeladaPlayerProfileDto | null) => void) =>
+              cb({ ...profile, ...profileExtra }),
+            setRole,
+          },
+        },
+        { provide: PeladaRulesApiService, useValue: rulesApiMock(false) },
+        {
+          provide: PeladaOrganizadorContextService,
+          useValue: { ...orgContextMock(true), isOwner: () => isOwner },
+        },
+        { provide: AuthService, useValue: authMock('user-org') },
+      ],
+    }).compileComponents();
+    const f = TestBed.createComponent(JogadorPerfilComponent);
+    f.detectChanges();
+    await f.whenStable();
+    await Promise.resolve();
+    f.detectChanges();
+    return f;
+  }
+  const btn = (f: ComponentFixture<JogadorPerfilComponent>, label: string) =>
+    (Array.from(f.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]).find(
+      (b) => b.textContent?.trim() === label,
+    );
+
+  it('dono vê "Tornar adm" pra jogador com conta e o cargo muda', async () => {
+    const f = await render(true, { userId: 'u9', memberRole: 'JOGADOR', isOwner: false });
+    btn(f, 'Tornar adm')!.click();
+    f.detectChanges();
+    expect(setRole).toHaveBeenCalledWith('p1', 'pl1', 'ORGANIZADOR');
+    expect(f.nativeElement.textContent).toContain('Adm');
+    expect(btn(f, 'Tirar adm')).toBeDefined();
+  });
+
+  it('quem não é dono não vê o botão; jogador sem conta também não', async () => {
+    let f = await render(false, { userId: 'u9', memberRole: 'JOGADOR', isOwner: false });
+    expect(btn(f, 'Tornar adm')).toBeUndefined();
+    f = await render(true, { userId: null, memberRole: null, isOwner: false });
+    expect(btn(f, 'Tornar adm')).toBeUndefined();
   });
 });
