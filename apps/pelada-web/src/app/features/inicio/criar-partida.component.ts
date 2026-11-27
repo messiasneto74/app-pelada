@@ -225,6 +225,8 @@ export class CriarPartidaComponent implements OnInit {
       this.rulesApi.fetchRules(pelada.id).subscribe({
         next: (dto) => {
           const rules = peladaRulesFromApi(dto);
+          // Issue #234 — a partida nova já vem com a forma de presença das Regras.
+          this.values.update((v) => ({ ...v, presenceMode: rules.presenceMode }));
           this.rulesSummary.set(
             rulesSummaryLine({
               playersPerTeam: rules.playersPerTeam,

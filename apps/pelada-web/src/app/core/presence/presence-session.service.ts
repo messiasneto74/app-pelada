@@ -10,7 +10,7 @@ export interface PresenceSessionSnapshot {
   guests: PresenceRow[];
   extraPlayers: RosterPlayer[];
   queueOrder: string[];
-  presenceMode: 'SELF_CONFIRM' | 'ORGANIZER_CLOSES';
+  presenceMode: 'SELF_CONFIRM' | 'ORGANIZER_CLOSES' | 'NAME_LIST';
 }
 
 const STORAGE_PREFIX = 'pelada:presence:';

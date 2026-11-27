@@ -395,6 +395,8 @@ export type AttendanceEntryInput = {
   playerId: string;
   status: 'CONFIRMED' | 'PENDING' | 'DECLINED' | 'QUEUE';
   queuePosition: number | null;
+  /** Issue #234 — quando o status mudou por último (ordem da lista numerada). */
+  statusChangedAt?: string;
 };
 
 /**
@@ -404,9 +406,14 @@ export type AttendanceEntryInput = {
 export function presenceFromAttendance(entries: readonly AttendanceEntryInput[]): {
   statusByPlayerId: Map<string, PlayerPresenceStatus>;
   queueOrder: string[];
+  changedAtByPlayerId: Map<string, string>;
 } {
   const statusByPlayerId = new Map<string, PlayerPresenceStatus>();
+  const changedAtByPlayerId = new Map<string, string>();
   for (const e of entries) {
+    if (e.statusChangedAt) {
+      changedAtByPlayerId.set(e.playerId, e.statusChangedAt);
+    }
     statusByPlayerId.set(
       e.playerId,
       e.status === 'CONFIRMED' ? 'confirmed' : e.status === 'QUEUE' ? 'queue' : 'pending',
@@ -421,5 +428,102 @@ export function presenceFromAttendance(entries: readonly AttendanceEntryInput[])
         (b.queuePosition ?? Number.MAX_SAFE_INTEGER),
     )
     .map((e) => e.playerId);
-  return { statusByPlayerId, queueOrder };
+  return { statusByPlayerId, queueOrder, changedAtByPlayerId };
+}
+
+/** Issue #234 — uma linha da lista numerada (vazia = vaga livre). */
+export type PresenceSlot = { label: string; row: PresenceRow | null };
+
+export type PresenceSheet = {
+  goalkeepers: PresenceSlot[];
+  field: PresenceSlot[];
+  waitlist: PresenceSlot[];
+};
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * Issue #234 — a lista de presença no formato do grupo do WhatsApp:
+ *
+ *   GOLEIROS: 1- 2-
+ *   JOGADORES DE LINHA: 01- … (vagas da partida)
+ *   LISTA DE ESPERA: continua a numeração (22- …)
+ *
+ * Confirmados entram na ordem de chegada; goleiros (cadastro do jogador)
+ * ocupam as vagas de goleiro primeiro e, se sobrar goleiro, vai pra linha.
+ * Lista de espera na ordem da fila; sem limite nas Regras mostra só quem está nela.
+ */
+export function buildPresenceSheet(input: {
+  rows: PresenceRow[];
+  queueOrder: readonly string[];
+  changedAtByPlayerId: ReadonlyMap<string, string>;
+  capacity: number;
+  goalkeeperSlots: number;
+  waitlistSlots: number;
+}): PresenceSheet {
+  const gkSlots = Math.max(0, Math.min(input.goalkeeperSlots, input.capacity));
+  const fieldSlots = Math.max(0, input.capacity - gkSlots);
+  const confirmed = sortRowsByArrival(
+    input.rows.filter((r) => r.kind === 'player' && r.status === 'confirmed'),
+    input.changedAtByPlayerId,
+  );
+  const gkRows: PresenceRow[] = [];
+  const fieldRows: PresenceRow[] = [];
+  for (const r of confirmed) {
+    if (r.kind === 'player' && r.player.isGoalkeeper && gkRows.length < gkSlots) {
+      gkRows.push(r);
+    } else {
+      fieldRows.push(r);
+    }
+  }
+  const queued = sortRowsByQueueOrder(
+    input.rows.filter((r) => r.kind === 'player' && r.status === 'queue'),
+    input.queueOrder,
+  );
+  const fieldTotal = Math.max(fieldSlots, fieldRows.length);
+  const waitTotal = input.waitlistSlots > 0 ? Math.max(input.waitlistSlots, queued.length) : queued.length;
+  return {
+    goalkeepers: Array.from({ length: gkSlots }, (_, i) => ({
+      label: `${i + 1}-`,
+      row: gkRows[i] ?? null,
+    })),
+    field: Array.from({ length: fieldTotal }, (_, i) => ({
+      label: `${pad2(i + 1)}-`,
+      row: fieldRows[i] ?? null,
+    })),
+    waitlist: Array.from({ length: waitTotal }, (_, i) => ({
+      label: `${pad2(fieldTotal + i + 1)}-`,
+      row: queued[i] ?? null,
+    })),
+  };
+}
+
+/**
+ * Issue #234 — confirmados em ordem de chegada (quem entrou primeiro é o 1º).
+ * Sem horário conhecido vai pro fim, na ordem em que veio.
+ */
+export function sortRowsByArrival(
+  rows: PresenceRow[],
+  changedAtByPlayerId: ReadonlyMap<string, string>,
+): PresenceRow[] {
+  const at = (row: PresenceRow) => {
+    const iso = row.kind === 'player' ? changedAtByPlayerId.get(row.player.id) : undefined;
+    const t = iso ? Date.parse(iso) : NaN;
+    return Number.isNaN(t) ? Number.MAX_SAFE_INTEGER : t;
+  };
+  return rows
+    .map((row, i) => ({ row, i }))
+    .sort((a, b) => at(a.row) - at(b.row) || a.i - b.i)
+    .map((x) => x.row);
+}
+
+/** Issue #234 — jogadores que o adm ainda pode pôr na lista (fora dos confirmados e da espera). */
+export function playersOutOfList(rows: PresenceRow[]): PresenceRow[] {
+  return rows
+    .filter((r) => r.kind === 'player' && r.status === 'pending')
+    .sort((a, b) =>
+      a.kind === 'player' && b.kind === 'player'
+        ? a.player.displayName.localeCompare(b.player.displayName, 'pt-BR')
+        : 0,
+    );
 }

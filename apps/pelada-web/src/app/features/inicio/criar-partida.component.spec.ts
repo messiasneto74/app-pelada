@@ -72,7 +72,9 @@ describe('CriarPartidaComponent (3.3)', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Criar partida');
     expect(text).toContain('Modo de presença');
-    expect(text).toContain('Org. fecha lista');
+    expect(text).toContain('Adm marca');
+    expect(text).toContain('Jogador marca presença');
+    expect(text).toContain('Lista de nomes');
     expect(text).toContain('2 times');
   });
 
