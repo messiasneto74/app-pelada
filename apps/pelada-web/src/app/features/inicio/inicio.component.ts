@@ -1,4 +1,5 @@
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import { LiveRefreshService } from '../../core/live/live-refresh';
 import { Router, RouterLink } from '@angular/router';
 import { PeladaDashboardRefreshService } from '../../core/inicio/pelada-dashboard-refresh.service';
 import {
@@ -223,11 +224,17 @@ export class InicioComponent {
   readonly loading = signal(true);
   readonly resolveInicioEmptyStates = resolveInicioEmptyStates;
 
+  private readonly liveDestroyRef = inject(DestroyRef);
+  private readonly live = inject(LiveRefreshService);
+
   constructor() {
-    this.peladaApi
-      .listMyPeladas()
-      .then((list) => this.otherPeladasCount.set(Math.max(0, list.length - 1)))
-      .catch(() => this.otherPeladasCount.set(0));
+    // Issue #233 — confirmados e caixa do Início se atualizam sozinhos.
+    this.live.start(this.liveDestroyRef, () => {
+      const pelada = this.peladaContext.getActivePelada();
+      if (pelada) {
+        this.dashboardService.loadDashboard(pelada, (view) => this.dashboard.set(view));
+      }
+    });
     effect(() => {
       const pelada = this.peladaContext.getActivePelada();
       this.dashboardRefresh.refreshToken();

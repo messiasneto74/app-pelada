@@ -33,6 +33,7 @@ import {
   rotationPolicyLabel,
 } from './campo-view.logic';
 import type { MatchDrawTeamDto } from '../../core/match/match-draw-api.model';
+import { LiveRefreshService } from '../../core/live/live-refresh';
 import { PeladaRosterService } from '../../core/roster/pelada-roster.service';
 import type { ActivePelada } from '../../core/pelada/active-pelada.model';
 import { PeladaButtonComponent } from '../../ui/button.component';
@@ -490,6 +491,7 @@ export class CampoPartidaComponent implements OnInit {
   private readonly dashboardService = inject(PeladaDashboardService);
   private readonly fieldApi = inject(MatchFieldSessionService);
   private readonly drawApi = inject(MatchDrawService);
+  private readonly live = inject(LiveRefreshService);
   private readonly rosterService = inject(PeladaRosterService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly document = inject(DOCUMENT);
@@ -597,6 +599,14 @@ export class CampoPartidaComponent implements OnInit {
     interval(1000)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.tickMs.set(Date.now()));
+
+    // Issue #233 — placar, rodada e cronômetro se atualizam sozinhos pra todos.
+    // Não atualiza no meio de uma ação nem com a pergunta/confirmação aberta.
+    this.live.start(this.destroyRef, () => {
+      if (!this.busy() && !this.goalSide() && !this.confirmAction()) {
+        this.resyncFieldSessionQuietly();
+      }
+    });
 
     const onVisibility = () => {
       if (this.document.visibilityState === 'visible') {

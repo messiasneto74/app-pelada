@@ -4,10 +4,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import {
   Component,
   computed,
+  DestroyRef,
   inject,
   OnInit,
   signal,
 } from '@angular/core';
+import { LiveRefreshService } from '../../core/live/live-refresh';
 import { RouterLink } from '@angular/router';
 import { PARTIDA_PRESENCA_PATH } from '../../core/presence/partida-sorteio-route';
 import { PresenceSessionService } from '../../core/presence/presence-session.service';
@@ -128,7 +130,14 @@ type TeamListState = { sortOrder: number; players: RosterPlayer[] };
                   (cdkDropListDropped)="onTeamDrop($event, meta.sortOrder)"
                 >
                   @for (p of playersForTeam(meta.sortOrder); track p.id) {
-                    <div class="player-pill" cdkDrag [cdkDragData]="p" [cdkDragDisabled]="!isOrganizador()">
+                    <div
+                      class="player-pill"
+                      cdkDrag
+                      [cdkDragData]="p"
+                      [cdkDragDisabled]="!isOrganizador()"
+                      (cdkDragStarted)="dragging = true"
+                      (cdkDragEnded)="dragging = false"
+                    >
                       <span class="drag-handle" cdkDragHandle aria-label="Arrastar">⋮⋮</span>
                       <pelada-avatar [name]="p.displayName" size="small" tone="lime" />
                       <span class="player-pill__main">
@@ -514,6 +523,8 @@ export class SorteioPartidaComponent implements OnInit {
   readonly formatRosterRating = formatRosterRating;
 
   ngOnInit(): void {
+    // Issue #233 — o sorteio (e as trocas) aparecem sozinhos pra todos.
+    this.live.start(this.liveDestroyRef, () => this.refreshDrawQuietly());
     const pelada = this.peladaContext.getActivePelada();
     if (!pelada) {
       this.loading.set(false);
@@ -667,6 +678,34 @@ export class SorteioPartidaComponent implements OnInit {
         }
         this.drawLoading.set(false);
         this.drawError.set(msg);
+      },
+    });
+  }
+
+  /** Issue #233 — não atualiza no meio de um arrastar (o cartão sumiria da mão). */
+  dragging = false;
+  private readonly liveDestroyRef = inject(DestroyRef);
+  private readonly live = inject(LiveRefreshService);
+
+  /** Issue #233 — busca o sorteio de novo sem piscar a tela. */
+  private refreshDrawQuietly(): void {
+    const pelada = this.peladaContext.getActivePelada();
+    const mid = this.matchId();
+    if (!pelada || !mid || this.dragging || this.drawLoading()) {
+      return;
+    }
+    this.matchDrawApi.getDraw(pelada.id, mid).subscribe({
+      next: (d) => {
+        if (this.dragging || this.drawLoading()) {
+          return;
+        }
+        if (JSON.stringify(d.teams) !== JSON.stringify(this.draw()?.teams)) {
+          this.draw.set(d);
+          this.syncTeamsFromDraw(d);
+        }
+      },
+      error: () => {
+        /* mantém o que está na tela */
       },
     });
   }
