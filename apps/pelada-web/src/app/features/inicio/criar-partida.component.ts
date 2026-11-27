@@ -225,6 +225,11 @@ export class CriarPartidaComponent implements OnInit {
       this.rulesApi.fetchRules(pelada.id).subscribe({
         next: (dto) => {
           const rules = peladaRulesFromApi(dto);
+          // Issue #234 — a partida nova já vem com a forma de presença das Regras
+          // (a não ser que o adm já tenha escolhido outra antes das Regras chegarem).
+          if (!this.presenceTouched) {
+            this.values.update((v) => ({ ...v, presenceMode: rules.presenceMode }));
+          }
           this.rulesSummary.set(
             rulesSummaryLine({
               playersPerTeam: rules.playersPerTeam,
@@ -251,7 +256,11 @@ export class CriarPartidaComponent implements OnInit {
     this.formError.set('');
   }
 
+  /** Issue #234 — o adm escolheu a forma de presença nesta tela. */
+  private presenceTouched = false;
+
   patchPresence(value: CreateMatchFormValues['presenceMode']): void {
+    this.presenceTouched = true;
     this.values.update((v) => ({ ...v, presenceMode: value }));
   }
 

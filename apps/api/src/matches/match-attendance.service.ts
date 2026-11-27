@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -22,7 +23,9 @@ import {
   applyAttendanceStatusChange,
   attendanceCounts,
   fillFreeSpotsFromQueue,
+  exceedsWaitlist,
   readAutoFillQueueOnCapacityIncrease,
+  readWaitlistSlots,
   type AttendanceRowInput,
 } from './match-attendance.logic';
 
@@ -36,6 +39,8 @@ export type MatchAttendanceEntryDto = {
   isGoalkeeper: boolean;
   position: string | null;
   rating: number | null;
+  /** Issue #234 — quando o status mudou por último (ordem da lista numerada). */
+  statusChangedAt: string;
 };
 
 export type MatchAttendanceListDto = {
@@ -44,6 +49,10 @@ export type MatchAttendanceListDto = {
   listClosed: boolean;
   capacity: number;
   presenceMode: string | null;
+  /** Issue #234 — vagas de goleiro da partida (goleiro por time = 1 por time). */
+  goalkeeperSlots: number;
+  /** Issue #234 — vagas na lista de espera da partida (0 = sem limite). */
+  waitlistSlots: number;
   counts: ReturnType<typeof attendanceCounts>;
   entries: MatchAttendanceEntryDto[];
 };
@@ -106,9 +115,11 @@ export class MatchAttendanceService {
       matchId,
       user.id,
     );
-    if (match.presenceMode !== 'SELF_CONFIRM') {
+    // Issue #234 — o próprio jogador mexe na presença em "Jogador confirma"
+    // (Vou/Não vou) e em "Lista" (coloca/tira o nome).
+    if (match.presenceMode !== 'SELF_CONFIRM' && match.presenceMode !== 'NAME_LIST') {
       throw new ForbiddenException(
-        'Presença nesta partida é fechada pelo organizador.',
+        'Presença nesta partida é marcada pelo organizador.',
       );
     }
     this.assertListOpenForEdits(match, false);
@@ -324,6 +335,13 @@ export class MatchAttendanceService {
         requested,
         capacity,
       );
+      // Issue #234 — a lista de espera tem o tamanho que o adm escolheu.
+      const waitlist = readWaitlistSlots(effective.extra);
+      if (exceedsWaitlist(rows, nextRows, waitlist)) {
+        throw new ConflictException(
+          `A lista está cheia: ${capacity} ${capacity === 1 ? 'vaga' : 'vagas'} e ${waitlist} na lista de espera.`,
+        );
+      }
       await this.persistRowInputs(tx, matchId, rows, nextRows);
     });
   }
@@ -482,6 +500,9 @@ export class MatchAttendanceService {
     defaults: PeladaRules,
   ): Promise<MatchAttendanceListDto> {
     const capacity = this.capacityForMatch(match, defaults);
+    // Issue #234 — a tela monta a lista com as regras DESTA partida (as mesmas
+    // que a API aplica), não com as Regras atuais da pelada.
+    const effective = this.effectiveRulesForMatch(match, defaults);
     const attendances = await this.prisma.matchAttendance.findMany({
       where: { matchId: match.id },
       include: { player: true },
@@ -506,6 +527,8 @@ export class MatchAttendanceService {
       isGoalkeeper: a.player.isGoalkeeper,
       position: a.player.position,
       rating: a.player.rating,
+      // Issue #234 — ordem da lista numerada (quem entrou primeiro).
+      statusChangedAt: a.updatedAt.toISOString(),
     }));
     return {
       matchId: match.id,
@@ -515,6 +538,9 @@ export class MatchAttendanceService {
       listClosed: match.status !== 'SCHEDULED',
       capacity,
       presenceMode: match.presenceMode,
+      goalkeeperSlots:
+        effective.goalkeeperMode === 'FIXED_PER_TEAM' ? effective.teamCount : 0,
+      waitlistSlots: readWaitlistSlots(effective.extra),
       counts: attendanceCounts(rowInputs),
       entries,
     };

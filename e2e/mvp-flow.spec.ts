@@ -46,29 +46,28 @@ test.describe('E2E fluxo MVP §D', () => {
     await criarPartida.click({ force: true });
     await expect(page).toHaveURL(/\/partida\/presenca/);
 
-    await page.getByRole('tab', { name: /Pendentes/ }).click({ force: true });
+    // Issue #234 — sem abas: o adm coloca o elenco pela lista "Colocar na lista".
+    await page.getByRole('button', { name: 'Colocar jogador na lista' }).click({ force: true });
     for (let guard = 0; guard < 60; guard += 1) {
-      const pendingTab = page.getByRole('tab', { name: /Pendentes/ });
-      const tabLabel = (await pendingTab.textContent()) ?? '';
-      if (/Pendentes \(0\)/.test(tabLabel)) {
+      if (
+        await page
+          .getByText('Todo mundo do elenco já está na lista.')
+          .isVisible({ timeout: 500 })
+          .catch(() => false)
+      ) {
         break;
       }
-      const confirm = page.getByRole('button', { name: 'Confirmar' }).first();
-      if (await confirm.isVisible({ timeout: 1_000 }).catch(() => false)) {
-        await confirm.scrollIntoViewIfNeeded();
-        await confirm.click({ force: true });
+      const add = page.locator('.add-item button').first();
+      if (await add.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        await add.click({ force: true });
         await page.waitForTimeout(350);
-      } else {
-        await pendingTab.click({ force: true });
       }
     }
-    await expect(page.getByRole('tab', { name: /Pendentes \(0\)/ })).toBeVisible({
+    await expect(page.getByText('Todo mundo do elenco já está na lista.')).toBeVisible({
       timeout: 60_000,
     });
-    await page.getByRole('tab', { name: /Confirmados/ }).click({ force: true });
-    await expect(page.getByRole('tab', { name: /Confirmados \(12\)/ })).toBeVisible({
-      timeout: 60_000,
-    });
+    await page.getByRole('button', { name: 'Pronto' }).click({ force: true });
+    await expect(page.getByText(/^12 de \d+ vagas$/)).toBeVisible({ timeout: 60_000 });
 
     let matchId = await readActiveMatchId(page).catch(() =>
       readNextMatchId(request, token, peladaId),
@@ -155,9 +154,8 @@ test.describe('E2E fluxo MVP §D', () => {
       otherPage.getByRole('heading', { name: 'Pronto para entrar em campo', level: 2 }),
     ).toBeVisible({ timeout: 30_000 });
     await otherPage.goto('/partida/presenca');
-    await expect(
-      otherPage.getByRole('tab', { name: /Confirmados \(12\)/ }),
-    ).toBeVisible({ timeout: 30_000 });
+    // Issue #234 — sem abas: a lista mostra os 12 confirmados (12 de N vagas).
+    await expect(otherPage.getByText(/^12 de \d+ vagas$/)).toBeVisible({ timeout: 30_000 });
     await other.close();
   });
 });

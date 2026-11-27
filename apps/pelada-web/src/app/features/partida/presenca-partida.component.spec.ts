@@ -212,7 +212,10 @@ describe('PresencaPartidaComponent §3.4', () => {
   it('mostra resumo de vagas e segmentos', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('de 14 vagas');
-    expect(text).toContain('Confirmados');
+    // Issue #234 — lista numerada (sem abas; sem "Pendentes")
+    expect(text).toContain('Jogadores de linha');
+    expect(text).toContain('14-');
+    expect(text).not.toContain('Pendentes');
     expect(text).toContain('Fechar lista e sortear');
   });
 
@@ -523,9 +526,93 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(setSelf).toHaveBeenCalledWith('p1', 'm1', 'confirm');
   });
 
+  it('#234 lista de nomes: rodapé "Colocar meu nome" coloca o nome e vira "Tirar meu nome"', async () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const setSelf = jasmine
+      .createSpy('setSelf')
+      .and.returnValue(of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }, { presenceMode: 'NAME_LIST' })));
+    api['getList'] = () =>
+      of(serverList({ a1: 'PENDING', b1: 'PENDING' }, { presenceMode: 'NAME_LIST' }));
+    api['setSelf'] = setSelf;
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const footerBtn = () =>
+      Array.from(fixture.nativeElement.querySelectorAll('.self-footer button') as NodeListOf<HTMLButtonElement>);
+    expect(footerBtn().map((b) => b.textContent?.trim())).toEqual(['Colocar meu nome']);
+
+    footerBtn()[0]!.click();
+    fixture.detectChanges();
+
+    expect(setSelf).toHaveBeenCalledWith('p1', 'm1', 'confirm');
+    expect(fixture.nativeElement.textContent).toContain('01- Ana Silva');
+    expect(footerBtn().map((b) => b.textContent?.trim())).toEqual(['Tirar meu nome']);
+  });
+
+  it('#234 lista cheia (409): mostra o motivo e desfaz', async () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    api['getList'] = () =>
+      of(serverList({ a1: 'PENDING', b1: 'PENDING' }, { presenceMode: 'NAME_LIST' }));
+    api['setSelf'] = () =>
+      throwError(() => ({ status: 409, error: { message: 'A lista está cheia: 12 vagas e 0 na lista de espera.' } }));
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.componentInstance.onSelfPresence('a1', true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('A lista está cheia');
+    const a1 = fixture.componentInstance.rows().find((r) => r.kind === 'player' && r.player.id === 'a1');
+    expect(a1?.status).toBe('pending');
+  });
+
+  it('#234 adm coloca jogador pela lista "Colocar na lista"', async () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const patch = jasmine
+      .createSpy('patchPlayer')
+      .and.returnValue(of(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' })));
+    api['getList'] = () => of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' }));
+    api['patchPlayer'] = patch;
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.componentInstance.addOpen.set(true);
+    fixture.detectChanges();
+    const items = () =>
+      Array.from(fixture.nativeElement.querySelectorAll('.add-item') as NodeListOf<HTMLElement>);
+    expect(items().map((li) => li.querySelector('span')?.textContent?.trim())).toContain('Bruno');
+    items()
+      .find((li) => li.textContent?.includes('Bruno'))!
+      .querySelector('button')!
+      .click();
+    fixture.detectChanges();
+    expect(patch).toHaveBeenCalledWith('p1', 'm1', 'b1', { status: 'CONFIRMED' });
+    expect(items().some((li) => li.textContent?.includes('Bruno'))).toBeFalse();
+    expect(fixture.nativeElement.textContent).toContain('02- Bruno');
+  });
+
+  it('#234 a lista usa as vagas de espera e de goleiro DA PARTIDA (vindas da API)', async () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    api['getList'] = () =>
+      of(
+        serverList(
+          { a1: 'CONFIRMED', b1: 'PENDING' },
+          { capacity: 4, goalkeeperSlots: 2, waitlistSlots: 1 },
+        ),
+      );
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.componentInstance.formatRules.update((r) => ({ ...r, waitlistSlots: 5, goalkeeperPerTeam: false }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const sheet = fixture.componentInstance.sheet();
+    expect(sheet.goalkeepers.map((s) => s.label)).toEqual(['1-', '2-']);
+    expect(sheet.field.map((s) => s.label)).toEqual(['01-', '02-']);
+    expect(sheet.waitlist.map((s) => s.label)).toEqual(['03-']);
+  });
+
   it('lista jogador confirmado com chip', () => {
-    expect(fixture.nativeElement.textContent).toContain('Ana Silva');
-    expect(fixture.nativeElement.textContent).toContain('Confirmou');
+    expect(fixture.nativeElement.textContent).toContain('01- Ana Silva');
   });
 
   it('modo SELF_CONFIRM mostra Vou/Não vou para o jogador logado', async () => {
@@ -569,7 +656,8 @@ describe('PresencaPartidaComponent §3.4', () => {
     fixture.componentInstance.segment.set('pending');
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Convidado Vinculado');
+    // Issue #234 — fora da lista, o botão fica no rodapé (✓ Vou / ✗ Não vou)
+    expect(text).toContain('Você ainda não está na lista.');
     expect(text).toContain('Vou');
     expect(text).toContain('Não vou');
   });
@@ -638,8 +726,7 @@ describe('PresencaPartidaComponent §3.4', () => {
     });
     fixture = TestBed.createComponent(PresencaPartidaComponent);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Visitante Aceito');
-    expect(fixture.nativeElement.textContent).toContain('Confirmou');
+    expect(fixture.nativeElement.textContent).toContain('02- Visitante Aceito');
   });
 
   it('não apaga sessão quando elenco falha (fallback)', async () => {

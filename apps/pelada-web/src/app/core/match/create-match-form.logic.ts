@@ -1,5 +1,10 @@
 /** Valores do formulário §3.3 (criar partida). */
-export type MatchPresenceMode = 'SELF_CONFIRM' | 'ORGANIZER_CLOSES';
+/** Issue #234 — 3 formas de marcar presença (o adm escolhe nas Regras). */
+export type MatchPresenceMode = 'SELF_CONFIRM' | 'ORGANIZER_CLOSES' | 'NAME_LIST';
+
+export function normalizePresenceMode(raw: unknown): MatchPresenceMode {
+  return raw === 'SELF_CONFIRM' || raw === 'NAME_LIST' ? raw : 'ORGANIZER_CLOSES';
+}
 
 export interface CreateMatchFormValues {
   date: string;
@@ -29,13 +34,18 @@ export const PRESENCE_MODE_OPTIONS: ReadonlyArray<{
 }> = [
   {
     value: 'ORGANIZER_CLOSES',
-    label: 'Org. fecha lista',
-    hint: 'Organizador confirma presenças e encerra a lista (padrão Resenha).',
+    label: 'Adm marca',
+    hint: 'O adm marca quem vai e fecha a lista.',
   },
   {
     value: 'SELF_CONFIRM',
-    label: 'Jogador confirma',
-    hint: 'Cada jogador confirma ou recusa no app (quando disponível).',
+    label: 'Jogador marca presença',
+    hint: 'Cada jogador toca em ✓ (vou) ou ✗ (não vou).',
+  },
+  {
+    value: 'NAME_LIST',
+    label: 'Lista de nomes',
+    hint: 'Lista numerada, igual no WhatsApp: cada um coloca ou tira o próprio nome.',
   },
 ];
 
