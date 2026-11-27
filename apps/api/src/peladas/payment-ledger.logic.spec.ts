@@ -4,6 +4,7 @@ import {
   readFeeCentsFromRules,
   readPaymentModelFromRules,
   summarizeLedgerAmounts,
+  chargeUniquenessWindow,
 } from './payment-ledger.logic';
 
 describe('payment-ledger.logic §3.9-API', () => {
@@ -66,5 +67,30 @@ describe('payment-ledger.logic §3.9-API', () => {
     expect(groups[0].receivedCents).toBe(100);
     expect(groups[0].expectedCents).toBe(200);
     expect(groups[0].entries).toHaveLength(2);
+  });
+
+  describe('chargeUniquenessWindow (issue #231)', () => {
+    const now = new Date('2026-11-26T22:30:00.000Z'); // 19:30 em Brasília, quinta
+    it('por partida com partida: janela é a partida', () => {
+      expect(chargeUniquenessWindow('PER_MATCH', 'm1', now)).toEqual({ kind: 'match', matchId: 'm1', label: 'nesta partida' });
+    });
+    it('por partida sem partida: o dia em Brasília', () => {
+      const w = chargeUniquenessWindow('PER_MATCH', null, now);
+      expect(w).toEqual({
+        kind: 'period',
+        start: new Date('2026-11-26T03:00:00.000Z'),
+        end: new Date('2026-11-27T03:00:00.000Z'),
+        label: 'hoje',
+      });
+    });
+    it('semanal, quinzenal e mensal usam o período do modelo', () => {
+      const wk = chargeUniquenessWindow('WEEKLY', null, now);
+      expect(wk.kind === 'period' && wk.start.toISOString()).toBe('2026-11-23T00:00:00.000Z');
+      expect(wk.label).toBe('nesta semana');
+      expect(chargeUniquenessWindow('BIWEEKLY', null, now).label).toBe('nesta quinzena');
+      const mo = chargeUniquenessWindow('MONTHLY', 'm1', now);
+      expect(mo.kind === 'period' && mo.start.toISOString()).toBe('2026-11-01T03:00:00.000Z');
+      expect(mo.label).toBe('neste mês');
+    });
   });
 });
