@@ -1,3 +1,4 @@
+export type TieChoiceBody = { winner?: 'HOME' | 'AWAY'; method?: 'PAR_IMPAR' | 'PENALTIS' };
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
@@ -36,17 +37,18 @@ export class MatchFieldSessionService {
     return this.http.patch<MatchFieldSessionDto>(this.base(peladaId, matchId), body);
   }
 
-  endRound(peladaId: string, matchId: string) {
+  /** Issue #227 — no empate, manda quem venceu o desempate (se precisar). */
+  endRound(peladaId: string, matchId: string, tie: TieChoiceBody = {}) {
     return this.http.post<MatchFieldSessionDto>(
       `${this.base(peladaId, matchId)}/end-round`,
-      {},
+      tie,
     );
   }
 
-  finish(peladaId: string, matchId: string) {
+  finish(peladaId: string, matchId: string, tie: TieChoiceBody = {}) {
     return this.http.post<MatchFieldSessionDto>(
       `${this.base(peladaId, matchId)}/finish`,
-      {},
+      tie,
     );
   }
 

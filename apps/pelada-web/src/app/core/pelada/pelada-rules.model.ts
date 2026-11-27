@@ -15,9 +15,8 @@ export type FixedGkRotation = 'RESULT' | 'SIDE' | 'MANUAL_ONLY';
 export type PresenceModeRule = 'ORGANIZER_CLOSES' | 'SELF_CONFIRM' | 'NAME_LIST';
 
 export type PeladaRulesFormValues = {
-  presenceMode: PresenceModeRule;
-  /** Issue #234 — vagas na lista de espera (0 = sem limite). */
-  waitlistSlots: number;
+  /** Issue #227 — critério de desempate (null = ainda não escolhido: empate é empate). */
+  tieBreak: 'PAR_IMPAR' | 'PENALTIS' | 'LAST_IN' | 'STAYED' | null;
   playersPerTeam: number;
   teamCount: number;
   modality: Modality;
@@ -47,8 +46,7 @@ export type PeladaRulesFormValues = {
 };
 
 export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
-  presenceMode: 'ORGANIZER_CLOSES',
-  waitlistSlots: 0,
+  tieBreak: null,
   playersPerTeam: 6,
   teamCount: 2,
   modality: 'campo',

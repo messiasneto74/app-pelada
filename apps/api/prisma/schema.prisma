@@ -232,6 +232,10 @@ model MatchFieldRound {
   goals         Json     @default("[]")
   durationMs    Int      @map("duration_ms")
   finishedAt    DateTime @default(now()) @map("finished_at")
+  /// Issue #227 — empate decidido: quem venceu ('HOME' | 'AWAY'), conta como vitória.
+  tieWinner     String?  @map("tie_winner")
+  /// Issue #227 — como foi decidido: PAR_IMPAR | PENALTIS | LAST_IN | STAYED.
+  tieMethod     String?  @map("tie_method")
 
   match   Match             @relation(fields: [matchId], references: [id], onDelete: Cascade)
   session MatchFieldSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)

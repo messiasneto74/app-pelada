@@ -26,6 +26,12 @@ import {
 import {
   applyTimerAction,
   computeNextRoundSides,
+  readTieBreakRule,
+  resolveTie,
+  roundOutcome,
+  type TieBreakRule,
+  type TieChoiceMethod,
+  type TieSide,
   readFixedGkRotation,
   capRoundClock,
   readRotationPolicy,
@@ -63,6 +69,8 @@ export type MatchFieldSessionDto = {
   teamsOnField: FieldSessionTeamView[];
   restingTeams: Array<{ sortOrder: number; drawTeamId: string; name: string }>;
   fixedGkMeta: Record<string, unknown>;
+  /** Issue #227 — critério de desempate DESTA partida (null = empate é empate). */
+  tieBreak: TieBreakRule | null;
 };
 
 type DrawWithTeams = {
@@ -143,7 +151,12 @@ export class MatchFieldSessionService {
     if (!session) {
       throw new NotFoundException('Sessão em campo ainda não iniciada.');
     }
-    return this.toDto(session, draw.teams, await this.roundLimitFor(peladaId, matchId));
+    return this.toDto(
+      session,
+      draw.teams,
+      await this.roundLimitFor(peladaId, matchId),
+      await this.tieRuleFor(peladaId, matchId),
+    );
   }
 
   /** Resumo "do dia": agregação por time a partir das rodadas já persistidas desta partida. */
@@ -217,10 +230,12 @@ export class MatchFieldSessionService {
       away.goalsFor += round.scoreAway;
       away.goalsAgainst += round.scoreHome;
 
-      if (round.scoreHome > round.scoreAway) {
+      // Issue #227 — empate decidido (par ou ímpar, pênaltis…) conta como vitória.
+      const outcome = roundOutcome(round);
+      if (outcome === 'HOME') {
         home.wins += 1;
         away.losses += 1;
-      } else if (round.scoreAway > round.scoreHome) {
+      } else if (outcome === 'AWAY') {
         away.wins += 1;
         home.losses += 1;
       } else {
@@ -378,14 +393,8 @@ export class MatchFieldSessionService {
       const homePlayers = playersByTeam.get(round.homeDrawTeamId) ?? [];
       const awayPlayers = playersByTeam.get(round.awayDrawTeamId) ?? [];
 
-      let outcome: 'HOME' | 'AWAY' | 'DRAW';
-      if (round.scoreHome > round.scoreAway) {
-        outcome = 'HOME';
-      } else if (round.scoreAway > round.scoreHome) {
-        outcome = 'AWAY';
-      } else {
-        outcome = 'DRAW';
-      }
+      // Issue #227 — empate decidido conta como vitória/derrota.
+      const outcome = roundOutcome(round);
 
       for (const playerId of homePlayers) {
         const a = ensurePlayer(playerId);
@@ -492,7 +501,12 @@ export class MatchFieldSessionService {
       return created;
     });
 
-    return this.toDto(session, draw.teams, readRoundLimitMs(effective.extra));
+    return this.toDto(
+      session,
+      draw.teams,
+      readRoundLimitMs(effective.extra),
+      readTieBreakRule(effective.extra),
+    );
   }
 
   async patchSession(
@@ -506,6 +520,7 @@ export class MatchFieldSessionService {
     const { draw } = await this.loadDrawContext(peladaId, matchId);
     const existing = await this.requireOpenSession(matchId);
     const limitMs = await this.roundLimitFor(peladaId, matchId);
+    const tieRule = await this.tieRuleFor(peladaId, matchId);
 
     if (
       !body.timer &&
@@ -603,13 +618,14 @@ export class MatchFieldSessionService {
       });
     });
 
-    return this.toDto(updated, draw.teams, limitMs);
+    return this.toDto(updated, draw.teams, limitMs, tieRule);
   }
 
   async endRound(
     auth: AuthUserPayload,
     peladaId: string,
     matchId: string,
+    tieChoice: { winner?: TieSide | null; method?: TieChoiceMethod | null } = {},
   ): Promise<MatchFieldSessionDto> {
     const user = await this.meService.getOrCreateUser(auth);
     await this.assertOrganizador(peladaId, user.id);
@@ -646,6 +662,17 @@ export class MatchFieldSessionService {
         readRoundLimitMs(effective.extra),
       ).cumulativeMs;
 
+      // Issue #227 — grava a rodada (com o desempate) antes de definir a próxima.
+      const tieWinner = await this.persistRoundHistory(tx, session, draw.teams, elapsedMs, {
+        tie: { rule: readTieBreakRule(effective.extra), chosen: tieChoice },
+      });
+      const tieWinnerSortOrder =
+        tieWinner === 'HOME'
+          ? session.homeTeamSortOrder
+          : tieWinner === 'AWAY'
+            ? session.awayTeamSortOrder
+            : null;
+
       const next = computeNextRoundSides({
         policy: session.rotationPolicy as FieldRotationPolicy,
         teamCount,
@@ -654,6 +681,7 @@ export class MatchFieldSessionService {
         awayTeamSortOrder: session.awayTeamSortOrder,
         scoreHome: session.scoreHome,
         scoreAway: session.scoreAway,
+        tieWinnerSortOrder,
       });
 
       const fixedGkMeta = updateFixedGkMeta(
@@ -665,10 +693,9 @@ export class MatchFieldSessionService {
           awayTeamSortOrder: session.awayTeamSortOrder,
           scoreHome: session.scoreHome,
           scoreAway: session.scoreAway,
+          tieWinnerSortOrder,
         },
       );
-
-      await this.persistRoundHistory(tx, session, draw.teams, elapsedMs);
 
       return tx.matchFieldSession.update({
         where: { id: session.id },
@@ -688,19 +715,26 @@ export class MatchFieldSessionService {
       });
     });
 
-    return this.toDto(updated, draw.teams, readRoundLimitMs(effective.extra));
+    return this.toDto(
+      updated,
+      draw.teams,
+      readRoundLimitMs(effective.extra),
+      readTieBreakRule(effective.extra),
+    );
   }
 
   async finishSession(
     auth: AuthUserPayload,
     peladaId: string,
     matchId: string,
+    tieChoice: { winner?: TieSide | null; method?: TieChoiceMethod | null } = {},
   ): Promise<MatchFieldSessionDto> {
     const user = await this.meService.getOrCreateUser(auth);
     await this.assertOrganizador(peladaId, user.id);
     const { draw } = await this.loadDrawContext(peladaId, matchId);
     const existing = await this.requireOpenSession(matchId);
     const limitMs = await this.roundLimitFor(peladaId, matchId);
+    const tieRule = await this.tieRuleFor(peladaId, matchId);
     const now = new Date();
 
     // Lock + relê sob FOR UPDATE, mesmo motivo do endRound: um gol
@@ -723,6 +757,7 @@ export class MatchFieldSessionService {
       // Issue #217: não grava a rodada em andamento se ela nem foi jogada.
       await this.persistRoundHistory(tx, session, draw.teams, elapsedMs, {
         skipIfUnplayed: true,
+        tie: { rule: tieRule, chosen: tieChoice },
       });
 
       const row = await tx.matchFieldSession.update({
@@ -740,13 +775,14 @@ export class MatchFieldSessionService {
       return row;
     });
 
-    return this.toDto(updated, draw.teams, limitMs);
+    return this.toDto(updated, draw.teams, limitMs, tieRule);
   }
 
   private toDto(
     session: MatchFieldSession,
     teams: DrawTeam[],
     roundLimitMs: number,
+    tieBreak: TieBreakRule | null,
   ): MatchFieldSessionDto {
     const byOrder = new Map(teams.map((t) => [t.sortOrder, t]));
     const resting = teams
@@ -804,6 +840,7 @@ export class MatchFieldSessionService {
       ],
       restingTeams: resting,
       fixedGkMeta: (session.fixedGkMeta ?? {}) as Record<string, unknown>,
+      tieBreak,
     };
   }
 
@@ -862,8 +899,14 @@ export class MatchFieldSessionService {
     session: MatchFieldSession,
     teams: DrawWithTeams['teams'],
     cumulativeElapsedMs: number,
-    opts: { skipIfUnplayed?: boolean } = {},
-  ): Promise<void> {
+    opts: {
+      skipIfUnplayed?: boolean;
+      tie?: {
+        rule: TieBreakRule | null;
+        chosen?: { winner?: TieSide | null; method?: TieChoiceMethod | null } | null;
+      };
+    } = {},
+  ): Promise<TieSide | null> {
     const home = teams.find((t) => t.sortOrder === session.homeTeamSortOrder);
     const away = teams.find((t) => t.sortOrder === session.awayTeamSortOrder);
     if (!home || !away) {
@@ -888,7 +931,39 @@ export class MatchFieldSessionService {
         timerRunning: session.timerRunningSince != null,
       })
     ) {
-      return;
+      return null;
+    }
+    // Issue #227 — empate: decide pelo critério das Regras (ou escolha do adm).
+    // "Quem já estava" = quem ganhou a rodada anterior (com 2 times os lados não trocam).
+    let previousWinnerSide: TieSide | null = null;
+    if (opts.tie?.rule && session.scoreHome === session.scoreAway && session.roundNumber > 1) {
+      const prev = await tx.matchFieldRound.findFirst({
+        where: { sessionId: session.id, roundNumber: session.roundNumber - 1 },
+      });
+      if (prev) {
+        const outcome = roundOutcome(prev);
+        const prevWinnerTeamId =
+          outcome === 'HOME' ? prev.homeDrawTeamId : outcome === 'AWAY' ? prev.awayDrawTeamId : null;
+        if (prevWinnerTeamId === home.id) previousWinnerSide = 'HOME';
+        else if (prevWinnerTeamId === away.id) previousWinnerSide = 'AWAY';
+      }
+    }
+    const tie = resolveTie({
+      rule: opts.tie?.rule ?? null,
+      roundNumber: session.roundNumber,
+      scoreHome: session.scoreHome,
+      scoreAway: session.scoreAway,
+      chosen: opts.tie?.chosen,
+      previousWinnerSide,
+    });
+    if (tie.kind === 'need-choice') {
+      throw new BadRequestException(
+        tie.methods.length > 1
+          ? 'Empate! Escolha quem venceu no par ou ímpar ou nos pênaltis.'
+          : tie.methods[0] === 'PENALTIS'
+            ? 'Empate! Escolha quem venceu nos pênaltis.'
+            : 'Empate! Escolha quem venceu no par ou ímpar.',
+      );
     }
     await tx.matchFieldRound.create({
       data: {
@@ -901,8 +976,11 @@ export class MatchFieldSessionService {
         scoreAway: session.scoreAway,
         goals: goals as object,
         durationMs,
+        tieWinner: tie.kind === 'decided' ? tie.winner : null,
+        tieMethod: tie.kind === 'decided' ? tie.method : null,
       },
     });
+    return tie.kind === 'decided' ? tie.winner : null;
   }
 
   private assertPlayerOnFieldSide(
@@ -959,6 +1037,16 @@ export class MatchFieldSessionService {
   }
 
   /** Issue #229 — tempo de cada partida (Regras da pelada / exceção da partida). */
+  /** Issue #227 — critério de desempate da partida (Regras + exceção da partida). */
+  private async tieRuleFor(peladaId: string, matchId: string): Promise<TieBreakRule | null> {
+    const { match, defaults } = await this.loadMatch(peladaId, matchId);
+    const effective = mergeEffectiveMatchRules(
+      defaults,
+      match.rulesOverride as Record<string, unknown> | null,
+    );
+    return readTieBreakRule(effective.extra);
+  }
+
   private async roundLimitFor(peladaId: string, matchId: string): Promise<number> {
     const { match, defaults } = await this.loadMatch(peladaId, matchId);
     const effective = mergeEffectiveMatchRules(

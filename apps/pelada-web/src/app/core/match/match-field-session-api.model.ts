@@ -30,6 +30,8 @@ export type MatchFieldSessionDto = {
   teamsOnField: FieldSessionTeamView[];
   restingTeams: Array<{ sortOrder: number; drawTeamId: string; name: string }>;
   fixedGkMeta: Record<string, unknown>;
+  /** Issue #227 — critério de desempate desta partida (null = empate é empate). */
+  tieBreak?: string | null;
 };
 
 export type PatchMatchFieldSessionBody = {

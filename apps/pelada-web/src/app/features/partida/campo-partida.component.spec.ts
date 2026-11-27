@@ -269,7 +269,64 @@ describe('CampoPartidaComponent §3.6', () => {
     confirmBtn?.click();
     fixture.detectChanges();
 
-    expect(fieldSpy.endRound).toHaveBeenCalledWith('pel-1', 'm1');
+    expect(fieldSpy.endRound).toHaveBeenCalledWith('pel-1', 'm1', {});
+  });
+
+  it('#227 empate com pênaltis: o adm marca quem venceu e isso vai pra API', () => {
+    const c = fixture.componentInstance;
+    c.tieRule.set('PENALTIS');
+    c.fieldSession.update((s) => (s ? { ...s, scoreHome: 1, scoreAway: 1 } : s));
+    c.requestEndRound();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Empate! Quem venceu nos pênaltis?');
+    const winBtns = (Array.from(fixture.nativeElement.querySelectorAll('.confirm-modal button')) as HTMLButtonElement[])
+      .filter((b) => b.textContent?.includes('venceu'));
+    expect(winBtns.length).toBe(2);
+    winBtns[1]!.click();
+    fixture.detectChanges();
+    expect(fieldSpy.endRound).toHaveBeenCalledWith('pel-1', 'm1', { winner: 'AWAY', method: 'PENALTIS' });
+  });
+
+  it('#227 1ª rodada empatada com "quem já estava": escolhe par ou ímpar ou pênaltis', () => {
+    const c = fixture.componentInstance;
+    c.tieRule.set('STAYED');
+    c.fieldSession.update((s) => (s ? { ...s, roundNumber: 1, scoreHome: 0, scoreAway: 0 } : s));
+    c.requestFinishMatch();
+    fixture.detectChanges();
+    const methods = Array.from(fixture.nativeElement.querySelectorAll('.tie-method')) as HTMLButtonElement[];
+    expect(methods.map((b) => b.textContent?.trim())).toEqual(['par ou ímpar', 'pênaltis']);
+    methods[1]!.click();
+    fixture.detectChanges();
+    const home = (Array.from(fixture.nativeElement.querySelectorAll('.confirm-modal button')) as HTMLButtonElement[])
+      .find((b) => b.textContent?.includes('venceu'))!;
+    home.click();
+    expect(fieldSpy.finish).toHaveBeenCalledWith('pel-1', 'm1', { winner: 'HOME', method: 'PENALTIS' });
+  });
+
+  it('#227 o critério vem da sessão desta partida (não das Regras atuais)', () => {
+    const c = fixture.componentInstance;
+    const s = c.fieldSession()!;
+    (c as unknown as { applySessionFromApi: (x: unknown) => void }).applySessionFromApi({
+      ...s,
+      roundNumber: 3,
+      scoreHome: 2,
+      scoreAway: 2,
+      tieBreak: 'PAR_IMPAR',
+    });
+    expect(c.tieRule()).toBe('PAR_IMPAR');
+    expect(c.tieMethods()).toEqual(['PAR_IMPAR']);
+    (c as unknown as { applySessionFromApi: (x: unknown) => void }).applySessionFromApi({ ...s, tieBreak: null });
+    expect(c.tieRule()).toBeNull();
+  });
+
+  it('#227 sem empate (ou regra que decide sozinha) continua só "Confirmar"', () => {
+    const c = fixture.componentInstance;
+    c.tieRule.set('LAST_IN');
+    c.fieldSession.update((s) => (s ? { ...s, roundNumber: 3, scoreHome: 1, scoreAway: 1 } : s));
+    c.requestEndRound();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Empate!');
+    expect(fixture.nativeElement.textContent).toContain('Confirmar');
   });
 
   it('cancelar a confirmação não chama a API (issue #191)', () => {
@@ -314,7 +371,7 @@ describe('CampoPartidaComponent §3.6', () => {
     confirmBtn?.click();
     fixture.detectChanges();
 
-    expect(fieldSpy.finish).toHaveBeenCalledWith('pel-1', 'm1');
+    expect(fieldSpy.finish).toHaveBeenCalledWith('pel-1', 'm1', {});
   });
 
   describe('autor do gol (issue #214)', () => {

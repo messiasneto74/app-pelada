@@ -1,3 +1,4 @@
+import { TieChoiceDto } from '../domain/dto/tie-choice.dto';
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -251,8 +252,9 @@ export class MatchesController {
     @CurrentUser() user: AuthUserPayload,
     @Param('peladaId') peladaId: string,
     @Param('matchId') matchId: string,
+    @Body() body: TieChoiceDto,
   ) {
-    return this.fieldSessionService.endRound(user, peladaId, matchId);
+    return this.fieldSessionService.endRound(user, peladaId, matchId, body ?? {});
   }
 
   @Post('peladas/:peladaId/matches/:matchId/field-session/finish')
@@ -262,7 +264,8 @@ export class MatchesController {
     @CurrentUser() user: AuthUserPayload,
     @Param('peladaId') peladaId: string,
     @Param('matchId') matchId: string,
+    @Body() body: TieChoiceDto,
   ) {
-    return this.fieldSessionService.finishSession(user, peladaId, matchId);
+    return this.fieldSessionService.finishSession(user, peladaId, matchId, body ?? {});
   }
 }
