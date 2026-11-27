@@ -162,5 +162,101 @@ if (runHarness) {
         playerName: 'Diana',
       });
     });
+
+    describe('cobrança única por período (issue #231)', () => {
+      async function seed(sub: string, paymentModel: string) {
+        const user = await createUser(prisma, { keycloakSub: sub });
+        const pelada = await createPelada(prisma, { owner: user });
+        await prisma.peladaRules.update({
+          where: { peladaId: pelada.id },
+          data: { extra: { paymentModel } },
+        });
+        const player = await createPlayer(prisma, { peladaId: pelada.id, displayName: 'Bia' });
+        const other = await createPlayer(prisma, { peladaId: pelada.id, displayName: 'Caio' });
+        const token = signTestJwt({ sub, email: user.email ?? 'u@r.c' });
+        const charge = (body: Record<string, unknown>) =>
+          request(app.getHttpServer())
+            .post(`/peladas/${pelada.id}/payments/ledger`)
+            .set('Authorization', `Bearer ${token}`)
+            .send(body);
+        return { pelada, player, other, charge };
+      }
+
+      it('mensal: segunda cobrança do mesmo jogador no mês é recusada (409)', async () => {
+        const { player, other, charge } = await seed('pay-unique-month', 'MONTHLY');
+        await charge({ playerId: player.id, amountCents: 5000 }).expect(201);
+        const dup = await charge({ playerId: player.id, amountCents: 5000 }).expect(409);
+        expect(dup.body.message).toBe('Bia já tem uma cobrança neste mês.');
+        await charge({ playerId: other.id, amountCents: 5000 }).expect(201);
+      });
+
+      it('semanal: segunda cobrança na semana é recusada; cobrança antiga não conta', async () => {
+        const { pelada, player, charge } = await seed('pay-unique-week', 'WEEKLY');
+        await prisma.paymentLedger.create({
+          data: {
+            peladaId: pelada.id,
+            playerId: player.id,
+            amountCents: 1000,
+            createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          },
+        });
+        await charge({ playerId: player.id, amountCents: 1000 }).expect(201);
+        const dup = await charge({ playerId: player.id, amountCents: 1000 }).expect(409);
+        expect(dup.body.message).toBe('Bia já tem uma cobrança nesta semana.');
+      });
+
+      it('por partida: uma por partida; outra partida pode', async () => {
+        const { pelada, player, charge } = await seed('pay-unique-match', 'PER_MATCH');
+        const m1 = await createMatch(prisma, { pelada });
+        const m2 = await createMatch(prisma, { pelada });
+        await charge({ playerId: player.id, matchId: m1.id, amountCents: 2000 }).expect(201);
+        const dup = await charge({ playerId: player.id, matchId: m1.id, amountCents: 2000 }).expect(409);
+        expect(dup.body.message).toBe('Bia já tem uma cobrança nesta partida.');
+        await charge({ playerId: player.id, matchId: m2.id, amountCents: 2000 }).expect(201);
+      });
+
+      it('duas cobranças ao mesmo tempo: só uma entra, a outra 409', async () => {
+        const { pelada, player, charge } = await seed('pay-unique-race', 'MONTHLY');
+        const results = await Promise.all(
+          Array.from({ length: 6 }, () => charge({ playerId: player.id, amountCents: 5000 })),
+        );
+        const statuses = results.map((r) => r.status).sort();
+        expect(statuses).toEqual([201, 409, 409, 409, 409, 409]);
+        const rows = await prisma.paymentLedger.count({ where: { peladaId: pelada.id, playerId: player.id } });
+        expect(rows).toBe(1);
+      });
+
+      it('por partida sem partida (Caixa): uma por dia; a de ontem não conta', async () => {
+        const { pelada, player, other, charge } = await seed('pay-unique-day', 'PER_MATCH');
+        await prisma.paymentLedger.create({
+          data: {
+            peladaId: pelada.id,
+            playerId: player.id,
+            amountCents: 2000,
+            createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          },
+        });
+        await charge({ playerId: player.id, amountCents: 2000 }).expect(201);
+        const dup = await charge({ playerId: player.id, amountCents: 2000 }).expect(409);
+        expect(dup.body.message).toBe('Bia já tem uma cobrança hoje.');
+        await charge({ playerId: other.id, amountCents: 2000 }).expect(201);
+      });
+
+      it('quinzenal: segunda cobrança na quinzena é recusada; a de 40 dias atrás não conta', async () => {
+        const { pelada, player, other, charge } = await seed('pay-unique-biweek', 'BIWEEKLY');
+        await prisma.paymentLedger.create({
+          data: {
+            peladaId: pelada.id,
+            playerId: player.id,
+            amountCents: 3000,
+            createdAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+          },
+        });
+        await charge({ playerId: player.id, amountCents: 3000 }).expect(201);
+        const dup = await charge({ playerId: player.id, amountCents: 3000 }).expect(409);
+        expect(dup.body.message).toBe('Bia já tem uma cobrança nesta quinzena.');
+        await charge({ playerId: other.id, amountCents: 3000 }).expect(201);
+      });
+    });
   });
 }

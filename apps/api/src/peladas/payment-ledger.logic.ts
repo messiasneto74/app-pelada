@@ -193,3 +193,34 @@ function formatMatchLabel(iso: string): string {
   const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
   return `Partida ${dd}/${mm}`;
 }
+
+/**
+ * Issue #231 — cada jogador só pode ter uma cobrança por período do modelo de
+ * pagamento da pelada. Por partida: a partida informada; sem partida, o dia
+ * (horário de Brasília). Semanal/quinzenal/mensal: o período do modelo.
+ */
+export type ChargeUniquenessWindow =
+  | { kind: 'match'; matchId: string; label: string }
+  | { kind: 'period'; start: Date; end: Date; label: string };
+
+const BRT_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+export function chargeUniquenessWindow(
+  model: PeladaPaymentModel,
+  matchId: string | null | undefined,
+  now: Date,
+): ChargeUniquenessWindow {
+  if (model === 'PER_MATCH') {
+    if (matchId) {
+      return { kind: 'match', matchId, label: 'nesta partida' };
+    }
+    const local = new Date(now.getTime() - BRT_OFFSET_MS);
+    const start = new Date(
+      Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) + BRT_OFFSET_MS,
+    );
+    return { kind: 'period', start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000), label: 'hoje' };
+  }
+  const { start, end } = periodBoundsForPaymentModel(model, now);
+  const label = model === 'WEEKLY' ? 'nesta semana' : model === 'MONTHLY' ? 'neste mês' : 'nesta quinzena';
+  return { kind: 'period', start, end, label };
+}
