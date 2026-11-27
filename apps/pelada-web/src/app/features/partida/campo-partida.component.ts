@@ -25,7 +25,8 @@ import {
 } from './campo-timer-visibility.logic';
 import {
   awayTeamName,
-  displayElapsedMs,
+  DEFAULT_ROUND_LIMIT_MS,
+  displayRoundMs,
   formatTimerLabel,
   goalScorerOptions,
   homeTeamName,
@@ -116,6 +117,12 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
           </div>
 
           <p class="timer" aria-live="polite">{{ timerLabel() }}</p>
+          <p class="pelada-muted timer-limit">
+            de {{ limitLabel() }}
+            @if (timeUp()) {
+              · <strong class="time-up">Tempo esgotado — encerre a rodada</strong>
+            }
+          </p>
           <pelada-progress [value]="timerPercent()" />
 
           @if (s.restingTeams.length > 0) {
@@ -159,11 +166,11 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
                 peladaButton
                 variant="secondary"
                 [peladaButtonBlock]="true"
-                [disabled]="busy()"
+                [disabled]="busy() || timeUp()"
                 (click)="toggleTimer()"
               >
                 {{
-                  s.timerRunning ? 'Pausar cronômetro' : 'Iniciar cronômetro'
+                  s.timerRunning && !timeUp() ? 'Pausar cronômetro' : 'Iniciar cronômetro'
                 }}
               </button>
               <button
@@ -430,6 +437,14 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
         font-size: 1.5rem;
         color: var(--pelada-muted);
       }
+      .timer-limit {
+        text-align: center;
+        margin: 0 0 var(--pelada-space-2);
+        font-size: 0.8125rem;
+      }
+      .time-up {
+        color: #b91c1c;
+      }
       .timer {
         text-align: center;
         font-size: 2rem;
@@ -535,28 +550,27 @@ export class CampoPartidaComponent implements OnInit {
     return pelada ? this.orgContext.isOrganizador(pelada.id) : false;
   });
 
-  readonly timerLabel = computed(() => {
+  /** Issue #229 — cronômetro da rodada atual, parando no tempo das Regras. */
+  private readonly roundMs = computed(() => {
     const s = this.fieldSession();
-    if (!s) {
-      return '00:00';
-    }
-    return formatTimerLabel(
-      displayElapsedMs(s, this.tickMs(), this.sessionElapsedAnchorMs()),
-    );
+    return s ? displayRoundMs(s, this.tickMs(), this.sessionElapsedAnchorMs()) : 0;
   });
 
-  readonly timerPercent = computed(() => {
-    const s = this.fieldSession();
-    if (!s) {
-      return 0;
-    }
-    const ms = displayElapsedMs(
-      s,
-      this.tickMs(),
-      this.sessionElapsedAnchorMs(),
-    );
-    return Math.min(100, Math.round((ms / DEFAULT_ROUND_MS) * 100));
-  });
+  private readonly roundLimitMs = computed(
+    () => this.fieldSession()?.roundLimitMs ?? DEFAULT_ROUND_LIMIT_MS,
+  );
+
+  readonly timerLabel = computed(() => formatTimerLabel(this.roundMs()));
+
+  readonly limitLabel = computed(() => formatTimerLabel(this.roundLimitMs()));
+
+  readonly timeUp = computed(
+    () => !!this.fieldSession() && this.roundMs() >= this.roundLimitMs(),
+  );
+
+  readonly timerPercent = computed(() =>
+    Math.min(100, Math.round((this.roundMs() / this.roundLimitMs()) * 100)),
+  );
 
   readonly gkHint = computed(() => {
     const meta = this.fieldSession()?.fixedGkMeta ?? {};

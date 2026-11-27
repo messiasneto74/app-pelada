@@ -13,6 +13,10 @@ model User {
   keycloakSub String   @unique @map("keycloak_sub")
   email       String?
   phone       String?
+  /// Issue #226 — nome da conta (Meu perfil); replica no nome dos jogadores vinculados.
+  name        String?
+  /// Issue #226 — foto da conta (Meu perfil); replica na foto dos jogadores vinculados.
+  photoUrl    String?  @map("photo_url")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -195,6 +199,8 @@ model MatchFieldSession {
   scoreHome           Int                 @default(0) @map("score_home")
   scoreAway           Int                 @default(0) @map("score_away")
   elapsedMs           Int                 @default(0) @map("elapsed_ms")
+  /// Issue #229 — valor de elapsedMs quando a rodada atual começou.
+  roundStartedElapsedMs Int               @default(0) @map("round_started_elapsed_ms")
   timerRunningSince   DateTime?           @map("timer_running_since")
   goalHistory         Json                @default("[]") @map("goal_history")
   fixedGkMeta         Json                @default("{}") @map("fixed_gk_meta")

@@ -324,6 +324,33 @@ if (runHarness) {
       }
     });
 
+    it('goleiro fixo por time: fixar os 2 goleiros no mesmo time retorna 400 (issue #220)', async () => {
+      const { pelada, match, token, p1, p2 } = await seedDrawableMatch();
+      const url = `/peladas/${pelada.id}/matches/${match.id}/draw`;
+      await request(app.getHttpServer())
+        .post(url)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ mode: 'BALANCED', seed: 1 })
+        .expect(201);
+
+      const res = await request(app.getHttpServer())
+        .post(url)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ mode: 'BALANCED', pinnedByTeam: { '0': [p1.id, p2.id] } })
+        .expect(400);
+      expect(res.body.message).toContain('Time A não pode ter 2 goleiros fixos');
+
+      const ok = await request(app.getHttpServer())
+        .post(url)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ mode: 'RANDOM', pinnedByTeam: { '0': [p1.id] } });
+      expect(ok.status).toBe(201);
+      const gks = new Set([p1.id, p2.id]);
+      for (const t of ok.body.teams as { playerIds: string[] }[]) {
+        expect(t.playerIds.filter((id) => gks.has(id))).toHaveLength(1);
+      }
+    });
+
     it('PATCH /draw/swap com a partida em campo explica o motivo (issue #221)', async () => {
       const { pelada, match, token } = await seedDrawableMatch();
       const draw = await request(app.getHttpServer())
@@ -345,7 +372,7 @@ if (runHarness) {
       );
     });
 
-        it('POST /draw antes de fechar lista retorna 400', async () => {
+    it('POST /draw antes de fechar lista retorna 400', async () => {
       const sub = `draw-bad-${Math.random().toString(36).slice(2, 8)}`;
       const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
       const pelada = await createPelada(prisma, { owner: org });

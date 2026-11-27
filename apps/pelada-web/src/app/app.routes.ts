@@ -226,6 +226,12 @@ export const routes: Routes = [
           ),
         data: { title: 'Caixa', eyebrow: 'Pagamentos' },
       },
+      {
+        path: 'perfil',
+        loadComponent: () =>
+          import('./features/perfil/meu-perfil.component').then((m) => m.MeuPerfilComponent),
+        data: { title: 'Meu perfil', eyebrow: 'Conta' },
+      },
       { path: '', pathMatch: 'full', redirectTo: 'inicio' },
     ],
   },

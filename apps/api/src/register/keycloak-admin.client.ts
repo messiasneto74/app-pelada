@@ -104,6 +104,86 @@ export class KeycloakAdminClient {
     );
   }
 
+  /** Issue #226 — atualiza o nome (firstName/lastName) da conta no Keycloak. */
+  async updateUserName(sub: string, name: string): Promise<void> {
+    const { firstName, lastName } = splitDisplayName(name);
+    await this.adminRequest(`/${encodeURIComponent(sub)}`, 'PUT', { firstName, lastName });
+  }
+
+  /** Issue #226 — troca a senha da conta (já validada a senha atual). */
+  async resetPassword(sub: string, newPassword: string): Promise<void> {
+    await this.adminRequest(`/${encodeURIComponent(sub)}/reset-password`, 'PUT', {
+      type: 'password',
+      value: newPassword,
+      temporary: false,
+    });
+  }
+
+  /**
+   * Issue #226 — confere a senha atual tentando um login (password grant) no
+   * client público do app. `false` = senha errada; erro = IdP indisponível.
+   */
+  async verifyPassword(username: string, password: string): Promise<boolean> {
+    const baseUrl = this.config.get<string>('KEYCLOAK_URL')?.trim();
+    const realm = this.config.get<string>('KEYCLOAK_REALM')?.trim() || 'pelada';
+    const clientId = this.config.get<string>('KEYCLOAK_CLIENT_ID')?.trim() || 'pelada-web';
+    if (!baseUrl) {
+      throw new ServiceUnavailableException('Keycloak não configurado.');
+    }
+    let response: Response;
+    try {
+      response = await fetch(
+        `${baseUrl.replace(/\/$/, '')}/realms/${encodeURIComponent(realm)}/protocol/openid-connect/token`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'password',
+            client_id: clientId,
+            username,
+            password,
+          }),
+        },
+      );
+    } catch {
+      throw new ServiceUnavailableException('Não foi possível contactar o Keycloak.');
+    }
+    if (response.ok) {
+      return true;
+    }
+    if (response.status === 400 || response.status === 401) {
+      return false;
+    }
+    throw new ServiceUnavailableException('Keycloak indisponível. Tente novamente.');
+  }
+
+  private async adminRequest(path: string, method: 'PUT', body: unknown): Promise<void> {
+    const baseUrl = this.config.get<string>('KEYCLOAK_URL')?.trim();
+    const realm = this.config.get<string>('KEYCLOAK_REALM')?.trim() || 'pelada';
+    const adminUser = this.config.get<string>('KEYCLOAK_ADMIN')?.trim();
+    const adminPassword = this.config.get<string>('KEYCLOAK_ADMIN_PASSWORD');
+    if (!baseUrl || !adminUser || !adminPassword) {
+      throw new ServiceUnavailableException('Keycloak Admin não configurado.');
+    }
+    const { tokenUrl, usersUrl } = buildKeycloakAdminUrls(baseUrl, realm);
+    const token = await this.fetchAdminToken(tokenUrl, adminUser, adminPassword);
+    let response: Response;
+    try {
+      response = await fetch(`${usersUrl}${path}`, {
+        method,
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      throw new ServiceUnavailableException('Não foi possível contactar o Keycloak.');
+    }
+    if (!response.ok) {
+      throw new ServiceUnavailableException(
+        'O Keycloak recusou a alteração da conta. Tente novamente mais tarde.',
+      );
+    }
+  }
+
   private async fetchAdminToken(
     tokenUrl: string,
     username: string,

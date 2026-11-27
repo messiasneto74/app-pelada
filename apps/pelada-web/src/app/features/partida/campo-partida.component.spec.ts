@@ -1,4 +1,4 @@
-import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
+import { ComponentFixture, discardPeriodicTasks, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
@@ -177,7 +177,58 @@ describe('CampoPartidaComponent §3.6', () => {
     f2.destroy();
   }));
 
-  it('partida encerrada mostra link "Ver resumo do dia" com matchId na query', fakeAsync(() => {
+  it('cronômetro da rodada: mostra o limite e avisa quando o tempo acaba (issue #229)', fakeAsync(() => {
+    fieldSpy.getSession.and.returnValue(
+      of({ ...fieldSession, roundElapsedMs: 60_000, roundLimitMs: 60_000, timeUp: true }),
+    );
+    const f2 = TestBed.createComponent(CampoPartidaComponent);
+    f2.detectChanges();
+    tick();
+    f2.detectChanges();
+    const text = f2.nativeElement.textContent as string;
+    expect(text).toContain('01:00');
+    expect(text).toContain('de 01:00');
+    expect(text).toContain('Tempo esgotado');
+    const start = (Array.from(f2.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]).find(
+      (b) => b.textContent?.trim() === 'Iniciar cronômetro',
+    );
+    expect(start?.disabled).toBeTrue();
+    f2.destroy();
+  }));
+
+  it('tempo acaba com o cronômetro ainda rodando: botão vira "Iniciar" travado (issue #229)', fakeAsync(() => {
+    fieldSpy.getSession.and.returnValue(
+      of({ ...fieldSession, timerRunning: true, timerRunningSince: new Date().toISOString(), roundElapsedMs: 59_000, roundLimitMs: 60_000, timeUp: false }),
+    );
+    const f2 = TestBed.createComponent(CampoPartidaComponent);
+    f2.detectChanges();
+    tick(3000);
+    f2.detectChanges();
+    const btns = Array.from(f2.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    expect(btns.some((b) => b.textContent?.trim() === 'Pausar cronômetro')).toBeFalse();
+    const start = btns.find((b) => b.textContent?.trim() === 'Iniciar cronômetro');
+    expect(start?.disabled).toBeTrue();
+    expect(f2.nativeElement.textContent).toContain('Tempo esgotado');
+    f2.destroy();
+    discardPeriodicTasks();
+  }));
+
+    it('cronômetro mostra o tempo da rodada, não o acumulado do dia (issue #229)', fakeAsync(() => {
+    fieldSpy.getSession.and.returnValue(
+      of({ ...fieldSession, elapsedMs: 900_000, roundElapsedMs: 15_000, roundLimitMs: 600_000, timeUp: false }),
+    );
+    const f2 = TestBed.createComponent(CampoPartidaComponent);
+    f2.detectChanges();
+    tick();
+    f2.detectChanges();
+    const text = f2.nativeElement.textContent as string;
+    expect(text).toContain('00:15');
+    expect(text).toContain('de 10:00');
+    expect(text).not.toContain('Tempo esgotado');
+    f2.destroy();
+  }));
+
+    it('partida encerrada mostra link "Ver resumo do dia" com matchId na query', fakeAsync(() => {
     fieldSpy.getSession.and.returnValue(
       of({ ...fieldSession, finishedAt: new Date().toISOString() }),
     );

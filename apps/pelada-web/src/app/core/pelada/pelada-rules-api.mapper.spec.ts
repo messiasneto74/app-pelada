@@ -73,7 +73,7 @@ describe('pelada-rules-api.mapper', () => {
       customStyleTagsText: 'zagueiro de área, bate escanteio',
       autoPromoteAfterPresences: 5,
       feeCents: 2000,
-      autoFillQueueOnCapacityIncrease: true,
+      roundMinutes: 12,
     });
     expect(body['goalkeeperMode']).toBe('FIXED_PER_TEAM');
     expect(body['allowPlayerSelfEdit']).toBe(true);
@@ -87,7 +87,22 @@ describe('pelada-rules-api.mapper', () => {
     ]);
     expect(extra['autoPromoteAfterPresences']).toBe(5);
     expect(extra['feeCents']).toBe(2000);
-    expect(extra['autoFillQueueOnCapacityIncrease']).toBe(true);
+    expect(extra['roundMinutes']).toBe(12);
+  });
+
+  it('issue #229 — tempo de cada partida: API → formulário, com padrão e limites', () => {
+    const base = {
+      peladaId: 'p1',
+      playersPerTeam: 6,
+      teamCount: 2,
+      modality: 'campo',
+      goalkeeperMode: 'ROTATING',
+      fixedListOnly: false,
+      drawWeights: {},
+    };
+    expect(peladaRulesFromApi({ ...base, extra: { roundMinutes: 8 } } as never).roundMinutes).toBe(8);
+    expect(peladaRulesFromApi({ ...base, extra: {} } as never).roundMinutes).toBe(20);
+    expect(peladaRulesFromApi({ ...base, extra: { roundMinutes: 999 } } as never).roundMinutes).toBe(20);
   });
 
   it('issue #190 — mapeia feeCents (API → formulário, round-trip)', () => {

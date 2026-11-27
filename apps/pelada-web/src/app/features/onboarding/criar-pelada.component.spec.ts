@@ -1,3 +1,4 @@
+import { AuthService } from '../../auth/auth.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -53,6 +54,17 @@ describe('CriarPeladaComponent', () => {
 
   afterEach(() => {
     peladaContext.clearActivePelada();
+  });
+
+  it('tem "Sair da conta" pra quem ainda não tem pelada (issue #224)', () => {
+    const auth = TestBed.inject(AuthService);
+    const logout = spyOn(auth, 'logout');
+    const btn = (Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]).find(
+      (b) => b.textContent?.trim() === 'Sair da conta',
+    );
+    expect(btn).toBeDefined();
+    btn!.click();
+    expect(logout).toHaveBeenCalled();
   });
 
   it('renderiza formulário de onboarding', () => {

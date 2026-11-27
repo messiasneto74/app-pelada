@@ -1,5 +1,7 @@
 import {
   applyTimerAction,
+  capRoundClock,
+  readRoundLimitMs,
   computeNextRoundSides,
   readRotationPolicy,
   snapshotElapsedMs,
@@ -82,6 +84,29 @@ describe('match-field-rotation.logic', () => {
       expect(wasRoundPlayed({ ...base, scoreHome: 1, goalCount: 1 })).toBe(true);
       expect(wasRoundPlayed({ ...base, durationMs: 1500 })).toBe(true);
       expect(wasRoundPlayed({ ...base, timerRunning: true })).toBe(true);
+    });
+  });
+
+  describe('cronômetro por rodada (issue #229)', () => {
+    it('readRoundLimitMs usa extra.roundMinutes (1–120) ou 20 min', () => {
+      expect(readRoundLimitMs({ roundMinutes: 10 })).toBe(600_000);
+      expect(readRoundLimitMs({})).toBe(1_200_000);
+      expect(readRoundLimitMs({ roundMinutes: 0 })).toBe(1_200_000);
+      expect(readRoundLimitMs({ roundMinutes: 500 })).toBe(1_200_000);
+      expect(readRoundLimitMs(null)).toBe(1_200_000);
+    });
+
+    it('capRoundClock: tempo da rodada a partir do início dela, parando no limite', () => {
+      expect(capRoundClock(130_000, 100_000, 60_000)).toEqual({
+        cumulativeMs: 130_000,
+        roundElapsedMs: 30_000,
+        timeUp: false,
+      });
+      expect(capRoundClock(200_000, 100_000, 60_000)).toEqual({
+        cumulativeMs: 160_000,
+        roundElapsedMs: 60_000,
+        timeUp: true,
+      });
     });
   });
 });
