@@ -179,3 +179,29 @@ export function attendanceCounts(rows: AttendanceRowInput[]): {
   }
   return { confirmed, pending, queue, declined };
 }
+
+/**
+ * Issue #230 — com a opção "puxar a fila ao aumentar as vagas" ligada, os
+ * primeiros da fila sobem até preencher as vagas livres (mesma ordem da
+ * desistência: fixos primeiro, depois a posição na fila).
+ */
+export function fillFreeSpotsFromQueue(
+  rows: AttendanceRowInput[],
+  capacity: number,
+): AttendanceRowInput[] {
+  let current = rows;
+  while (countConfirmed(current) < capacity) {
+    const next = pickNextQueuedPlayerId(current);
+    if (!next) {
+      break;
+    }
+    current = applyAttendanceStatusChange(current, next, 'CONFIRMED', capacity);
+  }
+  return current;
+}
+
+/** Issue #230 — opção das Regras (desligada por padrão). */
+export function readAutoFillQueueOnCapacityIncrease(extra: unknown): boolean {
+  const bag = extra && typeof extra === 'object' ? (extra as Record<string, unknown>) : {};
+  return bag['autoFillQueueOnCapacityIncrease'] === true;
+}

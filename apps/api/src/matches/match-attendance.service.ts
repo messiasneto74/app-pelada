@@ -21,6 +21,8 @@ import type { MatchRulesOverrideJson } from './match-rules.merge';
 import {
   applyAttendanceStatusChange,
   attendanceCounts,
+  fillFreeSpotsFromQueue,
+  readAutoFillQueueOnCapacityIncrease,
   type AttendanceRowInput,
 } from './match-attendance.logic';
 
@@ -271,6 +273,27 @@ export class MatchAttendanceService {
       data: { status: 'SCHEDULED', listClosedAt: null },
     });
     return this.buildListDto(updated, defaults);
+  }
+
+  /**
+   * Issue #230 — depois que as vagas da partida aumentam, sobe gente da fila
+   * (se a opção estiver ligada nas Regras). Só antes do sorteio.
+   */
+  async fillFreeSpotsAfterCapacityChange(matchId: string, defaults: PeladaRules): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT 1 FROM matches WHERE id = ${matchId} FOR UPDATE`;
+      const match = await tx.match.findUniqueOrThrow({ where: { id: matchId } });
+      if (match.status !== 'SCHEDULED' && match.status !== 'LIST_CLOSED') {
+        return;
+      }
+      const effective = this.effectiveRulesForMatch(match, defaults);
+      if (!readAutoFillQueueOnCapacityIncrease(effective.extra)) {
+        return;
+      }
+      const capacity = computeMatchCapacity(effective);
+      const rows = await this.loadRowInputs(tx, matchId, effective.fixedListOnly);
+      await this.persistRowInputs(tx, matchId, rows, fillFreeSpotsFromQueue(rows, capacity));
+    });
   }
 
   private async applyStatusForPlayer(

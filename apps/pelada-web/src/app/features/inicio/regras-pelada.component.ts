@@ -144,6 +144,13 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <p class="pelada-muted hint">
           Marcar jogadores como fixos no elenco só fica disponível com esta opção ligada.
         </p>
+        <pelada-switch [(checked)]="autoFillQueueOnCapacityIncrease">
+          Puxar a fila ao aumentar as vagas
+        </pelada-switch>
+        <p class="pelada-muted hint">
+          Ligado: se as vagas de uma partida aumentarem antes do sorteio, os primeiros da fila
+          entram automaticamente.
+        </p>
         <pelada-switch [(checked)]="allowPlayerSelfEdit">
           Jogador edita o próprio perfil
         </pelada-switch>
@@ -299,6 +306,8 @@ export class RegrasPeladaComponent implements OnInit {
   readonly paymentSegment = model('PER_MATCH');
   readonly drawSegment = model('BALANCED');
   readonly fixedListOnly = model(false);
+  /** Issue #230 */
+  readonly autoFillQueueOnCapacityIncrease = model(false);
   readonly allowPlayerSelfEdit = model(false);
   readonly scoringSegment = model<ScoringMode>('rating');
   readonly drawUseStyleTags = model(true);
@@ -423,6 +432,7 @@ export class RegrasPeladaComponent implements OnInit {
     return {
       ...this.values(),
       fixedListOnly: this.fixedListOnly(),
+      autoFillQueueOnCapacityIncrease: this.autoFillQueueOnCapacityIncrease(),
       allowPlayerSelfEdit: this.allowPlayerSelfEdit(),
       paymentModel: this.paymentSegment() as PaymentModel,
       drawMode: this.drawSegment() as PeladaRulesFormValues['drawMode'],
@@ -433,6 +443,7 @@ export class RegrasPeladaComponent implements OnInit {
 
   private syncSegmentsFromValues(v: PeladaRulesFormValues): void {
     this.fixedListOnly.set(v.fixedListOnly);
+    this.autoFillQueueOnCapacityIncrease.set(v.autoFillQueueOnCapacityIncrease);
     this.allowPlayerSelfEdit.set(v.allowPlayerSelfEdit);
     this.paymentSegment.set(v.paymentModel);
     this.drawSegment.set(v.drawMode);
