@@ -21,6 +21,11 @@ export const TIE_METHOD_LABEL: Record<TieChoiceMethod, string> = {
   PENALTIS: 'pênaltis',
 };
 
+export const TIE_METHOD_WITH_PREP: Record<TieChoiceMethod, string> = {
+  PAR_IMPAR: 'no par ou ímpar',
+  PENALTIS: 'nos pênaltis',
+};
+
 export function readTieBreakRule(raw: unknown): TieBreakRule | null {
   return raw === 'PAR_IMPAR' || raw === 'PENALTIS' || raw === 'LAST_IN' || raw === 'STAYED' ? raw : null;
 }

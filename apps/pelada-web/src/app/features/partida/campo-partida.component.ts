@@ -17,6 +17,7 @@ import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.servic
 import {
   readTieBreakRule,
   TIE_METHOD_LABEL,
+  TIE_METHOD_WITH_PREP,
   tieChoiceMethods,
   type TieBreakRule,
   type TieChoiceMethod,
@@ -329,7 +330,7 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
             @if (tieMethods().length > 0 && fieldSession(); as s) {
               <!-- Issue #227 — empate: o adm marca quem venceu o desempate. -->
               <p class="tie-lead">
-                Empate! Quem venceu no {{ tieMethodLabel(tieMethod()) }}?
+                Empate! Quem venceu {{ tieMethodPrep(tieMethod()) }}?
               </p>
               @if (tieMethods().length > 1) {
                 <div class="tie-methods" role="group" aria-label="Como foi o desempate">
@@ -815,6 +816,9 @@ export class CampoPartidaComponent implements OnInit {
   });
   tieMethodLabel(m: TieChoiceMethod): string {
     return TIE_METHOD_LABEL[m];
+  }
+  tieMethodPrep(m: TieChoiceMethod): string {
+    return TIE_METHOD_WITH_PREP[m];
   }
 
   confirmPendingAction(tieWinner?: 'HOME' | 'AWAY'): void {

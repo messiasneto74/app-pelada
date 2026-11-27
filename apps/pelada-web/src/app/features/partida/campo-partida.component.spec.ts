@@ -278,7 +278,7 @@ describe('CampoPartidaComponent §3.6', () => {
     c.fieldSession.update((s) => (s ? { ...s, scoreHome: 1, scoreAway: 1 } : s));
     c.requestEndRound();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Empate! Quem venceu no pênaltis?');
+    expect(fixture.nativeElement.textContent).toContain('Empate! Quem venceu nos pênaltis?');
     const winBtns = (Array.from(fixture.nativeElement.querySelectorAll('.confirm-modal button')) as HTMLButtonElement[])
       .filter((b) => b.textContent?.includes('venceu'));
     expect(winBtns.length).toBe(2);
