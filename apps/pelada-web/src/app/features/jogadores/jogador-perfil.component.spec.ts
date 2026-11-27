@@ -3,7 +3,7 @@ import {
   HttpClientTestingModule,
   HttpTestingController,
 } from '@angular/common/http/testing';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService } from '../../auth/auth.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
@@ -274,6 +274,79 @@ describe('JogadorPerfilComponent editar oculto (3.8)', () => {
     expect(hiddenFixture.nativeElement.textContent).not.toContain(
       'Editar perfil (adm)',
     );
+    expect(hiddenFixture.nativeElement.textContent).not.toContain('Remover da pelada');
+  });
+});
+
+describe('JogadorPerfilComponent remover da pelada (issue #223)', () => {
+  let removeSpy: jasmine.Spy;
+
+  beforeEach(async () => {
+    removeSpy = jasmine.createSpy('removePlayer').and.returnValue(of(undefined));
+    await TestBed.configureTestingModule({
+      imports: [JogadorPerfilComponent],
+      providers: [
+        provideRouter([
+          { path: 'jogadores/:playerId', component: JogadorPerfilComponent },
+          { path: 'jogadores', component: JogadorPerfilComponent },
+        ]),
+        routeProvider,
+        peladaContextProvider,
+        rosterServiceProvider,
+        {
+          provide: PeladaPlayerProfileService,
+          useValue: { ...profileServiceProvider.useValue, removePlayer: removeSpy },
+        },
+        { provide: PeladaRulesApiService, useValue: rulesApiMock(false) },
+        { provide: PeladaOrganizadorContextService, useValue: orgContextMock(true) },
+        { provide: AuthService, useValue: authMock('user-org') },
+      ],
+    }).compileComponents();
+  });
+
+  async function render() {
+    const f = TestBed.createComponent(JogadorPerfilComponent);
+    f.detectChanges();
+    await f.whenStable();
+    await Promise.resolve();
+    f.detectChanges();
+    return f;
+  }
+  const btn = (f: ComponentFixture<JogadorPerfilComponent>, label: string) =>
+    (Array.from(f.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]).find(
+      (b) => b.textContent?.trim() === label,
+    );
+
+  it('organizador vê "Remover da pelada" e precisa confirmar (avisa que apaga o histórico)', async () => {
+    const f = await render();
+    btn(f, 'Remover da pelada')!.click();
+    f.detectChanges();
+    const text = f.nativeElement.textContent as string;
+    expect(removeSpy).not.toHaveBeenCalled();
+    expect(text).toContain('Remover Carlos Lima da pelada?');
+    expect(text).toContain('todo o histórico');
+  });
+
+  it('confirmar remove o jogador e volta pro elenco', async () => {
+    const f = await render();
+    const router = TestBed.inject(Router);
+    const nav = spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
+    btn(f, 'Remover da pelada')!.click();
+    f.detectChanges();
+    btn(f, 'Remover')!.click();
+    f.detectChanges();
+    expect(removeSpy).toHaveBeenCalledWith('p1', 'pl1');
+    expect(nav).toHaveBeenCalledWith(['/jogadores']);
+  });
+
+  it('cancelar não remove', async () => {
+    const f = await render();
+    btn(f, 'Remover da pelada')!.click();
+    f.detectChanges();
+    btn(f, 'Cancelar')!.click();
+    f.detectChanges();
+    expect(removeSpy).not.toHaveBeenCalled();
+    expect(f.nativeElement.textContent).not.toContain('da pelada?');
   });
 });
 

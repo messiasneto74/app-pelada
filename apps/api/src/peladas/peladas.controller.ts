@@ -126,6 +126,17 @@ export class PeladasController {
     return this.peladasService.getPeladaMembership(user, peladaId);
   }
 
+  /** Issue #223 — sair da pelada (apaga o jogador e o vínculo da conta). */
+  @Delete('peladas/:peladaId/membership')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  leavePelada(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+  ) {
+    return this.peladaPlayersService.leavePelada(user, peladaId);
+  }
+
   @Get('peladas/:peladaId/players')
   @UseGuards(JwtAuthGuard)
   listPeladaPlayers(
