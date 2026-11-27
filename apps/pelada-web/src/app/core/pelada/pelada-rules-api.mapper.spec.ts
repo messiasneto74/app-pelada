@@ -56,6 +56,7 @@ describe('pelada-rules-api.mapper', () => {
 
   it('mapeia formulário → PATCH', () => {
     const body = peladaRulesToPatchBody({
+      tieBreak: 'PENALTIS',
       playersPerTeam: 6,
       teamCount: 2,
       modality: 'campo',
@@ -90,6 +91,24 @@ describe('pelada-rules-api.mapper', () => {
     expect(extra['feeCents']).toBe(2000);
     expect(extra['roundMinutes']).toBe(12);
     expect(extra['autoFillQueueOnCapacityIncrease']).toBe(true);
+    expect(extra['tieBreak']).toBe('PENALTIS');
+  });
+
+  it('issue #227 — critério de desempate: API → formulário; sem escolha não manda', () => {
+    const base = {
+      peladaId: 'p1',
+      playersPerTeam: 6,
+      teamCount: 2,
+      modality: 'campo',
+      goalkeeperMode: 'ROTATING',
+      fixedListOnly: false,
+      drawWeights: {},
+    };
+    expect(peladaRulesFromApi({ ...base, extra: { tieBreak: 'STAYED' } } as never).tieBreak).toBe('STAYED');
+    const v = peladaRulesFromApi({ ...base, extra: {} } as never);
+    expect(v.tieBreak).toBeNull();
+    const extra = peladaRulesToPatchBody(v)['extra'] as Record<string, unknown>;
+    expect('tieBreak' in extra).toBeFalse();
   });
 
   it('issue #229 — tempo de cada partida: API → formulário, com padrão e limites', () => {

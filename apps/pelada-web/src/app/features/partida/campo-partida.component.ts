@@ -12,7 +12,15 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { interval } from 'rxjs';
 import type { MatchFieldSessionDto } from '../../core/match/match-field-session-api.model';
-import { MatchFieldSessionService } from '../../core/match/match-field-session.service';
+import { MatchFieldSessionService, type TieChoiceBody } from '../../core/match/match-field-session.service';
+import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
+import {
+  readTieBreakRule,
+  TIE_METHOD_LABEL,
+  tieChoiceMethods,
+  type TieBreakRule,
+  type TieChoiceMethod,
+} from '../../core/match/tie-break.logic';
 import { MatchDrawService } from '../../core/match/match-draw.service';
 import { PeladaDashboardService } from '../../core/inicio/pelada-dashboard.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
@@ -318,16 +326,58 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
             <p class="confirm-modal__lead pelada-muted">
               {{ confirmModalMessage() }}
             </p>
+            @if (tieMethods().length > 0 && fieldSession(); as s) {
+              <!-- Issue #227 — empate: o adm marca quem venceu o desempate. -->
+              <p class="tie-lead">
+                Empate! Quem venceu no {{ tieMethodLabel(tieMethod()) }}?
+              </p>
+              @if (tieMethods().length > 1) {
+                <div class="tie-methods" role="group" aria-label="Como foi o desempate">
+                  @for (m of tieMethods(); track m) {
+                    <button
+                      type="button"
+                      class="tie-method"
+                      [class.tie-method--on]="tieMethod() === m"
+                      [attr.aria-pressed]="tieMethod() === m"
+                      (click)="tieMethod.set(m)"
+                    >
+                      {{ tieMethodLabel(m) }}
+                    </button>
+                  }
+                </div>
+              }
+            }
             <div class="confirm-modal__actions">
-              <button
-                type="button"
-                peladaButton
-                variant="lime"
-                [peladaButtonBlock]="true"
-                (click)="confirmPendingAction()"
-              >
-                Confirmar
-              </button>
+              @if (tieMethods().length > 0 && fieldSession(); as s) {
+                <button
+                  type="button"
+                  peladaButton
+                  variant="lime"
+                  [peladaButtonBlock]="true"
+                  (click)="confirmPendingAction('HOME')"
+                >
+                  {{ homeTeamName(s) }} venceu
+                </button>
+                <button
+                  type="button"
+                  peladaButton
+                  variant="lime"
+                  [peladaButtonBlock]="true"
+                  (click)="confirmPendingAction('AWAY')"
+                >
+                  {{ awayTeamName(s) }} venceu
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  peladaButton
+                  variant="lime"
+                  [peladaButtonBlock]="true"
+                  (click)="confirmPendingAction()"
+                >
+                  Confirmar
+                </button>
+              }
               <button
                 type="button"
                 peladaButton
@@ -345,6 +395,29 @@ const DEFAULT_ROUND_MS = 20 * 60 * 1000;
   `,
   styles: [
     `
+      .tie-lead {
+        margin: 0 0 var(--pelada-space-3);
+        font-weight: 700;
+      }
+      .tie-methods {
+        display: flex;
+        gap: var(--pelada-space-2);
+        margin-bottom: var(--pelada-space-3);
+      }
+      .tie-method {
+        flex: 1;
+        min-height: var(--pelada-touch-min);
+        border: 1px solid var(--pelada-line);
+        border-radius: var(--pelada-radius-md);
+        background: var(--pelada-paper);
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .tie-method--on {
+        background: #f0f5e6;
+        border-color: #c5d9a8;
+        color: #486f36;
+      }
       .confirm-modal-backdrop {
         position: fixed;
         inset: 0;
@@ -504,6 +577,7 @@ export class CampoPartidaComponent implements OnInit {
   readonly fieldSession = signal<MatchFieldSessionDto | null>(null);
   readonly actionError = signal<string | null>(null);
   /** Issue #191 — confirmação antes de ação difícil de desfazer. */
+  private readonly rulesApi = inject(PeladaRulesApiService);
   readonly confirmAction = signal<'endRound' | 'finishMatch' | null>(null);
   /** Issue #214 — lado do gol esperando a escolha do autor. */
   readonly goalSide = signal<'HOME' | 'AWAY' | null>(null);
@@ -596,6 +670,14 @@ export class CampoPartidaComponent implements OnInit {
   readonly awayTeamName = awayTeamName;
 
   ngOnInit(): void {
+    // Issue #227 — critério de desempate (pra perguntar quem venceu no empate).
+    const activePelada = this.peladaContext.getActivePelada();
+    if (activePelada) {
+      this.rulesApi.fetchRules(activePelada.id).subscribe({
+        next: (dto) => this.tieRule.set(readTieBreakRule(dto.extra?.['tieBreak'])),
+        error: () => this.tieRule.set(null),
+      });
+    }
     interval(1000)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.tickMs.set(Date.now()));
@@ -704,10 +786,12 @@ export class CampoPartidaComponent implements OnInit {
   }
 
   requestEndRound(): void {
+    this.tieMethod.set(this.tieMethods()[0] ?? 'PAR_IMPAR');
     this.confirmAction.set('endRound');
   }
 
   requestFinishMatch(): void {
+    this.tieMethod.set(this.tieMethods()[0] ?? 'PAR_IMPAR');
     this.confirmAction.set('finishMatch');
   }
 
@@ -715,25 +799,48 @@ export class CampoPartidaComponent implements OnInit {
     this.confirmAction.set(null);
   }
 
-  confirmPendingAction(): void {
+  /** Issue #227 — critério de desempate das Regras. */
+  readonly tieRule = signal<TieBreakRule | null>(null);
+  readonly tieMethod = signal<TieChoiceMethod>('PAR_IMPAR');
+  readonly tieMethods = computed(() => {
+    const s = this.fieldSession();
+    return s
+      ? tieChoiceMethods({
+          rule: this.tieRule(),
+          roundNumber: s.roundNumber,
+          scoreHome: s.scoreHome,
+          scoreAway: s.scoreAway,
+        })
+      : [];
+  });
+  tieMethodLabel(m: TieChoiceMethod): string {
+    return TIE_METHOD_LABEL[m];
+  }
+
+  confirmPendingAction(tieWinner?: 'HOME' | 'AWAY'): void {
     const action = this.confirmAction();
     this.confirmAction.set(null);
+    const methods = this.tieMethods();
+    const tie: TieChoiceBody =
+      tieWinner && methods.length > 0
+        ? { winner: tieWinner, method: methods.includes(this.tieMethod()) ? this.tieMethod() : methods[0] }
+        : {};
     if (action === 'endRound') {
-      this.endRound();
+      this.endRound(tie);
     } else if (action === 'finishMatch') {
-      this.finishMatch();
+      this.finishMatch(tie);
     }
   }
 
-  private endRound(): void {
+  private endRound(tie: TieChoiceBody): void {
     this.runMutation((peladaId, matchId) =>
-      this.fieldApi.endRound(peladaId, matchId),
+      this.fieldApi.endRound(peladaId, matchId, tie),
     );
   }
 
-  private finishMatch(): void {
+  private finishMatch(tie: TieChoiceBody): void {
     this.runMutation((peladaId, matchId) =>
-      this.fieldApi.finish(peladaId, matchId),
+      this.fieldApi.finish(peladaId, matchId, tie),
     );
   }
 

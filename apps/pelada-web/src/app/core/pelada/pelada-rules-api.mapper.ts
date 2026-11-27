@@ -1,3 +1,4 @@
+import { readTieBreakRule } from '../match/tie-break.logic';
 import { parseTagsText } from '../roster/player-profile-edit.logic';
 import type { PeladaRulesFormValues } from './pelada-rules.model';
 import {
@@ -23,6 +24,7 @@ export function peladaRulesFromApi(dto: PeladaRulesApiDto): PeladaRulesFormValue
   const draw = dto.drawWeights ?? {};
   const gkMode = dto.goalkeeperMode;
   return {
+    tieBreak: readTieBreakRule(extra['tieBreak']),
     playersPerTeam: dto.playersPerTeam,
     teamCount: dto.teamCount,
     modality: (dto.modality as PeladaRulesFormValues['modality']) ?? 'campo',
@@ -96,6 +98,7 @@ export function peladaRulesToPatchBody(
       feeCents: values.feeCents,
       roundMinutes: values.roundMinutes,
       autoFillQueueOnCapacityIncrease: values.autoFillQueueOnCapacityIncrease,
+      ...(values.tieBreak ? { tieBreak: values.tieBreak } : {}),
     },
   };
 }

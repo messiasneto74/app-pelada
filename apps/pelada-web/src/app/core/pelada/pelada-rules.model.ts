@@ -12,6 +12,8 @@ export type ScoringMode = 'rating' | 'attributes';
 export type FixedGkRotation = 'RESULT' | 'SIDE' | 'MANUAL_ONLY';
 
 export type PeladaRulesFormValues = {
+  /** Issue #227 — critério de desempate (null = ainda não escolhido: empate é empate). */
+  tieBreak: 'PAR_IMPAR' | 'PENALTIS' | 'LAST_IN' | 'STAYED' | null;
   playersPerTeam: number;
   teamCount: number;
   modality: Modality;
@@ -41,6 +43,7 @@ export type PeladaRulesFormValues = {
 };
 
 export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
+  tieBreak: null,
   playersPerTeam: 6,
   teamCount: 2,
   modality: 'campo',

@@ -1,3 +1,4 @@
+import { TIE_BREAK_OPTIONS } from '../../core/match/tie-break.logic';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, model, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -79,6 +80,27 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
             (input)="patchNumber('teamCount', $event)"
           />
         </pelada-field>
+        <!-- Issue #227 — quem fica quando a rodada empata. -->
+        <p class="tie-title">Empate: quem fica?</p>
+        @for (opt of tieOptions; track opt.value) {
+          <label class="tie-option">
+            <input
+              type="radio"
+              name="rules-tie-break"
+              [value]="opt.value"
+              [checked]="values().tieBreak === opt.value"
+              (change)="patchTieBreak(opt.value)"
+            />
+            <span class="tie-option__main">
+              <span class="tie-option__label">{{ opt.label }}</span>
+              <span class="pelada-muted tie-option__hint">{{ opt.hint }}</span>
+            </span>
+          </label>
+        }
+        <p class="pelada-muted hint">
+          Quem vence o desempate conta como vitória. Empate na 1ª rodada: o adm decide no par ou
+          ímpar ou nos pênaltis.
+        </p>
         <pelada-field
           label="Tempo de cada partida (minutos)"
           forId="round-minutes"
@@ -243,6 +265,26 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
   `,
   styles: [
     `
+      .tie-title {
+        margin: var(--pelada-space-3) 0 var(--pelada-space-2);
+        font-weight: 700;
+      }
+      .tie-option {
+        display: flex;
+        gap: var(--pelada-space-2);
+        align-items: flex-start;
+        padding: var(--pelada-space-2) 0;
+      }
+      .tie-option__main {
+        display: flex;
+        flex-direction: column;
+      }
+      .tie-option__label {
+        font-weight: 600;
+      }
+      .tie-option__hint {
+        font-size: 0.8125rem;
+      }
       pelada-card {
         display: block;
         margin-bottom: var(--pelada-space-4);
@@ -335,6 +377,12 @@ export class RegrasPeladaComponent implements OnInit {
     this.values.set(loaded);
     this.syncSegmentsFromValues(loaded);
     this.rulesReady.set(true);
+  }
+
+  readonly tieOptions = TIE_BREAK_OPTIONS;
+
+  patchTieBreak(rule: PeladaRulesFormValues['tieBreak']): void {
+    this.values.update((v) => ({ ...v, tieBreak: rule }));
   }
 
   patchNumber(field: 'playersPerTeam' | 'teamCount' | 'roundMinutes', event: Event): void {
