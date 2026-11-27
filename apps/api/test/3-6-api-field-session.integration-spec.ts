@@ -434,7 +434,69 @@ if (runHarness) {
       expect(rounds[1]!.durationMs).toBeLessThan(rounds[0]!.durationMs);
     });
 
-    it('GET field-session/summary agrega vitórias, goleada, perdedor e artilheiro do dia', async () => {
+    it('cronômetro por rodada: para no tempo das Regras e zera na rodada seguinte (issue #229)', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { extra: { roundMinutes: 1 } },
+      });
+      const base = `/peladas/${pelada.id}/matches/${match.id}/field-session`;
+      const start = await request(app.getHttpServer())
+        .post(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+      expect(start.body.roundLimitMs).toBe(60_000);
+      expect(start.body.roundElapsedMs).toBe(0);
+
+      // simula o cronômetro rodando há 2 minutos (limite é 1)
+      await prisma.matchFieldSession.update({
+        where: { matchId: match.id },
+        data: { timerRunningSince: new Date(Date.now() - 120_000) },
+      });
+      let s = await request(app.getHttpServer())
+        .get(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+      expect(s.body.roundElapsedMs).toBe(60_000);
+      expect(s.body.timeUp).toBe(true);
+      expect(s.body.timerRunning).toBe(false);
+
+      // pausar grava o relógio parado no limite; não dá pra reiniciar
+      s = await request(app.getHttpServer())
+        .patch(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ timer: 'pause' })
+        .expect(200);
+      expect(s.body.elapsedMs).toBe(60_000);
+      const again = await request(app.getHttpServer())
+        .patch(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ timer: 'start' })
+        .expect(400);
+      expect(again.body.message).toContain('O tempo desta partida acabou');
+
+      // encerrar a rodada: duração gravada = 1 min; rodada 2 começa do zero
+      const next = await request(app.getHttpServer())
+        .post(`${base}/end-round`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+      expect(next.body.roundNumber).toBe(2);
+      expect(next.body.roundElapsedMs).toBe(0);
+      expect(next.body.timeUp).toBe(false);
+      const round1 = await prisma.matchFieldRound.findFirstOrThrow({
+        where: { matchId: match.id, roundNumber: 1 },
+      });
+      expect(round1.durationMs).toBe(60_000);
+
+      await request(app.getHttpServer())
+        .patch(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ timer: 'start' })
+        .expect(200);
+    });
+
+        it('GET field-session/summary agrega vitórias, goleada, perdedor e artilheiro do dia', async () => {
       const { pelada, match, orgToken } = await seedThreeTeamDraw();
       const start = await request(app.getHttpServer())
         .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)

@@ -195,6 +195,8 @@ model MatchFieldSession {
   scoreHome           Int                 @default(0) @map("score_home")
   scoreAway           Int                 @default(0) @map("score_away")
   elapsedMs           Int                 @default(0) @map("elapsed_ms")
+  /// Issue #229 — valor de elapsedMs quando a rodada atual começou.
+  roundStartedElapsedMs Int               @default(0) @map("round_started_elapsed_ms")
   timerRunningSince   DateTime?           @map("timer_running_since")
   goalHistory         Json                @default("[]") @map("goal_history")
   fixedGkMeta         Json                @default("{}") @map("fixed_gk_meta")

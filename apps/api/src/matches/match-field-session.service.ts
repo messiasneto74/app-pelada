@@ -27,7 +27,9 @@ import {
   applyTimerAction,
   computeNextRoundSides,
   readFixedGkRotation,
+  capRoundClock,
   readRotationPolicy,
+  readRoundLimitMs,
   snapshotElapsedMs,
   wasRoundPlayed,
   updateFixedGkMeta,
@@ -49,6 +51,12 @@ export type MatchFieldSessionDto = {
   scoreHome: number;
   scoreAway: number;
   elapsedMs: number;
+  /** Issue #229 — tempo da rodada atual (zera a cada rodada, para no limite). */
+  roundElapsedMs: number;
+  /** Issue #229 — tempo de cada partida definido nas Regras. */
+  roundLimitMs: number;
+  /** Issue #229 — a rodada chegou no tempo definido. */
+  timeUp: boolean;
   timerRunning: boolean;
   timerRunningSince: string | null;
   finishedAt: string | null;
@@ -135,7 +143,7 @@ export class MatchFieldSessionService {
     if (!session) {
       throw new NotFoundException('Sessão em campo ainda não iniciada.');
     }
-    return this.toDto(session, draw.teams);
+    return this.toDto(session, draw.teams, await this.roundLimitFor(peladaId, matchId));
   }
 
   /** Resumo "do dia": agregação por time a partir das rodadas já persistidas desta partida. */
@@ -484,7 +492,7 @@ export class MatchFieldSessionService {
       return created;
     });
 
-    return this.toDto(session, draw.teams);
+    return this.toDto(session, draw.teams, readRoundLimitMs(effective.extra));
   }
 
   async patchSession(
@@ -497,6 +505,7 @@ export class MatchFieldSessionService {
     await this.assertOrganizador(peladaId, user.id);
     const { draw } = await this.loadDrawContext(peladaId, matchId);
     const existing = await this.requireOpenSession(matchId);
+    const limitMs = await this.roundLimitFor(peladaId, matchId);
 
     if (
       !body.timer &&
@@ -538,12 +547,26 @@ export class MatchFieldSessionService {
       let timerRunningSince = session.timerRunningSince;
 
       if (body.timer) {
+        const clock = capRoundClock(
+          snapshotElapsedMs(elapsedMs, timerRunningSince),
+          session.roundStartedElapsedMs,
+          limitMs,
+        );
+        if (body.timer === 'start' && clock.timeUp) {
+          throw new BadRequestException(
+            'O tempo desta partida acabou. Encerre a rodada pra começar a próxima.',
+          );
+        }
         const next = applyTimerAction(
           elapsedMs,
           timerRunningSince,
           body.timer,
         );
-        elapsedMs = next.elapsedMs;
+        // Issue #229 — ao pausar, o relógio para no tempo da rodada.
+        elapsedMs =
+          body.timer === 'pause'
+            ? capRoundClock(next.elapsedMs, session.roundStartedElapsedMs, limitMs).cumulativeMs
+            : next.elapsedMs;
         timerRunningSince = next.timerRunningSince;
       }
 
@@ -580,7 +603,7 @@ export class MatchFieldSessionService {
       });
     });
 
-    return this.toDto(updated, draw.teams);
+    return this.toDto(updated, draw.teams, limitMs);
   }
 
   async endRound(
@@ -612,10 +635,16 @@ export class MatchFieldSessionService {
         throw new BadRequestException('Partida já encerrada.');
       }
 
-      const elapsedMs = snapshotElapsedMs(
+      const rawElapsedMs = snapshotElapsedMs(
         session.elapsedMs,
         session.timerRunningSince,
       );
+      // Issue #229 — a rodada conta só até o tempo definido nas Regras.
+      const elapsedMs = capRoundClock(
+        rawElapsedMs,
+        session.roundStartedElapsedMs,
+        readRoundLimitMs(effective.extra),
+      ).cumulativeMs;
 
       const next = computeNextRoundSides({
         policy: session.rotationPolicy as FieldRotationPolicy,
@@ -650,6 +679,8 @@ export class MatchFieldSessionService {
           scoreHome: 0,
           scoreAway: 0,
           elapsedMs,
+          // Issue #229 — a próxima rodada começa do zero no cronômetro.
+          roundStartedElapsedMs: elapsedMs,
           timerRunningSince: null,
           goalHistory: [],
           fixedGkMeta: fixedGkMeta as object,
@@ -657,7 +688,7 @@ export class MatchFieldSessionService {
       });
     });
 
-    return this.toDto(updated, draw.teams);
+    return this.toDto(updated, draw.teams, readRoundLimitMs(effective.extra));
   }
 
   async finishSession(
@@ -669,6 +700,7 @@ export class MatchFieldSessionService {
     await this.assertOrganizador(peladaId, user.id);
     const { draw } = await this.loadDrawContext(peladaId, matchId);
     const existing = await this.requireOpenSession(matchId);
+    const limitMs = await this.roundLimitFor(peladaId, matchId);
     const now = new Date();
 
     // Lock + relê sob FOR UPDATE, mesmo motivo do endRound: um gol
@@ -682,11 +714,11 @@ export class MatchFieldSessionService {
         throw new BadRequestException('Partida já encerrada.');
       }
 
-      const elapsedMs = snapshotElapsedMs(
-        session.elapsedMs,
-        session.timerRunningSince,
-        now,
-      );
+      const elapsedMs = capRoundClock(
+        snapshotElapsedMs(session.elapsedMs, session.timerRunningSince, now),
+        session.roundStartedElapsedMs,
+        limitMs,
+      ).cumulativeMs;
 
       // Issue #217: não grava a rodada em andamento se ela nem foi jogada.
       await this.persistRoundHistory(tx, session, draw.teams, elapsedMs, {
@@ -708,12 +740,13 @@ export class MatchFieldSessionService {
       return row;
     });
 
-    return this.toDto(updated, draw.teams);
+    return this.toDto(updated, draw.teams, limitMs);
   }
 
   private toDto(
     session: MatchFieldSession,
     teams: DrawTeam[],
+    roundLimitMs: number,
   ): MatchFieldSessionDto {
     const byOrder = new Map(teams.map((t) => [t.sortOrder, t]));
     const resting = teams
@@ -734,10 +767,12 @@ export class MatchFieldSessionService {
       throw new BadRequestException('Times em campo inconsistentes com o sorteio.');
     }
 
-    const elapsedMs = snapshotElapsedMs(
-      session.elapsedMs,
-      session.timerRunningSince,
+    const clock = capRoundClock(
+      snapshotElapsedMs(session.elapsedMs, session.timerRunningSince),
+      session.roundStartedElapsedMs,
+      roundLimitMs,
     );
+    const elapsedMs = clock.cumulativeMs;
 
     return {
       sessionId: session.id,
@@ -747,7 +782,10 @@ export class MatchFieldSessionService {
       scoreHome: session.scoreHome,
       scoreAway: session.scoreAway,
       elapsedMs,
-      timerRunning: session.timerRunningSince !== null,
+      roundElapsedMs: clock.roundElapsedMs,
+      roundLimitMs,
+      timeUp: clock.timeUp,
+      timerRunning: session.timerRunningSince !== null && !clock.timeUp,
       timerRunningSince: session.timerRunningSince?.toISOString() ?? null,
       finishedAt: session.finishedAt?.toISOString() ?? null,
       teamsOnField: [
@@ -918,6 +956,16 @@ export class MatchFieldSessionService {
       throw new BadRequestException('Sorteie os times antes de ir a campo.');
     }
     return { draw, teamCount: draw.teams.length };
+  }
+
+  /** Issue #229 — tempo de cada partida (Regras da pelada / exceção da partida). */
+  private async roundLimitFor(peladaId: string, matchId: string): Promise<number> {
+    const { match, defaults } = await this.loadMatch(peladaId, matchId);
+    const effective = mergeEffectiveMatchRules(
+      defaults,
+      match.rulesOverride as Record<string, unknown> | null,
+    );
+    return readRoundLimitMs(effective.extra);
   }
 
   private async loadMatch(
