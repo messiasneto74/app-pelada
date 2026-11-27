@@ -6,6 +6,7 @@ import { OAuthService } from 'angular-oauth2-oidc';
 import { of, throwError } from 'rxjs';
 import {
   AuthService,
+  endKeycloakSession,
   mapPasswordLoginError,
   mapRegisterError,
 } from './auth.service';
@@ -391,5 +392,81 @@ describe('AuthService.continueAfterLogin', () => {
       });
       expect(peladaContext.setActivePelada).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('Issue #224 — sair também no Keycloak', () => {
+  it('endKeycloakSession faz POST no logout do realm com client_id e refresh_token', async () => {
+    const fetchFn = jasmine
+      .createSpy('fetch')
+      .and.resolveTo(new Response(null, { status: 204 }));
+    await endKeycloakSession('http://kc/realms/pelada/', 'pelada-web', 'rt-123', fetchFn);
+    const [url, init] = fetchFn.calls.mostRecent().args as [string, RequestInit];
+    expect(url).toBe('http://kc/realms/pelada/protocol/openid-connect/logout');
+    expect(init.method).toBe('POST');
+    const body = new URLSearchParams(init.body as string);
+    expect(body.get('client_id')).toBe('pelada-web');
+    expect(body.get('refresh_token')).toBe('rt-123');
+  });
+
+  it('endKeycloakSession rejeita quando o Keycloak responde erro', async () => {
+    const fetchFn = jasmine
+      .createSpy('fetch')
+      .and.resolveTo(new Response(null, { status: 400 }));
+    await expectAsync(
+      endKeycloakSession('http://kc/realms/pelada', 'pelada-web', 'rt', fetchFn),
+    ).toBeRejected();
+  });
+
+  function setup(refreshToken: string | null) {
+    const oauth = {
+      getRefreshToken: jasmine.createSpy('getRefreshToken').and.returnValue(refreshToken),
+      issuer: 'http://kc/realms/pelada',
+      clientId: 'pelada-web',
+      logOut: jasmine.createSpy('logOut'),
+      configure: jasmine.createSpy('configure'),
+    };
+    const router = { navigateByUrl: jasmine.createSpy('navigateByUrl').and.resolveTo(true) };
+    const peladaContext = { clearActivePelada: jasmine.createSpy('clearActivePelada') };
+    TestBed.configureTestingModule({
+      providers: [
+        AuthService,
+        { provide: OAuthService, useValue: oauth },
+        { provide: HttpClient, useValue: { get: jasmine.createSpy('get'), post: jasmine.createSpy('post') } },
+        { provide: Router, useValue: router },
+        { provide: PeladaContextService, useValue: peladaContext },
+        { provide: PeladaApiService, useValue: { listMyPeladas: jasmine.createSpy('listMyPeladas') } },
+      ],
+    });
+    return { service: TestBed.inject(AuthService), oauth, router, peladaContext };
+  }
+
+  it('logout encerra a sessão no Keycloak, apaga tokens locais e vai pra /entrar', async () => {
+    const fetchSpy = spyOn(window, 'fetch').and.resolveTo(new Response(null, { status: 204 }));
+    const { service, oauth, router, peladaContext } = setup('rt-abc');
+    await service.logout();
+    expect(peladaContext.clearActivePelada).toHaveBeenCalled();
+    expect(oauth.logOut).toHaveBeenCalledWith(true);
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/entrar');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchSpy.calls.mostRecent().args as [string, RequestInit];
+    expect(url).toBe('http://kc/realms/pelada/protocol/openid-connect/logout');
+    expect(new URLSearchParams(init.body as string).get('refresh_token')).toBe('rt-abc');
+  });
+
+  it('logout com Keycloak fora do ar ainda sai do app (sem erro)', async () => {
+    spyOn(window, 'fetch').and.rejectWith(new TypeError('Failed to fetch'));
+    const { service, oauth, router } = setup('rt-abc');
+    await expectAsync(service.logout()).toBeResolved();
+    expect(oauth.logOut).toHaveBeenCalledWith(true);
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/entrar');
+  });
+
+  it('logout sem refresh token não chama o Keycloak', async () => {
+    const fetchSpy = spyOn(window, 'fetch');
+    const { service, oauth } = setup(null);
+    await service.logout();
+    expect(oauth.logOut).toHaveBeenCalledWith(true);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

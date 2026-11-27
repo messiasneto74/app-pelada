@@ -230,11 +230,26 @@ export class AuthService {
     this.loginWithRedirect();
   }
 
-  logout(): void {
+  /**
+   * Issue #224 — sai no app **e no Keycloak**: encerra a sessão do usuário no
+   * IdP (logout back-channel com o refresh token) e limpa os tokens locais.
+   * Sem isso a sessão SSO do Keycloak (ex.: entrou com Google) continuava viva
+   * e o próximo "Entrar" voltava pra mesma conta sem pedir nada.
+   */
+  logout(): Promise<void> {
+    const refreshToken = this.oauth.getRefreshToken();
+    const issuer = this.oauth.issuer;
+    const clientId = this.oauth.clientId;
     this.peladaContext.clearActivePelada();
-    // true = limpa tokens localmente sem ir à UI de logout do Keycloak
+    // true = limpa tokens localmente sem redirecionar pra tela de logout do Keycloak
     this.oauth.logOut(true);
     void this.router.navigateByUrl('/entrar');
+    if (!refreshToken || !issuer || !clientId) {
+      return Promise.resolve();
+    }
+    return endKeycloakSession(issuer, clientId, refreshToken).catch(() => {
+      /* IdP fora do ar: tokens locais já foram apagados */
+    });
   }
 
   isLoggedIn(): boolean {
@@ -340,5 +355,29 @@ export class AuthService {
     if (!this.oauth.tokenEndpoint) {
       await this.oauth.loadDiscoveryDocument();
     }
+  }
+}
+
+/**
+ * Issue #224 — `POST {issuer}/protocol/openid-connect/logout` com o refresh
+ * token encerra a sessão do usuário no Keycloak (cliente público: só
+ * `client_id`). Usa `fetch` (fora do interceptor de Bearer) com `keepalive`
+ * pra terminar mesmo se a página navegar.
+ */
+export async function endKeycloakSession(
+  issuer: string,
+  clientId: string,
+  refreshToken: string,
+  fetchFn: typeof fetch = (...args) => fetch(...args),
+): Promise<void> {
+  const body = new URLSearchParams({ client_id: clientId, refresh_token: refreshToken });
+  const res = await fetchFn(`${issuer.replace(/\/$/, '')}/protocol/openid-connect/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+    keepalive: true,
+  });
+  if (!res.ok) {
+    throw new Error(`Keycloak logout falhou: ${res.status}`);
   }
 }

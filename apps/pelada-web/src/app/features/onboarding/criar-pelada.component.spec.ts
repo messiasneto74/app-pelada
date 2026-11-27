@@ -67,7 +67,7 @@ describe('CriarPeladaComponent', () => {
     expect(logout).toHaveBeenCalled();
   });
 
-    it('renderiza formulário de onboarding', () => {
+  it('renderiza formulário de onboarding', () => {
     expect(fixture.nativeElement.querySelector('#pelada-nome')).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('Criar pelada');
   });
