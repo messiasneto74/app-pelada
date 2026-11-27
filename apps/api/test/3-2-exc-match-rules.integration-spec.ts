@@ -84,7 +84,82 @@ if (runHarness) {
       expect(stored?.rulesOverride).toMatchObject({ playersPerTeam: 8 });
     });
 
-    it('PATCH .../rules-override returns 403 for non-organizador', async () => {
+    describe('puxar a fila ao aumentar as vagas (issue #230)', () => {
+      async function seedQueue(sub: string, autoFill: boolean) {
+        const user = await createUser(prisma, { keycloakSub: sub });
+        const pelada = await createPelada(prisma, { owner: user });
+        await prisma.peladaRules.update({
+          where: { peladaId: pelada.id },
+          data: {
+            playersPerTeam: 4,
+            teamCount: 2,
+            capacity: null,
+            extra: { autoFillQueueOnCapacityIncrease: autoFill },
+          },
+        });
+        const match = await createMatch(prisma, { pelada });
+        const token = signTestJwt({ sub, email: user.email ?? 'q@f.g' });
+        const players = [];
+        for (let i = 0; i < 10; i++) {
+          players.push(
+            await prisma.player.create({ data: { peladaId: pelada.id, displayName: `J${i}` } }),
+          );
+        }
+        for (const p of players) {
+          await request(app.getHttpServer())
+            .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${p.id}`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({ status: 'CONFIRMED' })
+            .expect(200);
+        }
+        return { pelada, match, token, players };
+      }
+      const counts = async (matchId: string) => {
+        const rows = await prisma.matchAttendance.findMany({ where: { matchId } });
+        return {
+          confirmed: rows.filter((r) => r.status === 'CONFIRMED').length,
+          queue: rows.filter((r) => r.status === 'QUEUE').length,
+        };
+      };
+
+      it('ligado: 4 → 5 na linha sobe os 2 da fila', async () => {
+        const { pelada, match, token, players } = await seedQueue('exc-autofill-on', true);
+        expect(await counts(match.id)).toEqual({ confirmed: 8, queue: 2 });
+        await request(app.getHttpServer())
+          .patch(`/peladas/${pelada.id}/matches/${match.id}/rules-override`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ playersPerTeam: 5 })
+          .expect(200);
+        expect(await counts(match.id)).toEqual({ confirmed: 10, queue: 0 });
+        const last = await prisma.matchAttendance.findUniqueOrThrow({
+          where: { matchId_playerId: { matchId: match.id, playerId: players[9].id } },
+        });
+        expect(last.status).toBe('CONFIRMED');
+      });
+
+      it('desligado: as vagas aumentam mas a fila fica como está', async () => {
+        const { pelada, match, token } = await seedQueue('exc-autofill-off', false);
+        await request(app.getHttpServer())
+          .patch(`/peladas/${pelada.id}/matches/${match.id}/rules-override`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ playersPerTeam: 5 })
+          .expect(200);
+        expect(await counts(match.id)).toEqual({ confirmed: 8, queue: 2 });
+      });
+
+      it('depois do sorteio ninguém sobe', async () => {
+        const { pelada, match, token } = await seedQueue('exc-autofill-drawn', true);
+        await prisma.match.update({ where: { id: match.id }, data: { status: 'DRAWN' } });
+        await request(app.getHttpServer())
+          .patch(`/peladas/${pelada.id}/matches/${match.id}/rules-override`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ playersPerTeam: 5 })
+          .expect(200);
+        expect(await counts(match.id)).toEqual({ confirmed: 8, queue: 2 });
+      });
+    });
+
+        it('PATCH .../rules-override returns 403 for non-organizador', async () => {
       const orgSub = 'exc-org';
       const jogSub = 'exc-jog';
       const org = await createUser(prisma, { keycloakSub: orgSub });

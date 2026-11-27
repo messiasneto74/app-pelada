@@ -1,3 +1,4 @@
+import { MatchAttendanceService } from './match-attendance.service';
 import {
   ForbiddenException,
   Injectable,
@@ -39,6 +40,7 @@ export class MatchesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly meService: MeService,
+    private readonly attendance: MatchAttendanceService,
   ) {}
 
   async createMatch(
@@ -141,6 +143,9 @@ export class MatchesService {
         rulesOverride: nextOverride as Prisma.InputJsonValue,
       },
     });
+
+    // Issue #230 — mais vagas: sobe gente da fila (se ligado nas Regras).
+    await this.attendance.fillFreeSpotsAfterCapacityChange(matchId, defaults);
 
     return this.toView(updated, defaults);
   }

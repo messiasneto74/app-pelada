@@ -73,6 +73,7 @@ describe('pelada-rules-api.mapper', () => {
       customStyleTagsText: 'zagueiro de área, bate escanteio',
       autoPromoteAfterPresences: 5,
       feeCents: 2000,
+      autoFillQueueOnCapacityIncrease: true,
     });
     expect(body['goalkeeperMode']).toBe('FIXED_PER_TEAM');
     expect(body['allowPlayerSelfEdit']).toBe(true);
@@ -86,6 +87,7 @@ describe('pelada-rules-api.mapper', () => {
     ]);
     expect(extra['autoPromoteAfterPresences']).toBe(5);
     expect(extra['feeCents']).toBe(2000);
+    expect(extra['autoFillQueueOnCapacityIncrease']).toBe(true);
   });
 
   it('issue #190 — mapeia feeCents (API → formulário, round-trip)', () => {

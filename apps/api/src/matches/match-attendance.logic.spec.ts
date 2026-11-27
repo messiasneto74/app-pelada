@@ -2,6 +2,8 @@ import {
   applyAttendanceStatusChange,
   attendanceCounts,
   computeMatchCapacityFromRules,
+  fillFreeSpotsFromQueue,
+  readAutoFillQueueOnCapacityIncrease,
   nextQueuePosition,
   pickNextQueuedPlayerId,
   resolveNextStatus,
@@ -100,6 +102,29 @@ describe('match-attendance.logic', () => {
     expect(next.find((r) => r.playerId === 'comum')).toMatchObject({
       status: 'QUEUE',
       queuePosition: 1,
+    });
+  });
+
+  describe('puxar a fila ao aumentar as vagas (issue #230)', () => {
+    const r = (playerId: string, status: AttendanceRowInput['status'], queuePosition: number | null, isFixedList = false): AttendanceRowInput =>
+      ({ playerId, status, queuePosition, isGuest: false, isFixedList });
+
+    it('sobem os primeiros da fila até preencher as vagas', () => {
+      const rows = [r('a', 'CONFIRMED', null), r('b', 'CONFIRMED', null), r('q2', 'QUEUE', 2), r('q1', 'QUEUE', 1), r('q3', 'QUEUE', 3)];
+      const next = fillFreeSpotsFromQueue(rows, 4);
+      expect(next.filter((x) => x.status === 'CONFIRMED').map((x) => x.playerId).sort()).toEqual(['a', 'b', 'q1', 'q2']);
+      expect(next.find((x) => x.playerId === 'q3')?.status).toBe('QUEUE');
+    });
+
+    it('fixo da fila tem prioridade; sem vaga livre ninguém sobe', () => {
+      const rows = [r('a', 'CONFIRMED', null), r('q1', 'QUEUE', 1), r('fx', 'QUEUE', 2, true)];
+      expect(fillFreeSpotsFromQueue(rows, 2).find((x) => x.playerId === 'fx')?.status).toBe('CONFIRMED');
+      expect(fillFreeSpotsFromQueue(rows, 1)).toEqual(rows);
+    });
+
+    it('opção das Regras desligada por padrão', () => {
+      expect(readAutoFillQueueOnCapacityIncrease({})).toBe(false);
+      expect(readAutoFillQueueOnCapacityIncrease({ autoFillQueueOnCapacityIncrease: true })).toBe(true);
     });
   });
 });

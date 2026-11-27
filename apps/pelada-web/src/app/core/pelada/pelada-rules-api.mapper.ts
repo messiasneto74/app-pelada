@@ -63,6 +63,7 @@ export function peladaRulesFromApi(dto: PeladaRulesApiDto): PeladaRulesFormValue
       (extra['feeCents'] as number) >= 0
         ? Math.floor(extra['feeCents'] as number)
         : DEFAULT_PELADA_RULES.feeCents,
+    autoFillQueueOnCapacityIncrease: extra['autoFillQueueOnCapacityIncrease'] === true,
   };
 }
 
@@ -86,6 +87,7 @@ export function peladaRulesToPatchBody(
       customStyleTags: parseTagsText(values.customStyleTagsText),
       autoPromoteAfterPresences: values.autoPromoteAfterPresences,
       feeCents: values.feeCents,
+      autoFillQueueOnCapacityIncrease: values.autoFillQueueOnCapacityIncrease,
     },
   };
 }

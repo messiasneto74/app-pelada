@@ -34,6 +34,8 @@ export type PeladaRulesFormValues = {
   autoPromoteAfterPresences: number;
   /** Issue #190 — valor padrão da contribuição (em centavos), usado ao lançar cobrança no Caixa. 0 = sem valor padrão. */
   feeCents: number;
+  /** Issue #230 — ao aumentar as vagas de uma partida, os primeiros da fila sobem. */
+  autoFillQueueOnCapacityIncrease: boolean;
 };
 
 export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
@@ -54,6 +56,7 @@ export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
   customStyleTagsText: '',
   autoPromoteAfterPresences: 0,
   feeCents: 0,
+  autoFillQueueOnCapacityIncrease: false,
 };
 
 export function validateGoalkeeperToggles(
