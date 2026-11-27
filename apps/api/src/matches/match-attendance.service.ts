@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  ConflictException,
 } from '@nestjs/common';
 import type { AttendanceStatus, Match, PeladaRules, Prisma } from '@prisma/client';
 import type { AuthUserPayload } from '../auth/auth-user';
@@ -16,6 +17,7 @@ import {
   shouldAutoPromoteGuest,
 } from '../peladas/pelada-guest-auto-promote.logic';
 import { PrismaService } from '../prisma/prisma.service';
+import { openChargeMessage, playersWithOpenCharge, readUnpaidPolicy } from './unpaid-lock';
 import { mergeEffectiveMatchRules } from './match-rules.merge';
 import type { MatchRulesOverrideJson } from './match-rules.merge';
 import {
@@ -36,9 +38,13 @@ export type MatchAttendanceEntryDto = {
   isGoalkeeper: boolean;
   position: string | null;
   rating: number | null;
+  /** Issue #263 — com "Trava" nas Regras: tem cobrança em aberto (não entra na lista). */
+  openCharge: boolean;
 };
 
 export type MatchAttendanceListDto = {
+  /** Issue #263 — o que a pelada faz com quem não pagou. */
+  unpaidPolicy: 'BLOCK' | 'CHARGE';
   matchId: string;
   peladaId: string;
   listClosed: boolean;
@@ -313,10 +319,24 @@ export class MatchAttendanceService {
       const effective = this.effectiveRulesForMatch(match, defaults);
       const capacity = computeMatchCapacity(effective);
       const rows = await this.loadRowInputs(tx, matchId, effective.fixedListOnly);
-      if (!rows.some((r) => r.playerId === playerId)) {
+      const current = rows.find((r) => r.playerId === playerId);
+      if (!current) {
         throw new NotFoundException(
           'Jogador não está na lista desta partida.',
         );
+      }
+      // Issue #263 — "Trava": quem tem cobrança em aberto não entra na lista
+      // (nem se confirmando, nem pelo adm) até o adm confirmar o pagamento.
+      const entersList =
+        (requested === 'CONFIRMED' || requested === 'QUEUE') &&
+        current.status !== 'CONFIRMED' &&
+        current.status !== 'QUEUE';
+      if (entersList && readUnpaidPolicy(effective.extra) === 'BLOCK') {
+        const open = await playersWithOpenCharge(tx, match.peladaId, matchId, [playerId]);
+        if (open.has(playerId)) {
+          const player = await tx.player.findUniqueOrThrow({ where: { id: playerId } });
+          throw new ConflictException(openChargeMessage(player.displayName));
+        }
       }
       const nextRows = applyAttendanceStatusChange(
         rows,
@@ -494,6 +514,16 @@ export class MatchAttendanceService {
       isGuest: a.isGuest,
       isFixedList: a.player.isFixedList,
     }));
+    const unpaidPolicy = readUnpaidPolicy(this.effectiveRulesForMatch(match, defaults).extra);
+    const open =
+      unpaidPolicy === 'BLOCK'
+        ? await playersWithOpenCharge(
+            this.prisma,
+            match.peladaId,
+            match.id,
+            attendances.map((a) => a.playerId),
+          )
+        : new Set<string>();
     const entries: MatchAttendanceEntryDto[] = attendances.map((a) => ({
       playerId: a.playerId,
       displayName: a.isGuest
@@ -506,6 +536,7 @@ export class MatchAttendanceService {
       isGoalkeeper: a.player.isGoalkeeper,
       position: a.player.position,
       rating: a.player.rating,
+      openCharge: open.has(a.playerId),
     }));
     return {
       matchId: match.id,
@@ -515,6 +546,7 @@ export class MatchAttendanceService {
       listClosed: match.status !== 'SCHEDULED',
       capacity,
       presenceMode: match.presenceMode,
+      unpaidPolicy,
       counts: attendanceCounts(rowInputs),
       entries,
     };

@@ -1,5 +1,7 @@
+import { playersWithOpenCharge, readUnpaidPolicy } from './unpaid-lock';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -138,6 +140,24 @@ export class MatchDrawService {
     );
 
     const confirmedPlayers = await this.loadConfirmedPlayers(match);
+    // Issue #263 — "Trava": quem tem cobrança em aberto não entra no sorteio.
+    if (readUnpaidPolicy(effective.extra) === 'BLOCK') {
+      const open = await playersWithOpenCharge(
+        this.prisma,
+        peladaId,
+        matchId,
+        confirmedPlayers.map((p) => p.id),
+      );
+      if (open.size > 0) {
+        const names = confirmedPlayers
+          .filter((p) => open.has(p.id))
+          .map((p) => p.displayName)
+          .join(', ');
+        throw new ConflictException(
+          `Cobrança em aberto: ${names}. Tire da lista ou confirme o pagamento no Caixa antes de sortear.`,
+        );
+      }
+    }
     const drawInput = this.buildDrawInput(effective, match, confirmedPlayers, dto);
 
     let result: DrawTeamsResult;
