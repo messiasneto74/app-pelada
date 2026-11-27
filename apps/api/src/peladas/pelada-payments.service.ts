@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -9,6 +10,7 @@ import type { PaymentLedgerQueryDto } from '../domain/dto/payment-ledger-query.d
 import { MeService } from '../me/me.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  chargeUniquenessWindow,
   groupLedgerEntries,
   periodBoundsForPaymentModel,
   readFeeCentsFromRules,
@@ -97,6 +99,28 @@ export class PeladaPaymentsService {
       if (!match) {
         throw new NotFoundException('Partida não encontrada nesta pelada.');
       }
+    }
+
+    // Issue #231 — uma cobrança por jogador no período do modelo de pagamento.
+    const rules = await this.prisma.peladaRules.findUnique({ where: { peladaId } });
+    const window = chargeUniquenessWindow(
+      readPaymentModelFromRules(rules?.extra),
+      dto.matchId,
+      new Date(),
+    );
+    const duplicate = await this.prisma.paymentLedger.findFirst({
+      where: {
+        peladaId,
+        playerId: dto.playerId,
+        ...(window.kind === 'match'
+          ? { matchId: window.matchId }
+          : { createdAt: { gte: window.start, lt: window.end } }),
+      },
+    });
+    if (duplicate) {
+      throw new ConflictException(
+        `${player.displayName} já tem uma cobrança ${window.label}.`,
+      );
     }
 
     const created = await this.prisma.paymentLedger.create({
