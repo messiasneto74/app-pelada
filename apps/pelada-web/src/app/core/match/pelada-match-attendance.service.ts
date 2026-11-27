@@ -20,6 +20,8 @@ export type MatchAttendanceListApiDto = {
     status: MatchAttendanceStatusApi;
     queuePosition: number | null;
     isGuest: boolean;
+    /** Issue #234 — ordem de chegada na lista numerada. */
+    statusChangedAt?: string;
   }[];
 };
 

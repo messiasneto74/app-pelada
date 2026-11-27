@@ -1,3 +1,4 @@
+import { PRESENCE_MODE_OPTIONS } from '../../core/match/create-match-form.logic';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, model, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -138,6 +139,38 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       </pelada-card>
 
       <pelada-card title="Presença e pagamento">
+        <!-- Issue #234 — o adm escolhe como a presença é marcada. -->
+        <p class="presence-mode__title">Como marcar presença</p>
+        @for (opt of presenceOptions; track opt.value) {
+          <label class="presence-option">
+            <input
+              type="radio"
+              name="rules-presence-mode"
+              [value]="opt.value"
+              [checked]="values().presenceMode === opt.value"
+              (change)="patchPresenceMode(opt.value)"
+            />
+            <span class="presence-option__main">
+              <span class="presence-option__label">{{ opt.label }}</span>
+              <span class="pelada-muted presence-option__hint">{{ opt.hint }}</span>
+            </span>
+          </label>
+        }
+        <pelada-field
+          label="Vagas na lista de espera"
+          forId="waitlist-slots"
+          hint="0 = sem limite. Com a lista cheia, ninguém mais entra."
+        >
+          <input
+            id="waitlist-slots"
+            type="number"
+            min="0"
+            max="50"
+            peladaInput
+            [value]="values().waitlistSlots"
+            (input)="patchNumber('waitlistSlots', $event)"
+          />
+        </pelada-field>
         <pelada-switch [(checked)]="fixedListOnly">
           Jogadores fixos na lista
         </pelada-switch>
@@ -243,6 +276,26 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
   `,
   styles: [
     `
+      .presence-mode__title {
+        margin: 0 0 var(--pelada-space-2);
+        font-weight: 700;
+      }
+      .presence-option {
+        display: flex;
+        gap: var(--pelada-space-2);
+        align-items: flex-start;
+        padding: var(--pelada-space-2) 0;
+      }
+      .presence-option__main {
+        display: flex;
+        flex-direction: column;
+      }
+      .presence-option__label {
+        font-weight: 600;
+      }
+      .presence-option__hint {
+        font-size: 0.8125rem;
+      }
       pelada-card {
         display: block;
         margin-bottom: var(--pelada-space-4);
@@ -337,7 +390,16 @@ export class RegrasPeladaComponent implements OnInit {
     this.rulesReady.set(true);
   }
 
-  patchNumber(field: 'playersPerTeam' | 'teamCount' | 'roundMinutes', event: Event): void {
+  readonly presenceOptions = PRESENCE_MODE_OPTIONS;
+
+  patchPresenceMode(mode: PeladaRulesFormValues['presenceMode']): void {
+    this.values.update((v) => ({ ...v, presenceMode: mode }));
+  }
+
+  patchNumber(
+    field: 'playersPerTeam' | 'teamCount' | 'roundMinutes' | 'waitlistSlots',
+    event: Event,
+  ): void {
     const raw = (event.target as HTMLInputElement).value;
     const n = Number.parseInt(raw, 10);
     this.values.update((v) => ({ ...v, [field]: Number.isNaN(n) ? v[field] : n }));
