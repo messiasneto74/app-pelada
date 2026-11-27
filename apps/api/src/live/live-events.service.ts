@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { filter, map, Observable, Subject } from 'rxjs';
+import { filter, Observable, Subject } from 'rxjs';
 
 /** Issue #233 — o que mudou numa pelada (o app busca de novo só o que precisa). */
 export type LiveScope =
@@ -76,6 +76,3 @@ export function liveEventFromRequest(
   if (rest.startsWith('/rules')) return { peladaId, scope: 'rules', matchId: null };
   return { peladaId, scope: 'pelada', matchId: null };
 }
-
-/** Mapeia o evento pro formato do `@Sse()` do Nest. */
-export const toMessageEvent = map((e: LiveEvent) => ({ type: 'change', data: e }));

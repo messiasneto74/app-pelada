@@ -17,6 +17,7 @@ const runHarness =
 
 type Listener = {
   status: number;
+  ended: boolean;
   events: Array<{ type: string; data: Record<string, unknown>; at: number }>;
   close: () => void;
 };
@@ -32,7 +33,13 @@ function listen(port: number, peladaId: string, token: string): Promise<Listener
         headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' },
       },
       (res: IncomingMessage) => {
-        const out: Listener = { status: res.statusCode ?? 0, events: [], close: () => req.destroy() };
+        const out: Listener = {
+          status: res.statusCode ?? 0,
+          ended: false,
+          events: [],
+          close: () => req.destroy(),
+        };
+        res.on('end', () => (out.ended = true));
         let buf = '';
         res.setEncoding('utf8');
         res.on('data', (chunk: string) => {
@@ -155,6 +162,29 @@ if (runHarness) {
       expect(lOther.events.filter((e) => e.type === 'change')).toHaveLength(0);
       l.close();
       lOther.close();
+    });
+
+    it('removido da pelada: para de receber na hora e o fluxo fecha', async () => {
+      const { pelada, match, orgToken, players } = await seed(2);
+      const l = await listen(port, pelada.id, players[0]!.token);
+      expect(l.status).toBe(200);
+      await request(app.getHttpServer())
+        .delete(`/peladas/${pelada.id}/players/${players[0]!.playerId}`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect((r) => {
+          if (r.status >= 300) throw new Error(`delete ${r.status}`);
+        });
+      // o próprio "apagar jogador" já é uma gravação da pelada: o fluxo confere e fecha
+      await waitFor(() => l.ended);
+      await request(app.getHttpServer())
+        .patch(`/peladas/${pelada.id}/matches/${match.id}/attendance/${players[1]!.playerId}`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ status: 'CONFIRMED' })
+        .expect(200);
+      await new Promise((r) => setTimeout(r, 300));
+      expect(l.events.filter((e) => e.type === 'change')).toHaveLength(0);
+      expect(l.ended).toBe(true);
+      l.close();
     });
 
     it('carga: 50 jogadores conectados ao mesmo tempo recebem o aviso', async () => {

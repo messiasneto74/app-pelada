@@ -14,7 +14,7 @@ export class LiveMemberGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context
       .switchToHttp()
-      .getRequest<{ user: AuthUserPayload; params: { peladaId: string } }>();
+      .getRequest<{ user: AuthUserPayload; params: { peladaId: string }; liveUserId?: string }>();
     const user = await this.me.getOrCreateUser(req.user);
     const member = await this.prisma.peladaMember.findUnique({
       where: { peladaId_userId: { peladaId: req.params.peladaId, userId: user.id } },
@@ -22,6 +22,8 @@ export class LiveMemberGuard implements CanActivate {
     if (!member) {
       throw new ForbiddenException('Você não participa desta pelada.');
     }
+    // O fluxo confere de novo a cada aviso (quem sai da pelada para de receber).
+    req.liveUserId = user.id;
     return true;
   }
 }
