@@ -36,6 +36,8 @@ export type MatchAttendanceEntryDto = {
   isGoalkeeper: boolean;
   position: string | null;
   rating: number | null;
+  /** Issue #234 — quando o status mudou por último (ordem da lista numerada). */
+  statusChangedAt: string;
 };
 
 export type MatchAttendanceListDto = {
@@ -106,9 +108,11 @@ export class MatchAttendanceService {
       matchId,
       user.id,
     );
-    if (match.presenceMode !== 'SELF_CONFIRM') {
+    // Issue #234 — o próprio jogador mexe na presença em "Jogador confirma"
+    // (Vou/Não vou) e em "Lista" (coloca/tira o nome).
+    if (match.presenceMode !== 'SELF_CONFIRM' && match.presenceMode !== 'NAME_LIST') {
       throw new ForbiddenException(
-        'Presença nesta partida é fechada pelo organizador.',
+        'Presença nesta partida é marcada pelo organizador.',
       );
     }
     this.assertListOpenForEdits(match, false);
@@ -506,6 +510,8 @@ export class MatchAttendanceService {
       isGoalkeeper: a.player.isGoalkeeper,
       position: a.player.position,
       rating: a.player.rating,
+      // Issue #234 — ordem da lista numerada (quem entrou primeiro).
+      statusChangedAt: a.updatedAt.toISOString(),
     }));
     return {
       matchId: match.id,

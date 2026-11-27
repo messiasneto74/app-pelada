@@ -430,6 +430,50 @@ if (runHarness) {
         .expect(403);
     });
 
+    it('Issue #234 — NAME_LIST: jogador coloca e tira o próprio nome; lista traz statusChangedAt', async () => {
+      const sub = `att-namelist-${Math.random().toString(36).slice(2, 8)}`;
+      const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+      const playerUser = await createUser(prisma, { keycloakSub: `${sub}-pl` });
+      const pelada = await createPelada(prisma, { owner: org });
+      await prisma.peladaMember.create({
+        data: { peladaId: pelada.id, userId: playerUser.id, role: 'JOGADOR' },
+      });
+      const match = await createMatch(prisma, {
+        pelada,
+        scheduledAt: new Date('2030-11-03T19:00:00Z'),
+      });
+      await prisma.match.update({ where: { id: match.id }, data: { presenceMode: 'NAME_LIST' } });
+      const me = await prisma.player.create({
+        data: { peladaId: pelada.id, userId: playerUser.id, displayName: 'Eu' },
+      });
+      const token = signTestJwt({ sub: `${sub}-pl`, email: playerUser.email ?? 'p@y.z' });
+      const base = `/peladas/${pelada.id}/matches/${match.id}/attendance`;
+
+      await request(app.getHttpServer())
+        .post(`${base}/self`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ action: 'confirm' })
+        .expect(201);
+      const list = await request(app.getHttpServer())
+        .get(base)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      const row = list.body.entries.find((e: { playerId: string }) => e.playerId === me.id);
+      expect(row.status).toBe('CONFIRMED');
+      expect(typeof row.statusChangedAt).toBe('string');
+      expect(Number.isNaN(Date.parse(row.statusChangedAt))).toBe(false);
+
+      await request(app.getHttpServer())
+        .post(`${base}/self`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ action: 'decline' })
+        .expect(201);
+      const after = await prisma.matchAttendance.findFirst({
+        where: { matchId: match.id, playerId: me.id },
+      });
+      expect(after?.status).toBe('DECLINED');
+    });
+
     it('convidado vinculado a conta se autoconfirma e entra na lista em SELF_CONFIRM', async () => {
       const sub = `att-self-guest-${Math.random().toString(36).slice(2, 8)}`;
       const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
