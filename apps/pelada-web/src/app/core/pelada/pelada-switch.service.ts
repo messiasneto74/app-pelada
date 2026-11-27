@@ -29,6 +29,8 @@ export class PeladaSwitchService {
     });
     // A partida aberta era da pelada anterior.
     this.presence.setActiveMatchId(null);
+    // Papel desta pelada já conhecido antes de navegar; a API confirma depois.
+    this.orgContext.setKnownRole(pelada.id, pelada.role);
     this.orgContext.refreshMembership(pelada.id);
     await this.router.navigate(['/inicio']);
   }
