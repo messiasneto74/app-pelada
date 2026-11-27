@@ -49,6 +49,10 @@ export type MatchAttendanceListDto = {
   listClosed: boolean;
   capacity: number;
   presenceMode: string | null;
+  /** Issue #234 — vagas de goleiro da partida (goleiro por time = 1 por time). */
+  goalkeeperSlots: number;
+  /** Issue #234 — vagas na lista de espera da partida (0 = sem limite). */
+  waitlistSlots: number;
   counts: ReturnType<typeof attendanceCounts>;
   entries: MatchAttendanceEntryDto[];
 };
@@ -496,6 +500,9 @@ export class MatchAttendanceService {
     defaults: PeladaRules,
   ): Promise<MatchAttendanceListDto> {
     const capacity = this.capacityForMatch(match, defaults);
+    // Issue #234 — a tela monta a lista com as regras DESTA partida (as mesmas
+    // que a API aplica), não com as Regras atuais da pelada.
+    const effective = this.effectiveRulesForMatch(match, defaults);
     const attendances = await this.prisma.matchAttendance.findMany({
       where: { matchId: match.id },
       include: { player: true },
@@ -531,6 +538,9 @@ export class MatchAttendanceService {
       listClosed: match.status !== 'SCHEDULED',
       capacity,
       presenceMode: match.presenceMode,
+      goalkeeperSlots:
+        effective.goalkeeperMode === 'FIXED_PER_TEAM' ? effective.teamCount : 0,
+      waitlistSlots: readWaitlistSlots(effective.extra),
       counts: attendanceCounts(rowInputs),
       entries,
     };

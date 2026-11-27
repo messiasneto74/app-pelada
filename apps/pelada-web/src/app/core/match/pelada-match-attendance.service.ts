@@ -15,6 +15,9 @@ export type MatchAttendanceListApiDto = {
   listClosed: boolean;
   capacity: number;
   presenceMode: string | null;
+  /** Issue #234 — regras DESTA partida pra montar a lista (vagas de goleiro e de espera). */
+  goalkeeperSlots?: number;
+  waitlistSlots?: number;
   entries: {
     playerId: string;
     status: MatchAttendanceStatusApi;

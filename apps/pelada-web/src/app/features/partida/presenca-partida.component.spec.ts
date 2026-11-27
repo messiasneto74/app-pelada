@@ -591,6 +591,26 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(fixture.nativeElement.textContent).toContain('02- Bruno');
   });
 
+  it('#234 a lista usa as vagas de espera e de goleiro DA PARTIDA (vindas da API)', async () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    api['getList'] = () =>
+      of(
+        serverList(
+          { a1: 'CONFIRMED', b1: 'PENDING' },
+          { capacity: 4, goalkeeperSlots: 2, waitlistSlots: 1 },
+        ),
+      );
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.componentInstance.formatRules.update((r) => ({ ...r, waitlistSlots: 5, goalkeeperPerTeam: false }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const sheet = fixture.componentInstance.sheet();
+    expect(sheet.goalkeepers.map((s) => s.label)).toEqual(['1-', '2-']);
+    expect(sheet.field.map((s) => s.label)).toEqual(['01-', '02-']);
+    expect(sheet.waitlist.map((s) => s.label)).toEqual(['03-']);
+  });
+
   it('lista jogador confirmado com chip', () => {
     expect(fixture.nativeElement.textContent).toContain('01- Ana Silva');
   });

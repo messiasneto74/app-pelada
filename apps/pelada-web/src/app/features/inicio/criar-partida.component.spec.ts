@@ -4,7 +4,7 @@ import {
   HttpTestingController,
 } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
 import { environment } from '../../../environments/environment';
@@ -111,5 +111,47 @@ describe('CriarPartidaComponent (3.3)', () => {
     await fixture.whenStable();
     const router = TestBed.inject(Router);
     expect(router.url).toContain('/partida/presenca');
+  });
+});
+
+describe('CriarPartidaComponent — forma de presença (issue #234)', () => {
+  function setup(rules$: Subject<unknown>) {
+    TestBed.configureTestingModule({
+      imports: [CriarPartidaComponent, HttpClientTestingModule],
+      providers: [
+        provideRouter([]),
+        { provide: PeladaContextService, useValue: { getActivePelada: () => pelada } },
+        { provide: PeladaRulesApiService, useValue: { fetchRules: () => rules$ } },
+      ],
+    });
+    const f = TestBed.createComponent(CriarPartidaComponent);
+    f.detectChanges();
+    return f;
+  }
+  const rulesDto = (presenceMode: string) => ({
+    peladaId: 'p1',
+    playersPerTeam: 6,
+    teamCount: 2,
+    modality: 'futsal',
+    goalkeeperMode: 'ROTATING',
+    fixedListOnly: false,
+    presenceMode,
+    drawWeights: {},
+    extra: {},
+  });
+
+  it('vem marcada a forma das Regras', () => {
+    const rules$ = new Subject<unknown>();
+    const f = setup(rules$);
+    rules$.next(rulesDto('NAME_LIST'));
+    expect(f.componentInstance.values().presenceMode).toBe('NAME_LIST');
+  });
+
+  it('Regras chegando atrasadas não trocam a escolha que o adm já fez', () => {
+    const rules$ = new Subject<unknown>();
+    const f = setup(rules$);
+    f.componentInstance.patchPresence('SELF_CONFIRM');
+    rules$.next(rulesDto('NAME_LIST'));
+    expect(f.componentInstance.values().presenceMode).toBe('SELF_CONFIRM');
   });
 });

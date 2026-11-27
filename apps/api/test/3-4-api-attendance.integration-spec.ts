@@ -448,8 +448,35 @@ if (runHarness) {
       await confirm(p2.id).expect(200); // 1º na espera
       const full = await confirm(p3.id).expect(409);
       expect(full.body.message).toBe('A lista está cheia: 1 vaga e 1 na lista de espera.');
+      // a lista traz as regras desta partida pra tela montar as vagas
+      const list = await request(app.getHttpServer())
+        .get(base)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(list.body.waitlistSlots).toBe(1);
+      expect(list.body.goalkeeperSlots).toBe(0);
       const row = await prisma.matchAttendance.findFirst({ where: { matchId: match.id, playerId: p3.id } });
       expect(row?.status ?? 'PENDING').toBe('PENDING');
+    });
+
+    it('Issue #234 — a lista usa as regras da partida (exceção da partida vale, não as Regras atuais)', async () => {
+      const { pelada, match, token } = await seedMatch();
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { extra: { waitlistSlots: 5 }, goalkeeperMode: 'ROTATING', teamCount: 2 },
+      });
+      await prisma.match.update({
+        where: { id: match.id },
+        data: {
+          rulesOverride: { extra: { waitlistSlots: 1 }, goalkeeperMode: 'FIXED_PER_TEAM', teamCount: 3 },
+        },
+      });
+      const list = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/matches/${match.id}/attendance`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      expect(list.body.waitlistSlots).toBe(1);
+      expect(list.body.goalkeeperSlots).toBe(3);
     });
 
     it('Issue #234 — NAME_LIST: jogador coloca e tira o próprio nome; lista traz statusChangedAt', async () => {

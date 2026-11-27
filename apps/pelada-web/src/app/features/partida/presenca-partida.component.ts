@@ -682,8 +682,15 @@ export class PresencaPartidaComponent implements OnInit {
   readonly changedAt = signal<Map<string, string>>(new Map());
   readonly addOpen = signal(false);
   readonly listError = signal<string | null>(null);
-  readonly goalkeeperSlots = computed(() =>
-    this.formatRules().goalkeeperPerTeam ? this.formatRules().teamCount : 0,
+  /** Issue #234 — regras da partida vindas da lista (a API aplica essas). */
+  private readonly matchSlots = signal<{ goalkeeperSlots: number; waitlistSlots: number } | null>(null);
+  readonly goalkeeperSlots = computed(
+    () =>
+      this.matchSlots()?.goalkeeperSlots ??
+      (this.formatRules().goalkeeperPerTeam ? this.formatRules().teamCount : 0),
+  );
+  readonly waitlistSlots = computed(
+    () => this.matchSlots()?.waitlistSlots ?? this.formatRules().waitlistSlots,
   );
   readonly sheet = computed(() =>
     buildPresenceSheet({
@@ -692,7 +699,7 @@ export class PresencaPartidaComponent implements OnInit {
       changedAtByPlayerId: this.changedAt(),
       capacity: this.capacity(),
       goalkeeperSlots: this.goalkeeperSlots(),
-      waitlistSlots: this.formatRules().waitlistSlots,
+      waitlistSlots: this.waitlistSlots(),
     }),
   );
   readonly outOfList = computed(() => playersOutOfList(this.rows()));
@@ -989,6 +996,9 @@ export class PresencaPartidaComponent implements OnInit {
     }
     const { statusByPlayerId, queueOrder, changedAtByPlayerId } = presenceFromAttendance(dto.entries);
     this.changedAt.set(changedAtByPlayerId);
+    if (typeof dto.goalkeeperSlots === 'number' && typeof dto.waitlistSlots === 'number') {
+      this.matchSlots.set({ goalkeeperSlots: dto.goalkeeperSlots, waitlistSlots: dto.waitlistSlots });
+    }
     this.capacity.set(dto.capacity);
     this.listClosed.set(dto.listClosed || this.closing);
     this.presenceMode.set(normalizePresenceMode(dto.presenceMode));
