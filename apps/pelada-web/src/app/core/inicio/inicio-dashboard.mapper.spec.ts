@@ -82,4 +82,10 @@ describe('inicio dashboard mapper', () => {
     expect(view.recentSummary?.dateLabel).toBeTruthy();
     expect(mapDashboardToView(pelada, buildEmptyDashboardDto('p1')).recentSummary).toBeNull();
   });
+
+  it('jogador sem caixa (cashMonth null) não mostra o caixa (issue #232)', () => {
+    const view = mapDashboardToView(pelada, { ...buildEmptyDashboardDto('p1'), cashMonth: null });
+    expect(view.showCash).toBeFalse();
+    expect(mapDashboardToView(pelada, buildEmptyDashboardDto('p1')).showCash).toBeTrue();
+  });
 });

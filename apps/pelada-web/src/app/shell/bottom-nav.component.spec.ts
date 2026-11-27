@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router, RouterOutlet } from '@angular/router';
 import { BottomNavComponent } from './bottom-nav.component';
+import { PeladaContextService } from '../core/pelada/pelada-context.service';
+import { PeladaOrganizadorContextService } from '../core/pelada/pelada-organizador-context.service';
 
 /** Raiz com outlet para rotas filhas (partida/sorteio precisa de hierarquia com rota pai sem componente ou outro outlet). */
 @Component({
@@ -32,6 +34,8 @@ describe('BottomNavComponent', () => {
             ],
           },
         ]),
+        { provide: PeladaContextService, useValue: { activePelada: () => ({ id: 'p1' }) } },
+        { provide: PeladaOrganizadorContextService, useValue: { isOrganizador: () => true } },
       ],
     }).compileComponents();
     router = TestBed.inject(Router);
@@ -55,5 +59,30 @@ describe('BottomNavComponent', () => {
     expect(nav).toBeTruthy();
     const links = nav!.querySelectorAll('.pelada-bottom-nav__link');
     expect(links.length).toBe(4);
+  });
+});
+
+describe('BottomNavComponent — aba Caixa só pro adm (issue #232)', () => {
+  async function labels(role: 'ORGANIZADOR' | 'JOGADOR') {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [BottomNavComponent],
+      providers: [
+        provideRouter([]),
+        { provide: PeladaContextService, useValue: { activePelada: () => ({ id: 'p1' }) } },
+        { provide: PeladaOrganizadorContextService, useValue: { isOrganizador: () => role === 'ORGANIZADOR' } },
+      ],
+    }).compileComponents();
+    const f = TestBed.createComponent(BottomNavComponent);
+    f.detectChanges();
+    return (Array.from(f.nativeElement.querySelectorAll('a')) as HTMLElement[]).map((a) => a.textContent?.trim());
+  }
+
+  it('adm vê Caixa', async () => {
+    expect(await labels('ORGANIZADOR')).toEqual(['Início', 'Partida', 'Jogadores', 'Caixa']);
+  });
+
+  it('jogador não vê Caixa', async () => {
+    expect(await labels('JOGADOR')).toEqual(['Início', 'Partida', 'Jogadores']);
   });
 });

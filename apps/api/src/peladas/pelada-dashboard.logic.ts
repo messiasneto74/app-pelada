@@ -26,10 +26,11 @@ export type PeladaDashboardResponse = {
   nextMatch: DashboardNextMatchJson | null;
   recentSummary: DashboardRecentSummaryJson | null;
   rosterPlayerCount: number;
+  /** Issue #232 — `null` pra quem não é adm. */
   cashMonth: {
     receivedCents: number;
     expectedCents: number;
-  };
+  } | null;
 };
 
 /**

@@ -168,6 +168,9 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <div class="profile-hero">
           <pelada-avatar [name]="profile()!.displayName" tone="lime" />
           <h2 class="profile-name">{{ profile()!.displayName }}</h2>
+          @if (profile()!.memberRole === 'ORGANIZADOR') {
+            <span class="adm-badge">{{ profile()!.isOwner ? 'Dono · Adm' : 'Adm' }}</span>
+          }
           <p class="pelada-muted profile-meta">
             {{ positionLabel() }}
             @if (scoringMode() === 'rating') {
@@ -217,6 +220,23 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           >
             {{ editButtonLabel() }}
           </button>
+        }
+
+        @if (canSetRole()) {
+          <button
+            type="button"
+            peladaButton
+            variant="secondary"
+            [peladaButtonBlock]="true"
+            class="role-btn"
+            [disabled]="roleBusy()"
+            (click)="toggleAdm()"
+          >
+            {{ profile()!.memberRole === 'ORGANIZADOR' ? 'Tirar adm' : 'Tornar adm' }}
+          </button>
+          @if (roleError()) {
+            <p class="pelada-field__error" role="alert">{{ roleError() }}</p>
+          }
         }
 
         @if (isOrganizador() && !editing()) {
@@ -330,6 +350,19 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         --pelada-avatar-size: 4.5rem;
         font-size: 1.5rem;
       }
+      .adm-badge {
+        display: inline-block;
+        margin: 0 auto var(--pelada-space-2);
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #486f36;
+        background: #f0f5e6;
+        border-radius: 999px;
+        padding: 2px 10px;
+      }
+      .role-btn {
+        margin-top: var(--pelada-space-3);
+      }
       .profile-name {
         margin: 0;
         font-size: 1.375rem;
@@ -409,6 +442,38 @@ export class JogadorPerfilComponent implements OnInit {
 
   /** Issue #223 — remover jogador (com confirmação). */
   readonly confirmRemove = signal(false);
+  /** Issue #232 — tornar adm / tirar adm (só o dono da pelada). */
+  readonly roleBusy = signal(false);
+  readonly roleError = signal('');
+  readonly canSetRole = computed(() => {
+    const p = this.profile();
+    const pelada = this.peladaContext.getActivePelada();
+    return (
+      !!p && !!pelada && !this.editing() && !!p.userId && !p.isOwner &&
+      this.orgContext.isOwner(pelada.id)
+    );
+  });
+
+  toggleAdm(): void {
+    const pelada = this.peladaContext.getActivePelada();
+    const p = this.profile();
+    if (!pelada || !p || this.roleBusy()) {
+      return;
+    }
+    const role = p.memberRole === 'ORGANIZADOR' ? 'JOGADOR' : 'ORGANIZADOR';
+    this.roleBusy.set(true);
+    this.roleError.set('');
+    this.profileService.setRole(pelada.id, p.id, role).subscribe({
+      next: (dto) => {
+        this.profile.set({ ...p, ...dto });
+        this.roleBusy.set(false);
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.roleBusy.set(false);
+        this.roleError.set(err?.error?.message ?? 'Não foi possível mudar o cargo. Tente de novo.');
+      },
+    });
+  }
   readonly removing = signal(false);
   readonly removeError = signal('');
 
