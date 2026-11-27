@@ -201,7 +201,24 @@ if (runHarness) {
       });
     });
 
-    it('GET /peladas/:id/dashboard aggregates cash for current UTC month', async () => {
+    it('jogador comum não recebe o caixa do mês (issue #232)', async () => {
+      const org = await createUser(prisma, { keycloakSub: 'dash-232-org' });
+      const jog = await createUser(prisma, { keycloakSub: 'dash-232-jog' });
+      const pelada = await createPelada(prisma, { owner: org });
+      await prisma.peladaMember.create({ data: { peladaId: pelada.id, userId: jog.id, role: 'JOGADOR' } });
+      const asJog = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/dashboard`)
+        .set('Authorization', `Bearer ${signTestJwt({ sub: 'dash-232-jog', email: 'j@x.y' })}`)
+        .expect(200);
+      expect(asJog.body.cashMonth).toBeNull();
+      const asOrg = await request(app.getHttpServer())
+        .get(`/peladas/${pelada.id}/dashboard`)
+        .set('Authorization', `Bearer ${signTestJwt({ sub: 'dash-232-org', email: 'o@x.y' })}`)
+        .expect(200);
+      expect(asOrg.body.cashMonth).toEqual({ receivedCents: 0, expectedCents: 0 });
+    });
+
+        it('GET /peladas/:id/dashboard aggregates cash for current UTC month', async () => {
       const sub = 'dash-cash';
       const user = await createUser(prisma, { keycloakSub: sub });
       const pelada = await createPelada(prisma, { owner: user });

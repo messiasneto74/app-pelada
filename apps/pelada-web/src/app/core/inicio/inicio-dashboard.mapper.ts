@@ -28,11 +28,12 @@ export function mapDashboardToView(
         }
       : null,
     rosterPlayerCount: dto.rosterPlayerCount,
-    cashReceivedLabel: formatMoneyBrl(dto.cashMonth.receivedCents),
-    cashExpectedLabel: formatMoneyBrl(dto.cashMonth.expectedCents),
+    showCash: dto.cashMonth !== null,
+    cashReceivedLabel: formatMoneyBrl(dto.cashMonth?.receivedCents ?? 0),
+    cashExpectedLabel: formatMoneyBrl(dto.cashMonth?.expectedCents ?? 0),
     cashPercent: cashSummaryPercent(
-      dto.cashMonth.receivedCents,
-      dto.cashMonth.expectedCents,
+      dto.cashMonth?.receivedCents ?? 0,
+      dto.cashMonth?.expectedCents ?? 0,
     ),
   };
 }

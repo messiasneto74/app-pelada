@@ -5,10 +5,11 @@ export type PeladaDashboardDto = {
   /** Issue #215 — partida encerrada nas últimas 48h (resumo do dia ainda disponível). */
   recentSummary?: RecentSummaryDto | null;
   rosterPlayerCount: number;
+  /** Issue #232 — `null` pra quem não é adm. */
   cashMonth: {
     receivedCents: number;
     expectedCents: number;
-  };
+  } | null;
 };
 
 export type NextMatchDto = {
@@ -48,6 +49,8 @@ export type InicioDashboardView = {
     link: string;
   } | null;
   rosterPlayerCount: number;
+  /** Issue #232 — o caixa só aparece pro adm. */
+  showCash?: boolean;
   cashReceivedLabel: string;
   cashExpectedLabel: string;
   cashPercent: number;

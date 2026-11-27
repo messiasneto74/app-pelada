@@ -1,5 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
@@ -168,6 +168,9 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <div class="profile-hero">
           <pelada-avatar [name]="profile()!.displayName" tone="lime" />
           <h2 class="profile-name">{{ profile()!.displayName }}</h2>
+          @if (profile()!.memberRole === 'ORGANIZADOR') {
+            <span class="adm-badge">{{ profile()!.isOwner ? 'Dono · Adm' : 'Adm' }}</span>
+          }
           <p class="pelada-muted profile-meta">
             {{ positionLabel() }}
             @if (scoringMode() === 'rating') {
@@ -219,12 +222,122 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
           </button>
         }
 
+        @if (canSetRole()) {
+          <button
+            type="button"
+            peladaButton
+            variant="secondary"
+            [peladaButtonBlock]="true"
+            class="role-btn"
+            [disabled]="roleBusy()"
+            (click)="toggleAdm()"
+          >
+            {{ profile()!.memberRole === 'ORGANIZADOR' ? 'Tirar adm' : 'Tornar adm' }}
+          </button>
+          @if (roleError()) {
+            <p class="pelada-field__error" role="alert">{{ roleError() }}</p>
+          }
+        }
+
+        @if (isOrganizador() && !editing()) {
+          <button
+            type="button"
+            peladaButton
+            variant="ghost"
+            [peladaButtonBlock]="true"
+            class="remove-btn"
+            (click)="confirmRemove.set(true)"
+          >
+            Remover da pelada
+          </button>
+          @if (removeError()) {
+            <p class="pelada-field__error" role="alert">{{ removeError() }}</p>
+          }
+        }
+
         <a routerLink="/jogadores" class="back-link pelada-muted">← Voltar ao elenco</a>
+      }
+
+      @if (confirmRemove()) {
+        <div class="confirm-modal-backdrop" role="presentation" (click)="confirmRemove.set(false)">
+          <div
+            class="confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="remove-modal-title"
+            (click)="$event.stopPropagation()"
+            (keydown.escape)="confirmRemove.set(false)"
+          >
+            <h2 id="remove-modal-title" class="confirm-modal__title">
+              Remover {{ profile()?.displayName }} da pelada?
+            </h2>
+            <p class="confirm-modal__lead pelada-muted">
+              Apaga o jogador e todo o histórico dele nesta pelada (presenças, sorteios, gols e
+              cobranças). Se ele tiver conta no app, perde o acesso a esta pelada. Não dá para
+              desfazer.
+            </p>
+            <div class="confirm-modal__actions">
+              <button
+                type="button"
+                peladaButton
+                variant="lime"
+                [peladaButtonBlock]="true"
+                [disabled]="removing()"
+                (click)="removePlayer()"
+              >
+                Remover
+              </button>
+              <button
+                type="button"
+                peladaButton
+                variant="secondary"
+                [peladaButtonBlock]="true"
+                (click)="confirmRemove.set(false)"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       }
     </section>
   `,
   styles: [
     `
+      .confirm-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: var(--pelada-space-4);
+        background: rgba(0, 0, 0, 0.45);
+      }
+      .confirm-modal {
+        width: min(100%, 390px);
+        padding: var(--pelada-space-4);
+        border-radius: var(--pelada-radius-lg) var(--pelada-radius-lg) 0 0;
+        background: var(--pelada-paper);
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+      }
+      .confirm-modal__title {
+        margin: 0 0 var(--pelada-space-2);
+        font-size: 1.125rem;
+      }
+      .confirm-modal__lead {
+        margin: 0 0 var(--pelada-space-3);
+        font-size: 0.875rem;
+      }
+      .confirm-modal__actions {
+        display: flex;
+        flex-direction: column;
+        gap: var(--pelada-space-2);
+      }
+      .remove-btn {
+        margin-top: var(--pelada-space-3);
+        color: #b91c1c;
+      }
       .profile-hero {
         display: flex;
         flex-direction: column;
@@ -236,6 +349,19 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       .profile-hero pelada-avatar {
         --pelada-avatar-size: 4.5rem;
         font-size: 1.5rem;
+      }
+      .adm-badge {
+        display: inline-block;
+        margin: 0 auto var(--pelada-space-2);
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #486f36;
+        background: #f0f5e6;
+        border-radius: 999px;
+        padding: 2px 10px;
+      }
+      .role-btn {
+        margin-top: var(--pelada-space-3);
       }
       .profile-name {
         margin: 0;
@@ -312,6 +438,44 @@ export class JogadorPerfilComponent implements OnInit {
   private readonly rulesApi = inject(PeladaRulesApiService);
   private readonly orgContext = inject(PeladaOrganizadorContextService);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
+  /** Issue #223 — remover jogador (com confirmação). */
+  readonly confirmRemove = signal(false);
+  /** Issue #232 — tornar adm / tirar adm (só o dono da pelada). */
+  readonly roleBusy = signal(false);
+  readonly roleError = signal('');
+  readonly canSetRole = computed(() => {
+    const p = this.profile();
+    const pelada = this.peladaContext.getActivePelada();
+    return (
+      !!p && !!pelada && !this.editing() && !!p.userId && !p.isOwner &&
+      this.orgContext.isOwner(pelada.id)
+    );
+  });
+
+  toggleAdm(): void {
+    const pelada = this.peladaContext.getActivePelada();
+    const p = this.profile();
+    if (!pelada || !p || this.roleBusy()) {
+      return;
+    }
+    const role = p.memberRole === 'ORGANIZADOR' ? 'JOGADOR' : 'ORGANIZADOR';
+    this.roleBusy.set(true);
+    this.roleError.set('');
+    this.profileService.setRole(pelada.id, p.id, role).subscribe({
+      next: (dto) => {
+        this.profile.set({ ...p, ...dto });
+        this.roleBusy.set(false);
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.roleBusy.set(false);
+        this.roleError.set(err?.error?.message ?? 'Não foi possível mudar o cargo. Tente de novo.');
+      },
+    });
+  }
+  readonly removing = signal(false);
+  readonly removeError = signal('');
 
   readonly loading = signal(true);
   readonly profile = signal<PeladaPlayerProfileDto | null>(null);
@@ -385,6 +549,28 @@ export class JogadorPerfilComponent implements OnInit {
   readonly editButtonLabel = computed(() =>
     editProfileButtonLabel(this.isOrganizador()),
   );
+
+  removePlayer(): void {
+    const pelada = this.peladaContext.getActivePelada();
+    const p = this.profile();
+    if (!pelada || !p || this.removing()) {
+      return;
+    }
+    this.removing.set(true);
+    this.removeError.set('');
+    this.profileService.removePlayer(pelada.id, p.id).subscribe({
+      next: () => {
+        this.removing.set(false);
+        this.confirmRemove.set(false);
+        void this.router.navigate(['/jogadores']);
+      },
+      error: () => {
+        this.removing.set(false);
+        this.confirmRemove.set(false);
+        this.removeError.set('Não foi possível remover o jogador. Tente de novo.');
+      },
+    });
+  }
 
   readonly showEdit = computed(() => {
     const p = this.profile();

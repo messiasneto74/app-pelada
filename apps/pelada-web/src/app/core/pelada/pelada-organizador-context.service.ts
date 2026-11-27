@@ -7,12 +7,20 @@ export type PeladaMemberRole = 'ORGANIZADOR' | 'JOGADOR';
 export type PeladaMembershipDto = {
   peladaId: string;
   role: PeladaMemberRole;
+  /** Issue #232 — quem criou a pelada (define quem é adm). */
+  isOwner?: boolean;
 };
 
 @Injectable({ providedIn: 'root' })
 export class PeladaOrganizadorContextService {
   private readonly http = inject(HttpClient);
   private readonly roleByPeladaId = signal<Record<string, PeladaMemberRole>>({});
+  private readonly ownerByPeladaId = signal<Record<string, boolean>>({});
+
+  /** Issue #232 — só o dono torna alguém adm ou tira o cargo. */
+  isOwner(peladaId: string): boolean {
+    return this.ownerByPeladaId()[peladaId] === true;
+  }
 
   /** Default seguro: `false` até `GET .../membership` confirmar ORGANIZADOR. */
   isOrganizador(peladaId: string): boolean {
@@ -35,6 +43,7 @@ export class PeladaOrganizadorContextService {
             ...m,
             [peladaId]: body.role,
           }));
+          this.ownerByPeladaId.update((m) => ({ ...m, [peladaId]: body.isOwner === true }));
         },
         error: () => {
           this.roleByPeladaId.update((m) => ({
@@ -43,6 +52,16 @@ export class PeladaOrganizadorContextService {
           }));
         },
       });
+  }
+
+  /**
+   * Issue #225 — ao trocar de pelada o papel já vem na lista "minhas peladas":
+   * grava na hora pra tela nova não mostrar (nem por um instante) atalhos do
+   * papel errado enquanto o GET .../membership não volta.
+   */
+  setKnownRole(peladaId: string, role: string): void {
+    const known: PeladaMemberRole = role === 'ORGANIZADOR' ? 'ORGANIZADOR' : 'JOGADOR';
+    this.roleByPeladaId.update((m) => ({ ...m, [peladaId]: known }));
   }
 
   /** Apenas testes — injeta papel sem HTTP. */

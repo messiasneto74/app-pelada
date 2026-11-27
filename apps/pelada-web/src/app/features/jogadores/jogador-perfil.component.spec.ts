@@ -3,7 +3,7 @@ import {
   HttpClientTestingModule,
   HttpTestingController,
 } from '@angular/common/http/testing';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService } from '../../auth/auth.service';
 import { PeladaOrganizadorContextService } from '../../core/pelada/pelada-organizador-context.service';
@@ -71,6 +71,7 @@ function rulesApiMock(
 function orgContextMock(isOrganizador: boolean) {
   return {
     isOrganizador: (peladaId: string) => isOrganizador && peladaId === 'p1',
+    isOwner: () => false,
     refreshMembership: () => {},
   };
 }
@@ -274,6 +275,79 @@ describe('JogadorPerfilComponent editar oculto (3.8)', () => {
     expect(hiddenFixture.nativeElement.textContent).not.toContain(
       'Editar perfil (adm)',
     );
+    expect(hiddenFixture.nativeElement.textContent).not.toContain('Remover da pelada');
+  });
+});
+
+describe('JogadorPerfilComponent remover da pelada (issue #223)', () => {
+  let removeSpy: jasmine.Spy;
+
+  beforeEach(async () => {
+    removeSpy = jasmine.createSpy('removePlayer').and.returnValue(of(undefined));
+    await TestBed.configureTestingModule({
+      imports: [JogadorPerfilComponent],
+      providers: [
+        provideRouter([
+          { path: 'jogadores/:playerId', component: JogadorPerfilComponent },
+          { path: 'jogadores', component: JogadorPerfilComponent },
+        ]),
+        routeProvider,
+        peladaContextProvider,
+        rosterServiceProvider,
+        {
+          provide: PeladaPlayerProfileService,
+          useValue: { ...profileServiceProvider.useValue, removePlayer: removeSpy },
+        },
+        { provide: PeladaRulesApiService, useValue: rulesApiMock(false) },
+        { provide: PeladaOrganizadorContextService, useValue: orgContextMock(true) },
+        { provide: AuthService, useValue: authMock('user-org') },
+      ],
+    }).compileComponents();
+  });
+
+  async function render() {
+    const f = TestBed.createComponent(JogadorPerfilComponent);
+    f.detectChanges();
+    await f.whenStable();
+    await Promise.resolve();
+    f.detectChanges();
+    return f;
+  }
+  const btn = (f: ComponentFixture<JogadorPerfilComponent>, label: string) =>
+    (Array.from(f.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]).find(
+      (b) => b.textContent?.trim() === label,
+    );
+
+  it('organizador vê "Remover da pelada" e precisa confirmar (avisa que apaga o histórico)', async () => {
+    const f = await render();
+    btn(f, 'Remover da pelada')!.click();
+    f.detectChanges();
+    const text = f.nativeElement.textContent as string;
+    expect(removeSpy).not.toHaveBeenCalled();
+    expect(text).toContain('Remover Carlos Lima da pelada?');
+    expect(text).toContain('todo o histórico');
+  });
+
+  it('confirmar remove o jogador e volta pro elenco', async () => {
+    const f = await render();
+    const router = TestBed.inject(Router);
+    const nav = spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
+    btn(f, 'Remover da pelada')!.click();
+    f.detectChanges();
+    btn(f, 'Remover')!.click();
+    f.detectChanges();
+    expect(removeSpy).toHaveBeenCalledWith('p1', 'pl1');
+    expect(nav).toHaveBeenCalledWith(['/jogadores']);
+  });
+
+  it('cancelar não remove', async () => {
+    const f = await render();
+    btn(f, 'Remover da pelada')!.click();
+    f.detectChanges();
+    btn(f, 'Cancelar')!.click();
+    f.detectChanges();
+    expect(removeSpy).not.toHaveBeenCalled();
+    expect(f.nativeElement.textContent).not.toContain('da pelada?');
   });
 });
 
@@ -551,5 +625,62 @@ describe('JogadorPerfilComponent modo edição (3.8-EDIT)', () => {
       '#profile-tag-suggestions option',
     );
     expect(options.length).toBeGreaterThan(0);
+  });
+});
+
+describe('JogadorPerfilComponent — tornar adm (issue #232)', () => {
+  let setRole: jasmine.Spy;
+  async function render(isOwner: boolean, profileExtra: Partial<PeladaPlayerProfileDto>) {
+    TestBed.resetTestingModule();
+    setRole = jasmine.createSpy('setRole').and.returnValue(of({ ...profile, ...profileExtra, memberRole: 'ORGANIZADOR' }));
+    await TestBed.configureTestingModule({
+      imports: [JogadorPerfilComponent],
+      providers: [
+        provideRouter([{ path: 'jogadores/:playerId', component: JogadorPerfilComponent }]),
+        routeProvider,
+        peladaContextProvider,
+        rosterServiceProvider,
+        {
+          provide: PeladaPlayerProfileService,
+          useValue: {
+            loadProfile: (_p: unknown, _id: string, cb: (dto: PeladaPlayerProfileDto | null) => void) =>
+              cb({ ...profile, ...profileExtra }),
+            setRole,
+          },
+        },
+        { provide: PeladaRulesApiService, useValue: rulesApiMock(false) },
+        {
+          provide: PeladaOrganizadorContextService,
+          useValue: { ...orgContextMock(true), isOwner: () => isOwner },
+        },
+        { provide: AuthService, useValue: authMock('user-org') },
+      ],
+    }).compileComponents();
+    const f = TestBed.createComponent(JogadorPerfilComponent);
+    f.detectChanges();
+    await f.whenStable();
+    await Promise.resolve();
+    f.detectChanges();
+    return f;
+  }
+  const btn = (f: ComponentFixture<JogadorPerfilComponent>, label: string) =>
+    (Array.from(f.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]).find(
+      (b) => b.textContent?.trim() === label,
+    );
+
+  it('dono vê "Tornar adm" pra jogador com conta e o cargo muda', async () => {
+    const f = await render(true, { userId: 'u9', memberRole: 'JOGADOR', isOwner: false });
+    btn(f, 'Tornar adm')!.click();
+    f.detectChanges();
+    expect(setRole).toHaveBeenCalledWith('p1', 'pl1', 'ORGANIZADOR');
+    expect(f.nativeElement.textContent).toContain('Adm');
+    expect(btn(f, 'Tirar adm')).toBeDefined();
+  });
+
+  it('quem não é dono não vê o botão; jogador sem conta também não', async () => {
+    let f = await render(false, { userId: 'u9', memberRole: 'JOGADOR', isOwner: false });
+    expect(btn(f, 'Tornar adm')).toBeUndefined();
+    f = await render(true, { userId: null, memberRole: null, isOwner: false });
+    expect(btn(f, 'Tornar adm')).toBeUndefined();
   });
 });

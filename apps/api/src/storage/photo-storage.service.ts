@@ -43,6 +43,11 @@ export class PhotoStorageService {
     return this.savePhoto(`player-${playerId}`, file);
   }
 
+  /** Issue #226 — foto da conta (Meu perfil). */
+  async saveUserPhoto(userId: string, file: Express.Multer.File): Promise<string> {
+    return this.savePhoto(`user-${userId}`, file);
+  }
+
   private async savePhoto(prefix: string, file: Express.Multer.File): Promise<string> {
     this.assertValidUpload(file);
     const dir = this.resolveUploadDir();

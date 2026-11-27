@@ -33,7 +33,8 @@ export class PeladaPaymentsService {
     query: PaymentLedgerQueryDto,
   ): Promise<PaymentLedgerResponse> {
     const user = await this.meService.getOrCreateUser(auth);
-    await this.assertMember(peladaId, user.id);
+    // Issue #232 — só o adm vê o caixa.
+    await this.assertOrganizador(peladaId, user.id, 'Somente o adm vê o caixa.');
 
     const rules = await this.prisma.peladaRules.findUnique({
       where: { peladaId },
@@ -186,13 +187,14 @@ export class PeladaPaymentsService {
   private async assertOrganizador(
     peladaId: string,
     userId: string,
+    message = 'Somente organizador altera o caixa.',
   ): Promise<void> {
     await this.assertMember(peladaId, userId);
     const member = await this.prisma.peladaMember.findUnique({
       where: { peladaId_userId: { peladaId, userId } },
     });
     if (member?.role !== 'ORGANIZADOR') {
-      throw new ForbiddenException('Somente organizador altera o caixa.');
+      throw new ForbiddenException(message);
     }
   }
 }

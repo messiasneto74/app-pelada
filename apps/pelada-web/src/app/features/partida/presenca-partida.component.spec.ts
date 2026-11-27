@@ -366,6 +366,50 @@ describe('PresencaPartidaComponent §3.4', () => {
     expect(calls).toEqual(['patch:b1', 'patch:b1', 'close']);
   });
 
+  it('#233 atualização automática não busca a lista com gravação lenta em andamento', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const slowPatch = new Subject<MatchAttendanceListApiDto>();
+    let serverB1: 'PENDING' | 'CONFIRMED' = 'PENDING';
+    const getList = jasmine
+      .createSpy('getList')
+      .and.callFake(() => of(serverList({ a1: 'CONFIRMED', b1: serverB1 })));
+    api['getList'] = getList;
+    api['patchPlayer'] = () => slowPatch;
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    const readsBefore = getList.calls.count();
+
+    fixture.componentInstance.onOrgToggle('b1'); // gravação ainda sem resposta
+    fixture.componentInstance.refreshQuietly(); // tique do refresh automático
+
+    expect(getList.calls.count()).toBe(readsBefore);
+    const status = () =>
+      fixture.componentInstance.rows().find((r) => r.kind === 'player' && r.player.id === 'b1')
+        ?.status;
+    expect(status()).toBe('confirmed');
+
+    serverB1 = 'CONFIRMED';
+    slowPatch.next(serverList({ a1: 'CONFIRMED', b1: 'CONFIRMED' }));
+    slowPatch.complete();
+    fixture.componentInstance.refreshQuietly(); // gravou: volta a atualizar
+    expect(getList.calls.count()).toBe(readsBefore + 1);
+    expect(status()).toBe('confirmed');
+  });
+
+  it('#233 atualização automática pausa com a pergunta de formato aberta', () => {
+    const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
+    const getList = jasmine
+      .createSpy('getList')
+      .and.returnValue(of(serverList({ a1: 'CONFIRMED', b1: 'PENDING' })));
+    api['getList'] = getList;
+    fixture = TestBed.createComponent(PresencaPartidaComponent);
+    fixture.detectChanges();
+    const readsBefore = getList.calls.count();
+    fixture.componentInstance.formatModalOpen.set(true);
+    fixture.componentInstance.refreshQuietly();
+    expect(getList.calls.count()).toBe(readsBefore);
+  });
+
   it('leitura lenta não desfaz uma gravação que terminou depois dela', () => {
     const api = TestBed.inject(PeladaMatchAttendanceService) as unknown as Record<string, unknown>;
     const slowGet = new Subject<MatchAttendanceListApiDto>();

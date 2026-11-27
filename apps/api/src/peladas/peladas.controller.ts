@@ -24,6 +24,7 @@ import { PatchPlayerDto } from '../domain/dto/patch-player.dto';
 import { CreatePaymentLedgerDto } from '../domain/dto/create-payment-ledger.dto';
 import { PaymentLedgerQueryDto } from '../domain/dto/payment-ledger-query.dto';
 import { CreatePeladaDto } from './dto/create-pelada.dto';
+import { SetMemberRoleDto } from './dto/set-member-role.dto';
 import { PeladaPaymentsService } from './pelada-payments.service';
 import { PeladaPlayersService } from './pelada-players.service';
 import { MultipartPlayerPatchInterceptor } from './multipart-player-patch.interceptor';
@@ -126,6 +127,17 @@ export class PeladasController {
     return this.peladasService.getPeladaMembership(user, peladaId);
   }
 
+  /** Issue #223 — sair da pelada (apaga o jogador e o vínculo da conta). */
+  @Delete('peladas/:peladaId/membership')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  leavePelada(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+  ) {
+    return this.peladaPlayersService.leavePelada(user, peladaId);
+  }
+
   @Get('peladas/:peladaId/players')
   @UseGuards(JwtAuthGuard)
   listPeladaPlayers(
@@ -199,6 +211,19 @@ export class PeladasController {
       body,
       photo,
     );
+  }
+
+  /** Issue #232 — o dono torna um jogador adm ou tira o cargo. */
+  @Post('peladas/:peladaId/players/:playerId/role')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  setPlayerRole(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('peladaId') peladaId: string,
+    @Param('playerId') playerId: string,
+    @Body() body: SetMemberRoleDto,
+  ) {
+    return this.peladaPlayersService.setMemberRole(user, peladaId, playerId, body.role);
   }
 
   @Delete('peladas/:peladaId/players/:playerId')
