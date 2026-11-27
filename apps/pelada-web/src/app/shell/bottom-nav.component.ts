@@ -1,4 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
+import { PeladaContextService } from '../core/pelada/pelada-context.service';
+import { PeladaOrganizadorContextService } from '../core/pelada/pelada-organizador-context.service';
 import { Router, RouterLink } from '@angular/router';
 import { bottomNavTabActive, BottomNavTabId } from './bottom-nav-tab-active';
 
@@ -14,7 +16,7 @@ interface NavItem {
   imports: [RouterLink],
   template: `
     <nav class="pelada-bottom-nav" aria-label="Navegação principal">
-      @for (item of items; track item.id) {
+      @for (item of visibleItems(); track item.id) {
         <a
           class="pelada-bottom-nav__link"
           [class.pelada-bottom-nav__link--active]="isActive(item.id)"
@@ -96,6 +98,16 @@ export class BottomNavComponent {
     { id: 'jogadores', label: 'Jogadores', link: '/jogadores' },
     { id: 'caixa', label: 'Caixa', link: '/caixa' },
   ];
+
+  private readonly peladaContext = inject(PeladaContextService);
+  private readonly orgContext = inject(PeladaOrganizadorContextService);
+
+  /** Issue #232 — a aba Caixa só aparece pro adm. */
+  readonly visibleItems = computed(() => {
+    const pelada = this.peladaContext.activePelada();
+    const isAdm = pelada ? this.orgContext.isOrganizador(pelada.id) : false;
+    return this.items.filter((i) => i.id !== 'caixa' || isAdm);
+  });
 
   isActive(tab: BottomNavTabId): boolean {
     return bottomNavTabActive(this.router.url, tab);

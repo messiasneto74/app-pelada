@@ -34,6 +34,8 @@ export type PeladaRulesFormValues = {
   autoPromoteAfterPresences: number;
   /** Issue #190 — valor padrão da contribuição (em centavos), usado ao lançar cobrança no Caixa. 0 = sem valor padrão. */
   feeCents: number;
+  /** Issue #229 — tempo de cada partida (rodada), em minutos. */
+  roundMinutes: number;
 };
 
 export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
@@ -54,6 +56,7 @@ export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
   customStyleTagsText: '',
   autoPromoteAfterPresences: 0,
   feeCents: 0,
+  roundMinutes: 20,
 };
 
 export function validateGoalkeeperToggles(
@@ -98,6 +101,9 @@ export function validatePeladaRulesForm(values: PeladaRulesFormValues): string |
   }
   if (values.autoPromoteAfterPresences < 0) {
     return 'Promoção automática: nº de presenças não pode ser negativo.';
+  }
+  if (!Number.isInteger(values.roundMinutes) || values.roundMinutes < 1 || values.roundMinutes > 120) {
+    return 'Tempo de cada partida: entre 1 e 120 minutos.';
   }
   if (values.feeCents < 0) {
     return 'Contribuição por partida: valor não pode ser negativo.';

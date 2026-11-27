@@ -434,7 +434,130 @@ if (runHarness) {
       expect(rounds[1]!.durationMs).toBeLessThan(rounds[0]!.durationMs);
     });
 
-    it('GET field-session/summary agrega vitórias, goleada, perdedor e artilheiro do dia', async () => {
+    it('cronômetro por rodada: o jogador vê o mesmo tempo que o adm (issue #229)', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { extra: { roundMinutes: 1 } },
+      });
+      const sub = `fs-229-jog-${Math.random().toString(36).slice(2, 8)}`;
+      const jog = await createUser(prisma, { keycloakSub: sub });
+      await prisma.peladaMember.create({
+        data: { peladaId: pelada.id, userId: jog.id, role: 'JOGADOR' },
+      });
+      const jogToken = signTestJwt({ sub, email: jog.email ?? 'j@f.s' });
+      const base = `/peladas/${pelada.id}/matches/${match.id}/field-session`;
+      await request(app.getHttpServer())
+        .post(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+
+      // cronômetro rodando há 30 s (limite 1 min): os dois veem ~30 s correndo
+      await prisma.matchFieldSession.update({
+        where: { matchId: match.id },
+        data: { timerRunningSince: new Date(Date.now() - 30_000) },
+      });
+      const adm = await request(app.getHttpServer())
+        .get(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+      const player = await request(app.getHttpServer())
+        .get(base)
+        .set('Authorization', `Bearer ${jogToken}`)
+        .expect(200);
+      for (const s of [adm.body, player.body]) {
+        expect(s.timerRunning).toBe(true);
+        expect(s.timeUp).toBe(false);
+        expect(s.roundLimitMs).toBe(60_000);
+        expect(s.roundElapsedMs).toBeGreaterThanOrEqual(30_000);
+        expect(s.roundElapsedMs).toBeLessThan(60_000);
+      }
+      expect(Math.abs(player.body.roundElapsedMs - adm.body.roundElapsedMs)).toBeLessThan(2_000);
+
+      // passou do limite: os dois veem o relógio parado em 1:00 e "tempo acabou"
+      await prisma.matchFieldSession.update({
+        where: { matchId: match.id },
+        data: { timerRunningSince: new Date(Date.now() - 120_000) },
+      });
+      const admUp = await request(app.getHttpServer())
+        .get(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+      const playerUp = await request(app.getHttpServer())
+        .get(base)
+        .set('Authorization', `Bearer ${jogToken}`)
+        .expect(200);
+      for (const s of [admUp.body, playerUp.body]) {
+        expect(s.roundElapsedMs).toBe(60_000);
+        expect(s.timeUp).toBe(true);
+        expect(s.timerRunning).toBe(false);
+      }
+    });
+
+    it('cronômetro por rodada: para no tempo das Regras e zera na rodada seguinte (issue #229)', async () => {
+      const { pelada, match, orgToken } = await seedThreeTeamDraw();
+      await prisma.peladaRules.update({
+        where: { peladaId: pelada.id },
+        data: { extra: { roundMinutes: 1 } },
+      });
+      const base = `/peladas/${pelada.id}/matches/${match.id}/field-session`;
+      const start = await request(app.getHttpServer())
+        .post(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({})
+        .expect(201);
+      expect(start.body.roundLimitMs).toBe(60_000);
+      expect(start.body.roundElapsedMs).toBe(0);
+
+      // simula o cronômetro rodando há 2 minutos (limite é 1)
+      await prisma.matchFieldSession.update({
+        where: { matchId: match.id },
+        data: { timerRunningSince: new Date(Date.now() - 120_000) },
+      });
+      let s = await request(app.getHttpServer())
+        .get(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+      expect(s.body.roundElapsedMs).toBe(60_000);
+      expect(s.body.timeUp).toBe(true);
+      expect(s.body.timerRunning).toBe(false);
+
+      // pausar grava o relógio parado no limite; não dá pra reiniciar
+      s = await request(app.getHttpServer())
+        .patch(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ timer: 'pause' })
+        .expect(200);
+      expect(s.body.elapsedMs).toBe(60_000);
+      const again = await request(app.getHttpServer())
+        .patch(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ timer: 'start' })
+        .expect(400);
+      expect(again.body.message).toContain('O tempo desta partida acabou');
+
+      // encerrar a rodada: duração gravada = 1 min; rodada 2 começa do zero
+      const next = await request(app.getHttpServer())
+        .post(`${base}/end-round`)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .expect(200);
+      expect(next.body.roundNumber).toBe(2);
+      expect(next.body.roundElapsedMs).toBe(0);
+      expect(next.body.timeUp).toBe(false);
+      const round1 = await prisma.matchFieldRound.findFirstOrThrow({
+        where: { matchId: match.id, roundNumber: 1 },
+      });
+      expect(round1.durationMs).toBe(60_000);
+
+      await request(app.getHttpServer())
+        .patch(base)
+        .set('Authorization', `Bearer ${orgToken}`)
+        .send({ timer: 'start' })
+        .expect(200);
+    });
+
+        it('GET field-session/summary agrega vitórias, goleada, perdedor e artilheiro do dia', async () => {
       const { pelada, match, orgToken } = await seedThreeTeamDraw();
       const start = await request(app.getHttpServer())
         .post(`/peladas/${pelada.id}/matches/${match.id}/field-session`)

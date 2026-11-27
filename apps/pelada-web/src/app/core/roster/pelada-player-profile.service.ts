@@ -35,6 +35,14 @@ export class PeladaPlayerProfileService {
     );
   }
 
+  /** Issue #232 — o dono torna o jogador adm ou tira o cargo. */
+  setRole(peladaId: string, playerId: string, role: 'ORGANIZADOR' | 'JOGADOR') {
+    return this.http.post<PeladaPlayerProfileDto>(
+      `${environment.apiUrl}/peladas/${peladaId}/players/${playerId}/role`,
+      { role },
+    );
+  }
+
   /** Issue #223 — remove o jogador da pelada (histórico e vínculo da conta junto). */
   removePlayer(peladaId: string, playerId: string) {
     return this.http.delete<void>(

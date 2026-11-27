@@ -67,3 +67,24 @@ export function goalScorerOptions(
     .map((playerId) => ({ playerId, name: nameById.get(playerId) ?? 'Jogador' }))
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 }
+
+/** Issue #229 — tempo padrão de cada partida quando a API ainda não manda o limite. */
+export const DEFAULT_ROUND_LIMIT_MS = 20 * 60 * 1000;
+
+/**
+ * Issue #229 — o que o cronômetro mostra: o tempo da rodada atual (zera a cada
+ * rodada), parando no tempo definido nas Regras.
+ */
+export function displayRoundMs(
+  session: Pick<MatchFieldSessionDto, 'elapsedMs' | 'timerRunning' | 'roundElapsedMs' | 'roundLimitMs' | 'timeUp'>,
+  nowMs: number,
+  anchorMs: number,
+): number {
+  const limit = session.roundLimitMs ?? DEFAULT_ROUND_LIMIT_MS;
+  if (session.timeUp) {
+    return limit;
+  }
+  const base = session.roundElapsedMs ?? session.elapsedMs;
+  const live = session.timerRunning ? Math.max(0, nowMs - anchorMs) : 0;
+  return Math.min(limit, base + live);
+}

@@ -1,5 +1,6 @@
 import {
   displayElapsedMs,
+  displayRoundMs,
   formatTimerLabel,
   goalScorerOptions,
   rotationPolicyLabel,
@@ -70,6 +71,21 @@ describe('campo-view.logic §3.6', () => {
       expect(goalScorerOptions(session, 'AWAY', teams, new Map())).toEqual([
         { playerId: 'p3', name: 'Jogador' },
       ]);
+    });
+  });
+
+  describe('displayRoundMs (issue #229)', () => {
+    const base = { elapsedMs: 500_000, roundElapsedMs: 30_000, roundLimitMs: 60_000, timerRunning: true, timeUp: false };
+    it('mostra o tempo da rodada e anda com o cronômetro', () => {
+      expect(displayRoundMs(base, 10_000, 0)).toBe(40_000);
+    });
+    it('para no tempo da rodada', () => {
+      expect(displayRoundMs(base, 90_000, 0)).toBe(60_000);
+      expect(displayRoundMs({ ...base, timeUp: true }, 0, 0)).toBe(60_000);
+    });
+    it('pausado não anda; sem dado novo da API usa o relógio antigo', () => {
+      expect(displayRoundMs({ ...base, timerRunning: false }, 10_000, 0)).toBe(30_000);
+      expect(displayRoundMs({ elapsedMs: 5_000, timerRunning: false }, 0, 0)).toBe(5_000);
     });
   });
 });

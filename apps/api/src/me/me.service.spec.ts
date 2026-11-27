@@ -26,6 +26,8 @@ describe('MeService', () => {
       keycloakSub: 'kc-sub-1',
       email: 'a@b.com',
       phone: null,
+      name: null,
+      photoUrl: null,
     });
 
     const result = await service.getMe(auth);
@@ -41,6 +43,8 @@ describe('MeService', () => {
       keycloakSub: 'kc-sub-1',
       email: 'a@b.com',
       phone: null,
+      name: null,
+      photoUrl: null,
     });
   });
 

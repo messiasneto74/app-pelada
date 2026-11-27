@@ -63,6 +63,13 @@ export function peladaRulesFromApi(dto: PeladaRulesApiDto): PeladaRulesFormValue
       (extra['feeCents'] as number) >= 0
         ? Math.floor(extra['feeCents'] as number)
         : DEFAULT_PELADA_RULES.feeCents,
+    roundMinutes:
+      typeof extra['roundMinutes'] === 'number' &&
+      Number.isFinite(extra['roundMinutes']) &&
+      (extra['roundMinutes'] as number) >= 1 &&
+      (extra['roundMinutes'] as number) <= 120
+        ? Math.floor(extra['roundMinutes'] as number)
+        : DEFAULT_PELADA_RULES.roundMinutes,
   };
 }
 
@@ -86,6 +93,7 @@ export function peladaRulesToPatchBody(
       customStyleTags: parseTagsText(values.customStyleTagsText),
       autoPromoteAfterPresences: values.autoPromoteAfterPresences,
       feeCents: values.feeCents,
+      roundMinutes: values.roundMinutes,
     },
   };
 }

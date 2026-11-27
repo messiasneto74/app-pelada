@@ -297,6 +297,59 @@ if (runHarness) {
       });
     });
 
+        describe('vários adms (issue #232)', () => {
+      async function seed(sub: string) {
+        const owner = await createUser(prisma, { keycloakSub: `${sub}-own` });
+        const member = await createUser(prisma, { keycloakSub: `${sub}-mem` });
+        const pelada = await createPelada(prisma, { owner });
+        await prisma.peladaMember.create({ data: { peladaId: pelada.id, userId: member.id, role: 'JOGADOR' } });
+        const player = await prisma.player.create({ data: { peladaId: pelada.id, displayName: 'Futuro Adm', userId: member.id } });
+        const ownerPlayer = await prisma.player.create({ data: { peladaId: pelada.id, displayName: 'Dono', userId: owner.id } });
+        const noAccount = await prisma.player.create({ data: { peladaId: pelada.id, displayName: 'Sem Conta' } });
+        const ownerToken = signTestJwt({ sub: `${sub}-own`, email: owner.email ?? 'o@x.y' });
+        const memberToken = signTestJwt({ sub: `${sub}-mem`, email: member.email ?? 'm@x.y' });
+        const role = (token: string, playerId: string, r: string) =>
+          request(app.getHttpServer())
+            .post(`/peladas/${pelada.id}/players/${playerId}/role`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({ role: r });
+        return { pelada, player, ownerPlayer, noAccount, ownerToken, memberToken, role };
+      }
+
+      it('dono torna jogador adm: vira ORGANIZADOR, vê o caixa e o perfil mostra o papel', async () => {
+        const { pelada, player, ownerToken, memberToken, role } = await seed('adm-promote');
+        await request(app.getHttpServer())
+          .get(`/peladas/${pelada.id}/payments/ledger`)
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(403);
+        const res = await role(ownerToken, player.id, 'ORGANIZADOR').expect(200);
+        expect(res.body.memberRole).toBe('ORGANIZADOR');
+        const m = await request(app.getHttpServer())
+          .get(`/peladas/${pelada.id}/membership`)
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(200);
+        expect(m.body).toMatchObject({ role: 'ORGANIZADOR', isOwner: false });
+        await request(app.getHttpServer())
+          .get(`/peladas/${pelada.id}/payments/ledger`)
+          .set('Authorization', `Bearer ${memberToken}`)
+          .expect(200);
+        const back = await role(ownerToken, player.id, 'JOGADOR').expect(200);
+        expect(back.body.memberRole).toBe('JOGADOR');
+      });
+
+      it('só o dono define adm; o dono continua adm; jogador sem conta não vira adm', async () => {
+        const { player, ownerPlayer, noAccount, ownerToken, memberToken, role } = await seed('adm-rules');
+        await role(ownerToken, player.id, 'ORGANIZADOR').expect(200);
+        const notOwner = await role(memberToken, ownerPlayer.id, 'JOGADOR').expect(403);
+        expect(notOwner.body.message).toBe('Só quem criou a pelada define quem é adm.');
+        const self = await role(ownerToken, ownerPlayer.id, 'JOGADOR').expect(400);
+        expect(self.body.message).toBe('Quem criou a pelada continua sempre adm.');
+        const noAcc = await role(ownerToken, noAccount.id, 'ORGANIZADOR').expect(400);
+        expect(noAcc.body.message).toContain('não tem conta');
+        await role(ownerToken, player.id, 'CHEFE').expect(400);
+      });
+    });
+
         it('GET /players/:playerId returns profile with attributes', async () => {
       const sub = 'roster-get-one';
       const user = await createUser(prisma, { keycloakSub: sub });

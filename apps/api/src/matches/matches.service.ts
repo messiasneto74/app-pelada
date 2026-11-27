@@ -1,3 +1,5 @@
+import { computeMatchCapacity } from '../peladas/pelada-dashboard.logic';
+import { MatchAttendanceService } from './match-attendance.service';
 import {
   ForbiddenException,
   Injectable,
@@ -39,6 +41,7 @@ export class MatchesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly meService: MeService,
+    private readonly attendance: MatchAttendanceService,
   ) {}
 
   async createMatch(
@@ -133,7 +136,11 @@ export class MatchesService {
       match.rulesOverride as MatchRulesOverrideJson | null,
       patch,
     );
-    mergeEffectiveMatchRules(defaults, nextOverride);
+    const nextEffective = mergeEffectiveMatchRules(defaults, nextOverride);
+    const capacityBefore = computeMatchCapacity(
+      mergeEffectiveMatchRules(defaults, match.rulesOverride as MatchRulesOverrideJson | null),
+    );
+    const capacityAfter = computeMatchCapacity(nextEffective);
 
     const updated = await this.prisma.match.update({
       where: { id: matchId },
@@ -141,6 +148,12 @@ export class MatchesService {
         rulesOverride: nextOverride as Prisma.InputJsonValue,
       },
     });
+
+    // Issue #230 — só quando as vagas AUMENTAM: sobe gente da fila (se ligado
+    // nas Regras). Outras mudanças de regra não mexem na lista.
+    if (capacityAfter > capacityBefore) {
+      await this.attendance.fillFreeSpotsAfterCapacityChange(matchId, defaults);
+    }
 
     return this.toView(updated, defaults);
   }

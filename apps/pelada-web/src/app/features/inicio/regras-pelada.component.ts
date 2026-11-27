@@ -79,6 +79,21 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
             (input)="patchNumber('teamCount', $event)"
           />
         </pelada-field>
+        <pelada-field
+          label="Tempo de cada partida (minutos)"
+          forId="round-minutes"
+          hint="O cronômetro em campo para nesse tempo e zera a cada rodada. Entre 1 e 120."
+        >
+          <input
+            id="round-minutes"
+            type="number"
+            min="1"
+            max="120"
+            peladaInput
+            [value]="values().roundMinutes"
+            (input)="patchNumber('roundMinutes', $event)"
+          />
+        </pelada-field>
         <pelada-field label="Modalidade" forId="modality">
           <select
             id="modality"
@@ -128,6 +143,13 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         </pelada-switch>
         <p class="pelada-muted hint">
           Marcar jogadores como fixos no elenco só fica disponível com esta opção ligada.
+        </p>
+        <pelada-switch [(checked)]="autoFillQueueOnCapacityIncrease">
+          Puxar a fila ao aumentar as vagas
+        </pelada-switch>
+        <p class="pelada-muted hint">
+          Ligado: se as vagas de uma partida aumentarem antes do sorteio, os primeiros da fila
+          entram automaticamente.
         </p>
         <pelada-switch [(checked)]="allowPlayerSelfEdit">
           Jogador edita o próprio perfil
@@ -284,6 +306,8 @@ export class RegrasPeladaComponent implements OnInit {
   readonly paymentSegment = model('PER_MATCH');
   readonly drawSegment = model('BALANCED');
   readonly fixedListOnly = model(false);
+  /** Issue #230 */
+  readonly autoFillQueueOnCapacityIncrease = model(false);
   readonly allowPlayerSelfEdit = model(false);
   readonly scoringSegment = model<ScoringMode>('rating');
   readonly drawUseStyleTags = model(true);
@@ -313,7 +337,7 @@ export class RegrasPeladaComponent implements OnInit {
     this.rulesReady.set(true);
   }
 
-  patchNumber(field: 'playersPerTeam' | 'teamCount', event: Event): void {
+  patchNumber(field: 'playersPerTeam' | 'teamCount' | 'roundMinutes', event: Event): void {
     const raw = (event.target as HTMLInputElement).value;
     const n = Number.parseInt(raw, 10);
     this.values.update((v) => ({ ...v, [field]: Number.isNaN(n) ? v[field] : n }));
@@ -408,6 +432,7 @@ export class RegrasPeladaComponent implements OnInit {
     return {
       ...this.values(),
       fixedListOnly: this.fixedListOnly(),
+      autoFillQueueOnCapacityIncrease: this.autoFillQueueOnCapacityIncrease(),
       allowPlayerSelfEdit: this.allowPlayerSelfEdit(),
       paymentModel: this.paymentSegment() as PaymentModel,
       drawMode: this.drawSegment() as PeladaRulesFormValues['drawMode'],
@@ -418,6 +443,7 @@ export class RegrasPeladaComponent implements OnInit {
 
   private syncSegmentsFromValues(v: PeladaRulesFormValues): void {
     this.fixedListOnly.set(v.fixedListOnly);
+    this.autoFillQueueOnCapacityIncrease.set(v.autoFillQueueOnCapacityIncrease);
     this.allowPlayerSelfEdit.set(v.allowPlayerSelfEdit);
     this.paymentSegment.set(v.paymentModel);
     this.drawSegment.set(v.drawMode);

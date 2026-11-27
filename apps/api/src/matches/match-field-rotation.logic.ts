@@ -226,3 +226,34 @@ export function wasRoundPlayed(round: {
     round.timerRunning
   );
 }
+
+/** Issue #229 — tempo de cada partida (rodada), definido nas Regras (minutos). */
+export const DEFAULT_ROUND_MINUTES = 20;
+
+export function readRoundLimitMs(extra: unknown): number {
+  const bag = extra && typeof extra === 'object' ? (extra as Record<string, unknown>) : {};
+  const raw = bag['roundMinutes'];
+  const minutes =
+    typeof raw === 'number' && Number.isFinite(raw) && raw >= 1 && raw <= 120
+      ? Math.floor(raw)
+      : DEFAULT_ROUND_MINUTES;
+  return minutes * 60 * 1000;
+}
+
+/**
+ * Issue #229 — o cronômetro conta só até o tempo da rodada. `cumulativeMs` é o
+ * relógio acumulado da sessão; `roundStartedMs`, onde a rodada atual começou.
+ */
+export function capRoundClock(
+  cumulativeMs: number,
+  roundStartedMs: number,
+  limitMs: number,
+): { cumulativeMs: number; roundElapsedMs: number; timeUp: boolean } {
+  const round = Math.max(0, cumulativeMs - roundStartedMs);
+  const roundElapsedMs = Math.min(round, limitMs);
+  return {
+    cumulativeMs: roundStartedMs + roundElapsedMs,
+    roundElapsedMs,
+    timeUp: round >= limitMs,
+  };
+}
