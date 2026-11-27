@@ -23,6 +23,7 @@ export function peladaRulesFromApi(dto: PeladaRulesApiDto): PeladaRulesFormValue
   const draw = dto.drawWeights ?? {};
   const gkMode = dto.goalkeeperMode;
   return {
+    unpaidPolicy: extra['unpaidPolicy'] === 'BLOCK' ? 'BLOCK' : 'CHARGE',
     playersPerTeam: dto.playersPerTeam,
     teamCount: dto.teamCount,
     modality: (dto.modality as PeladaRulesFormValues['modality']) ?? 'campo',
@@ -87,6 +88,7 @@ export function peladaRulesToPatchBody(
     drawWeights: toDrawWeights(values),
     extra: {
       paymentModel: values.paymentModel,
+      unpaidPolicy: values.unpaidPolicy,
       fixedGkRotation: values.fixedGkRotation,
       goalkeeperPerTeam: values.goalkeeperPerTeam,
       fixedGoalkeeper: values.fixedGoalkeeper,

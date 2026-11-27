@@ -11,7 +11,24 @@ export type ScoringMode = 'rating' | 'attributes';
 
 export type FixedGkRotation = 'RESULT' | 'SIDE' | 'MANUAL_ONLY';
 
+/** Issue #263 — quem não pagou: trava (não entra na lista nem joga) ou só cobra. */
+export type UnpaidPolicy = 'BLOCK' | 'CHARGE';
+
+export const UNPAID_POLICY_OPTIONS: ReadonlyArray<{ value: UnpaidPolicy; label: string; hint: string }> = [
+  {
+    value: 'CHARGE',
+    label: 'Só cobra',
+    hint: 'Joga normal; a cobrança fica em aberto no Caixa até pagar.',
+  },
+  {
+    value: 'BLOCK',
+    label: 'Trava',
+    hint: 'Com cobrança em aberto não entra na lista nem no sorteio até o adm confirmar o pagamento.',
+  },
+];
+
 export type PeladaRulesFormValues = {
+  unpaidPolicy: UnpaidPolicy;
   playersPerTeam: number;
   teamCount: number;
   modality: Modality;
@@ -41,6 +58,7 @@ export type PeladaRulesFormValues = {
 };
 
 export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
+  unpaidPolicy: 'CHARGE',
   playersPerTeam: 6,
   teamCount: 2,
   modality: 'campo',

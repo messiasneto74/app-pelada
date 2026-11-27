@@ -13,6 +13,7 @@ import {
   scoringModeToFlags,
   validatePeladaRulesForm,
   type PeladaRulesFormValues,
+  UNPAID_POLICY_OPTIONS,
 } from '../../core/pelada/pelada-rules.model';
 import { PeladaRulesService } from '../../core/pelada/pelada-rules.service';
 import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
@@ -160,6 +161,26 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
         <pelada-field label="Modelo de pagamento">
           <pelada-segment [options]="paymentOptions" [(value)]="paymentSegment" />
         </pelada-field>
+        <!-- Issue #263 — o que fazer com quem não pagou. -->
+        <p class="unpaid-title">Quem não pagou</p>
+        @for (opt of unpaidOptions; track opt.value) {
+          <label class="unpaid-option">
+            <input
+              type="radio"
+              name="rules-unpaid-policy"
+              [value]="opt.value"
+              [checked]="values().unpaidPolicy === opt.value"
+              (change)="patchUnpaidPolicy(opt.value)"
+            />
+            <span class="unpaid-option__main">
+              <span class="unpaid-option__label">{{ opt.label }}</span>
+              <span class="pelada-muted unpaid-option__hint">{{ opt.hint }}</span>
+            </span>
+          </label>
+        }
+        <p class="pelada-muted hint">
+          Em qualquer opção, a cobrança só entra como recebida no Caixa depois que o adm marca como paga.
+        </p>
         <pelada-field
           label="Valor da contribuição por partida (R$)"
           forId="fee-reais"
@@ -243,6 +264,26 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
   `,
   styles: [
     `
+      .unpaid-title {
+        margin: var(--pelada-space-3) 0 var(--pelada-space-2);
+        font-weight: 700;
+      }
+      .unpaid-option {
+        display: flex;
+        gap: var(--pelada-space-2);
+        align-items: flex-start;
+        padding: var(--pelada-space-2) 0;
+      }
+      .unpaid-option__main {
+        display: flex;
+        flex-direction: column;
+      }
+      .unpaid-option__label {
+        font-weight: 600;
+      }
+      .unpaid-option__hint {
+        font-size: 0.8125rem;
+      }
       pelada-card {
         display: block;
         margin-bottom: var(--pelada-space-4);
@@ -335,6 +376,12 @@ export class RegrasPeladaComponent implements OnInit {
     this.values.set(loaded);
     this.syncSegmentsFromValues(loaded);
     this.rulesReady.set(true);
+  }
+
+  readonly unpaidOptions = UNPAID_POLICY_OPTIONS;
+
+  patchUnpaidPolicy(policy: PeladaRulesFormValues['unpaidPolicy']): void {
+    this.values.update((v) => ({ ...v, unpaidPolicy: policy }));
   }
 
   patchNumber(field: 'playersPerTeam' | 'teamCount' | 'roundMinutes', event: Event): void {

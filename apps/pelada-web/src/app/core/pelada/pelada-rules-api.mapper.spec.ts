@@ -56,6 +56,7 @@ describe('pelada-rules-api.mapper', () => {
 
   it('mapeia formulário → PATCH', () => {
     const body = peladaRulesToPatchBody({
+      unpaidPolicy: 'BLOCK',
       playersPerTeam: 6,
       teamCount: 2,
       modality: 'campo',
@@ -90,6 +91,21 @@ describe('pelada-rules-api.mapper', () => {
     expect(extra['feeCents']).toBe(2000);
     expect(extra['roundMinutes']).toBe(12);
     expect(extra['autoFillQueueOnCapacityIncrease']).toBe(true);
+    expect(extra['unpaidPolicy']).toBe('BLOCK');
+  });
+
+  it('issue #263 — quem não pagou: padrão "só cobra"; "BLOCK" vira "Trava"', () => {
+    const base = {
+      peladaId: 'p1',
+      playersPerTeam: 6,
+      teamCount: 2,
+      modality: 'campo',
+      goalkeeperMode: 'ROTATING',
+      fixedListOnly: false,
+      drawWeights: {},
+    };
+    expect(peladaRulesFromApi({ ...base, extra: {} } as never).unpaidPolicy).toBe('CHARGE');
+    expect(peladaRulesFromApi({ ...base, extra: { unpaidPolicy: 'BLOCK' } } as never).unpaidPolicy).toBe('BLOCK');
   });
 
   it('issue #229 — tempo de cada partida: API → formulário, com padrão e limites', () => {
