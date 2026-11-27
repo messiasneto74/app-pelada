@@ -147,6 +147,32 @@ if (runHarness) {
         expect(await counts(match.id)).toEqual({ confirmed: 8, queue: 2 });
       });
 
+      it('ligado, mas a regra mudou sem aumentar as vagas: a fila fica como está', async () => {
+        const { pelada, match, token, players } = await seedQueue('exc-autofill-same-cap', true);
+        // Vaga ociosa que já existia antes (ex.: alguém saiu sem promoção).
+        await prisma.matchAttendance.update({
+          where: { matchId_playerId: { matchId: match.id, playerId: players[0].id } },
+          data: { status: 'PENDING', queuePosition: null },
+        });
+        expect(await counts(match.id)).toEqual({ confirmed: 7, queue: 2 });
+        await request(app.getHttpServer())
+          .patch(`/peladas/${pelada.id}/matches/${match.id}/rules-override`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ drawWeights: { mode: 'RANDOM' } })
+          .expect(200);
+        expect(await counts(match.id)).toEqual({ confirmed: 7, queue: 2 });
+      });
+
+      it('ligado: diminuir as vagas não puxa ninguém', async () => {
+        const { pelada, match, token } = await seedQueue('exc-autofill-down', true);
+        await request(app.getHttpServer())
+          .patch(`/peladas/${pelada.id}/matches/${match.id}/rules-override`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ playersPerTeam: 4, teamCount: 2 })
+          .expect(200);
+        expect(await counts(match.id)).toEqual({ confirmed: 8, queue: 2 });
+      });
+
       it('depois do sorteio ninguém sobe', async () => {
         const { pelada, match, token } = await seedQueue('exc-autofill-drawn', true);
         await prisma.match.update({ where: { id: match.id }, data: { status: 'DRAWN' } });
