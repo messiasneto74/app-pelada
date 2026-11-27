@@ -31,6 +31,8 @@ describe('Me (e2e)', () => {
               keycloakSub: create.keycloakSub,
               email: create.email ?? null,
               phone: null,
+      name: null,
+      photoUrl: null,
               createdAt: new Date(),
               updatedAt: new Date(),
             };

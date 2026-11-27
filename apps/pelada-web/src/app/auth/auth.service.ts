@@ -16,6 +16,9 @@ export type MeProfile = {
   keycloakSub: string;
   email: string | null;
   phone: string | null;
+  /** Issue #226 */
+  name?: string | null;
+  photoUrl?: string | null;
 };
 
 export type RegisterAccountInput = {

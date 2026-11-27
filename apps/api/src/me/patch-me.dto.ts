@@ -9,4 +9,11 @@ export class PatchMeDto {
     message: 'phone must contain only digits and + ( ) - spaces',
   })
   phone?: string;
+
+  /** Issue #226 — nome da conta (mesma regra do cadastro). */
+  @IsOptional()
+  @IsString()
+  @MinLength(3, { message: 'Informe nome e sobrenome' })
+  @MaxLength(80)
+  name?: string;
 }

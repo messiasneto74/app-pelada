@@ -9,6 +9,9 @@ export type MeResponse = {
   keycloakSub: string;
   email: string | null;
   phone: string | null;
+  /** Issue #226 — nome da conta (cai pro nome do IdP enquanto não for editado). */
+  name: string | null;
+  photoUrl: string | null;
 };
 
 export type MyPeladaSummary = {
@@ -39,7 +42,7 @@ export class MeService {
 
   async getMe(auth: AuthUserPayload): Promise<MeResponse> {
     const user = await this.getOrCreateUser(auth);
-    return this.toResponse(user);
+    return this.toResponse(user, auth);
   }
 
   async patchMe(auth: AuthUserPayload, dto: PatchMeDto): Promise<MeResponse> {
@@ -56,7 +59,7 @@ export class MeService {
         ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
       },
     });
-    return this.toResponse(user);
+    return this.toResponse(user, auth);
   }
 
   /**
@@ -83,12 +86,14 @@ export class MeService {
       .sort((a, b) => (a.role === b.role ? 0 : a.role === 'ORGANIZADOR' ? -1 : 1));
   }
 
-  private toResponse(user: User): MeResponse {
+  toResponse(user: User, auth?: AuthUserPayload): MeResponse {
     return {
       id: user.id,
       keycloakSub: user.keycloakSub,
       email: user.email,
       phone: user.phone,
+      name: user.name ?? auth?.name ?? null,
+      photoUrl: user.photoUrl ?? null,
     };
   }
 }
