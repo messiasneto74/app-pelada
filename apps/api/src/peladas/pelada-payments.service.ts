@@ -109,35 +109,39 @@ export class PeladaPaymentsService {
       dto.matchId,
       new Date(),
     );
-    const duplicate = await this.prisma.paymentLedger.findFirst({
-      where: {
-        peladaId,
-        playerId: dto.playerId,
-        ...(window.kind === 'match'
-          ? { matchId: window.matchId }
-          : { createdAt: { gte: window.start, lt: window.end } }),
-      },
-    });
-    if (duplicate) {
-      throw new ConflictException(
-        `${player.displayName} já tem uma cobrança ${window.label}.`,
-      );
-    }
-
-    const created = await this.prisma.paymentLedger.create({
-      data: {
-        peladaId,
-        playerId: dto.playerId,
-        matchId: dto.matchId ?? null,
-        amountCents: dto.amountCents,
-        status: 'PENDING',
-      },
-      include: {
-        player: {
-          select: { id: true, displayName: true, paymentPlan: true },
+    // Checagem + gravação numa transação travada por jogador (advisory lock):
+    // dois "Lançar" ao mesmo tempo não passam os dois.
+    const created = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`ledger:${peladaId}:${dto.playerId}`}))`;
+      const duplicate = await tx.paymentLedger.findFirst({
+        where: {
+          peladaId,
+          playerId: dto.playerId,
+          ...(window.kind === 'match'
+            ? { matchId: window.matchId }
+            : { createdAt: { gte: window.start, lt: window.end } }),
         },
-        match: { select: { id: true, scheduledAt: true } },
-      },
+      });
+      if (duplicate) {
+        throw new ConflictException(
+          `${player.displayName} já tem uma cobrança ${window.label}.`,
+        );
+      }
+      return tx.paymentLedger.create({
+        data: {
+          peladaId,
+          playerId: dto.playerId,
+          matchId: dto.matchId ?? null,
+          amountCents: dto.amountCents,
+          status: 'PENDING',
+        },
+        include: {
+          player: {
+            select: { id: true, displayName: true, paymentPlan: true },
+          },
+          match: { select: { id: true, scheduledAt: true } },
+        },
+      });
     });
 
     return toLedgerEntryDto(created);

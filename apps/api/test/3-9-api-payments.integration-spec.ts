@@ -215,6 +215,17 @@ if (runHarness) {
         await charge({ playerId: player.id, matchId: m2.id, amountCents: 2000 }).expect(201);
       });
 
+      it('duas cobranças ao mesmo tempo: só uma entra, a outra 409', async () => {
+        const { pelada, player, charge } = await seed('pay-unique-race', 'MONTHLY');
+        const results = await Promise.all(
+          Array.from({ length: 6 }, () => charge({ playerId: player.id, amountCents: 5000 })),
+        );
+        const statuses = results.map((r) => r.status).sort();
+        expect(statuses).toEqual([201, 409, 409, 409, 409, 409]);
+        const rows = await prisma.paymentLedger.count({ where: { peladaId: pelada.id, playerId: player.id } });
+        expect(rows).toBe(1);
+      });
+
       it('por partida sem partida (Caixa): uma por dia; a de ontem não conta', async () => {
         const { pelada, player, other, charge } = await seed('pay-unique-day', 'PER_MATCH');
         await prisma.paymentLedger.create({
