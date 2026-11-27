@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -22,7 +23,9 @@ import {
   applyAttendanceStatusChange,
   attendanceCounts,
   fillFreeSpotsFromQueue,
+  exceedsWaitlist,
   readAutoFillQueueOnCapacityIncrease,
+  readWaitlistSlots,
   type AttendanceRowInput,
 } from './match-attendance.logic';
 
@@ -328,6 +331,13 @@ export class MatchAttendanceService {
         requested,
         capacity,
       );
+      // Issue #234 — a lista de espera tem o tamanho que o adm escolheu.
+      const waitlist = readWaitlistSlots(effective.extra);
+      if (exceedsWaitlist(rows, nextRows, waitlist)) {
+        throw new ConflictException(
+          `A lista está cheia: ${capacity} ${capacity === 1 ? 'vaga' : 'vagas'} e ${waitlist} na lista de espera.`,
+        );
+      }
       await this.persistRowInputs(tx, matchId, rows, nextRows);
     });
   }
