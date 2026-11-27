@@ -154,9 +154,8 @@ test.describe('E2E fluxo MVP §D', () => {
       otherPage.getByRole('heading', { name: 'Pronto para entrar em campo', level: 2 }),
     ).toBeVisible({ timeout: 30_000 });
     await otherPage.goto('/partida/presenca');
-    await expect(
-      otherPage.getByRole('tab', { name: /Confirmados \(12\)/ }),
-    ).toBeVisible({ timeout: 30_000 });
+    // Issue #234 — sem abas: a lista mostra os 12 confirmados (12 de N vagas).
+    await expect(otherPage.getByText(/^12 de \d+ vagas$/)).toBeVisible({ timeout: 30_000 });
     await other.close();
   });
 });
