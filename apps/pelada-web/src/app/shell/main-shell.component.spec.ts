@@ -1,12 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { PeladaContextService } from '../core/pelada/pelada-context.service';
+import { PeladaOrganizadorContextService } from '../core/pelada/pelada-organizador-context.service';
 import { MainShellComponent } from './main-shell.component';
 
 describe('MainShellComponent (issue #224)', () => {
   it('tem o atalho "Meu perfil" apontando pra /perfil', async () => {
     await TestBed.configureTestingModule({
       imports: [MainShellComponent],
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        // menu de baixo (issue #232) lê a pelada ativa e o papel
+        { provide: PeladaContextService, useValue: { activePelada: () => ({ id: 'p1' }) } },
+        { provide: PeladaOrganizadorContextService, useValue: { isOrganizador: () => true } },
+      ],
     }).compileComponents();
     const fixture = TestBed.createComponent(MainShellComponent);
     fixture.detectChanges();

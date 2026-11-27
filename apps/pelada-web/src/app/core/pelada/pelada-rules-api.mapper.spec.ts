@@ -74,6 +74,7 @@ describe('pelada-rules-api.mapper', () => {
       autoPromoteAfterPresences: 5,
       feeCents: 2000,
       roundMinutes: 12,
+      autoFillQueueOnCapacityIncrease: true,
     });
     expect(body['goalkeeperMode']).toBe('FIXED_PER_TEAM');
     expect(body['allowPlayerSelfEdit']).toBe(true);
@@ -88,6 +89,7 @@ describe('pelada-rules-api.mapper', () => {
     expect(extra['autoPromoteAfterPresences']).toBe(5);
     expect(extra['feeCents']).toBe(2000);
     expect(extra['roundMinutes']).toBe(12);
+    expect(extra['autoFillQueueOnCapacityIncrease']).toBe(true);
   });
 
   it('issue #229 — tempo de cada partida: API → formulário, com padrão e limites', () => {

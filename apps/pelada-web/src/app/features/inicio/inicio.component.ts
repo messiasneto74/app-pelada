@@ -228,6 +228,11 @@ export class InicioComponent {
   private readonly live = inject(LiveRefreshService);
 
   constructor() {
+    // Issue #225 — "Trocar de pelada" só aparece pra quem tem mais de uma.
+    this.peladaApi
+      .listMyPeladas()
+      .then((list) => this.otherPeladasCount.set(Math.max(0, list.length - 1)))
+      .catch(() => this.otherPeladasCount.set(0));
     // Issue #233 — confirmados e caixa do Início se atualizam sozinhos.
     this.live.start(this.liveDestroyRef, () => {
       const pelada = this.peladaContext.getActivePelada();

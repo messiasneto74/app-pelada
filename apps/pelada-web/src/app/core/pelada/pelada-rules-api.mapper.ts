@@ -70,6 +70,7 @@ export function peladaRulesFromApi(dto: PeladaRulesApiDto): PeladaRulesFormValue
       (extra['roundMinutes'] as number) <= 120
         ? Math.floor(extra['roundMinutes'] as number)
         : DEFAULT_PELADA_RULES.roundMinutes,
+    autoFillQueueOnCapacityIncrease: extra['autoFillQueueOnCapacityIncrease'] === true,
   };
 }
 
@@ -94,6 +95,7 @@ export function peladaRulesToPatchBody(
       autoPromoteAfterPresences: values.autoPromoteAfterPresences,
       feeCents: values.feeCents,
       roundMinutes: values.roundMinutes,
+      autoFillQueueOnCapacityIncrease: values.autoFillQueueOnCapacityIncrease,
     },
   };
 }

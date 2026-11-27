@@ -2,9 +2,11 @@ import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService, type MeProfile } from '../../auth/auth.service';
+import { apiMessage, MeProfileApiService } from '../../core/me/me-profile-api.service';
 import type { MyPeladaSummary } from '../../core/pelada/active-pelada.model';
 import { PeladaContextService } from '../../core/pelada/pelada-context.service';
 import { PeladaSwitchService, peladaRoleLabel } from '../../core/pelada/pelada-switch.service';
+import { PeladaAvatarComponent } from '../../ui/avatar.component';
 import { PeladaButtonComponent } from '../../ui/button.component';
 import { PeladaCardComponent } from '../../ui/card.component';
 import { PeladaFieldComponent } from '../../ui/field.component';
@@ -128,39 +130,7 @@ import { phoneValidationMessage } from '../entrar/completar/completar.component'
         }
       </pelada-card>
 
-      <!-- Issue #225 — peladas do usuário e troca da pelada ativa. -->
-      <pelada-card title="Minhas peladas">
-        @if (peladas().length === 0) {
-          <p class="pelada-muted">{{ peladasLoaded() ? 'Você ainda não está em nenhuma pelada.' : 'Carregando…' }}</p>
-        } @else {
-          <ul class="pelada-list">
-            @for (p of peladas(); track p.id) {
-              <li class="pelada-item">
-                <span class="pelada-item__main">
-                  <span class="pelada-item__name">{{ p.name }}</span>
-                  <span class="pelada-muted pelada-item__role">{{ roleLabel(p.role) }}</span>
-                </span>
-                @if (p.id === activeId()) {
-                  <span class="pelada-item__current">Atual</span>
-                } @else {
-                  <button type="button" peladaButton variant="secondary" (click)="open(p)">
-                    Abrir
-                  </button>
-                }
-              </li>
-            }
-          </ul>
-        }
-      </pelada-card>
-
-      <button
-        type="button"
-        peladaButton
-        variant="secondary"
-        [peladaButtonBlock]="true"
-        class="logout-btn"
-        (click)="logout()"
-      >
+      <button type="button" peladaButton variant="secondary" [peladaButtonBlock]="true" class="logout-btn" (click)="logout()">
         Sair da conta
       </button>
 
@@ -201,6 +171,24 @@ import { phoneValidationMessage } from '../entrar/completar/completar.component'
         margin: 0 0 var(--pelada-space-3);
         word-break: break-all;
       }
+      .photo-row {
+        display: flex;
+        align-items: center;
+        gap: var(--pelada-space-3);
+      }
+      .photo {
+        width: 64px;
+        height: 64px;
+        border-radius: 999px;
+        object-fit: cover;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+      }
       .pelada-list {
         list-style: none;
         margin: 0;
@@ -225,6 +213,11 @@ import { phoneValidationMessage } from '../entrar/completar/completar.component'
       .pelada-item__role {
         font-size: 0.8125rem;
       }
+      .pelada-item__actions {
+        display: flex;
+        align-items: center;
+        gap: var(--pelada-space-2);
+      }
       .pelada-item__current {
         font-size: 0.75rem;
         font-weight: 700;
@@ -232,6 +225,14 @@ import { phoneValidationMessage } from '../entrar/completar/completar.component'
         background: #f0f5e6;
         border-radius: 999px;
         padding: 4px 10px;
+      }
+      .leave-link {
+        background: none;
+        border: none;
+        color: #b91c1c;
+        font-weight: 600;
+        cursor: pointer;
+        padding: var(--pelada-space-2);
       }
       .logout-btn {
         margin-top: var(--pelada-space-4);
@@ -270,14 +271,35 @@ import { phoneValidationMessage } from '../entrar/completar/completar.component'
 })
 export class MeuPerfilComponent implements OnInit {
   private readonly auth = inject(AuthService);
+  private readonly profileApi = inject(MeProfileApiService);
   private readonly switcher = inject(PeladaSwitchService);
   private readonly context = inject(PeladaContextService);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly me = signal<MeProfile | null>(null);
   readonly loadError = signal(false);
   readonly peladas = signal<MyPeladaSummary[]>([]);
   readonly peladasLoaded = signal(false);
+  readonly photoSrc = signal<string | null>(null);
+  readonly busy = signal(false);
+  readonly leaveTarget = signal<MyPeladaSummary | null>(null);
+  private readonly messages = signal<Record<string, { ok: boolean; text: string }>>({});
   readonly roleLabel = peladaRoleLabel;
+
+  name = '';
+  phone = '';
+  currentPassword = '';
+  newPassword = '';
+  repeatPassword = '';
+
+  constructor() {
+    this.destroyRef.onDestroy(() => this.revokePhoto());
+  }
+
+  msg(key: string): { ok: boolean; text: string } | null {
+    return this.messages()[key] ?? null;
+  }
 
   activeId(): string | null {
     return this.context.getActivePelada()?.id ?? null;
@@ -288,11 +310,7 @@ export class MeuPerfilComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.switcher
-      .listMine()
-      .then((list) => this.peladas.set(list))
-      .catch(() => this.peladas.set([]))
-      .finally(() => this.peladasLoaded.set(true));
+    this.loadPeladas();
     this.auth
       .getMe()
       .then((m) => this.applyMe(m))

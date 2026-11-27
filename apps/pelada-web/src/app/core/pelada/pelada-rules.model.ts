@@ -36,6 +36,8 @@ export type PeladaRulesFormValues = {
   feeCents: number;
   /** Issue #229 — tempo de cada partida (rodada), em minutos. */
   roundMinutes: number;
+  /** Issue #230 — ao aumentar as vagas de uma partida, os primeiros da fila sobem. */
+  autoFillQueueOnCapacityIncrease: boolean;
 };
 
 export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
@@ -57,6 +59,7 @@ export const DEFAULT_PELADA_RULES: PeladaRulesFormValues = {
   autoPromoteAfterPresences: 0,
   feeCents: 0,
   roundMinutes: 20,
+  autoFillQueueOnCapacityIncrease: false,
 };
 
 export function validateGoalkeeperToggles(
