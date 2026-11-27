@@ -69,6 +69,8 @@ export type MatchFieldSessionDto = {
   teamsOnField: FieldSessionTeamView[];
   restingTeams: Array<{ sortOrder: number; drawTeamId: string; name: string }>;
   fixedGkMeta: Record<string, unknown>;
+  /** Issue #227 — critério de desempate DESTA partida (null = empate é empate). */
+  tieBreak: TieBreakRule | null;
 };
 
 type DrawWithTeams = {
@@ -149,7 +151,12 @@ export class MatchFieldSessionService {
     if (!session) {
       throw new NotFoundException('Sessão em campo ainda não iniciada.');
     }
-    return this.toDto(session, draw.teams, await this.roundLimitFor(peladaId, matchId));
+    return this.toDto(
+      session,
+      draw.teams,
+      await this.roundLimitFor(peladaId, matchId),
+      await this.tieRuleFor(peladaId, matchId),
+    );
   }
 
   /** Resumo "do dia": agregação por time a partir das rodadas já persistidas desta partida. */
@@ -494,7 +501,12 @@ export class MatchFieldSessionService {
       return created;
     });
 
-    return this.toDto(session, draw.teams, readRoundLimitMs(effective.extra));
+    return this.toDto(
+      session,
+      draw.teams,
+      readRoundLimitMs(effective.extra),
+      readTieBreakRule(effective.extra),
+    );
   }
 
   async patchSession(
@@ -508,6 +520,7 @@ export class MatchFieldSessionService {
     const { draw } = await this.loadDrawContext(peladaId, matchId);
     const existing = await this.requireOpenSession(matchId);
     const limitMs = await this.roundLimitFor(peladaId, matchId);
+    const tieRule = await this.tieRuleFor(peladaId, matchId);
 
     if (
       !body.timer &&
@@ -605,7 +618,7 @@ export class MatchFieldSessionService {
       });
     });
 
-    return this.toDto(updated, draw.teams, limitMs);
+    return this.toDto(updated, draw.teams, limitMs, tieRule);
   }
 
   async endRound(
@@ -702,7 +715,12 @@ export class MatchFieldSessionService {
       });
     });
 
-    return this.toDto(updated, draw.teams, readRoundLimitMs(effective.extra));
+    return this.toDto(
+      updated,
+      draw.teams,
+      readRoundLimitMs(effective.extra),
+      readTieBreakRule(effective.extra),
+    );
   }
 
   async finishSession(
@@ -757,13 +775,14 @@ export class MatchFieldSessionService {
       return row;
     });
 
-    return this.toDto(updated, draw.teams, limitMs);
+    return this.toDto(updated, draw.teams, limitMs, tieRule);
   }
 
   private toDto(
     session: MatchFieldSession,
     teams: DrawTeam[],
     roundLimitMs: number,
+    tieBreak: TieBreakRule | null,
   ): MatchFieldSessionDto {
     const byOrder = new Map(teams.map((t) => [t.sortOrder, t]));
     const resting = teams
@@ -821,6 +840,7 @@ export class MatchFieldSessionService {
       ],
       restingTeams: resting,
       fixedGkMeta: (session.fixedGkMeta ?? {}) as Record<string, unknown>,
+      tieBreak,
     };
   }
 

@@ -520,6 +520,23 @@ if (runHarness) {
         expect([r2.tieWinner, r2.tieMethod]).toEqual(['AWAY', 'LAST_IN']);
       });
 
+      it('a tela recebe o critério DESTA partida (exceção da partida vale, não as Regras atuais)', async () => {
+        const { base, orgToken, match, pelada } = await startTied('LAST_IN');
+        await prisma.match.update({
+          where: { id: match.id },
+          data: { rulesOverride: { extra: { tieBreak: 'PAR_IMPAR' } } },
+        });
+        await prisma.peladaRules.update({ where: { peladaId: pelada.id }, data: { extra: { tieBreak: 'STAYED' } } });
+        const s = await request(app.getHttpServer())
+          .get(base)
+          .set('Authorization', `Bearer ${orgToken}`)
+          .expect(200);
+        expect(s.body.tieBreak).toBe('PAR_IMPAR');
+        // e a API cobra a escolha de acordo com esse mesmo critério
+        const need = await endRound(base, orgToken).expect(400);
+        expect(need.body.message).toBe('Empate! Escolha quem venceu no par ou ímpar.');
+      });
+
       it('encerrar a partida empatada também pede o desempate', async () => {
         const { base, orgToken } = await startTied('PENALTIS');
         const need = await request(app.getHttpServer())

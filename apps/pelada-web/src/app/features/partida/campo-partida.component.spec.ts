@@ -303,6 +303,22 @@ describe('CampoPartidaComponent §3.6', () => {
     expect(fieldSpy.finish).toHaveBeenCalledWith('pel-1', 'm1', { winner: 'HOME', method: 'PENALTIS' });
   });
 
+  it('#227 o critério vem da sessão desta partida (não das Regras atuais)', () => {
+    const c = fixture.componentInstance;
+    const s = c.fieldSession()!;
+    (c as unknown as { applySessionFromApi: (x: unknown) => void }).applySessionFromApi({
+      ...s,
+      roundNumber: 3,
+      scoreHome: 2,
+      scoreAway: 2,
+      tieBreak: 'PAR_IMPAR',
+    });
+    expect(c.tieRule()).toBe('PAR_IMPAR');
+    expect(c.tieMethods()).toEqual(['PAR_IMPAR']);
+    (c as unknown as { applySessionFromApi: (x: unknown) => void }).applySessionFromApi({ ...s, tieBreak: null });
+    expect(c.tieRule()).toBeNull();
+  });
+
   it('#227 sem empate (ou regra que decide sozinha) continua só "Confirmar"', () => {
     const c = fixture.componentInstance;
     c.tieRule.set('LAST_IN');

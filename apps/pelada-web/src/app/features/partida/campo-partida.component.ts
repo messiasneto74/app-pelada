@@ -13,7 +13,6 @@ import { RouterLink } from '@angular/router';
 import { interval } from 'rxjs';
 import type { MatchFieldSessionDto } from '../../core/match/match-field-session-api.model';
 import { MatchFieldSessionService, type TieChoiceBody } from '../../core/match/match-field-session.service';
-import { PeladaRulesApiService } from '../../core/pelada/pelada-rules-api.service';
 import {
   readTieBreakRule,
   TIE_METHOD_LABEL,
@@ -578,7 +577,6 @@ export class CampoPartidaComponent implements OnInit {
   readonly fieldSession = signal<MatchFieldSessionDto | null>(null);
   readonly actionError = signal<string | null>(null);
   /** Issue #191 — confirmação antes de ação difícil de desfazer. */
-  private readonly rulesApi = inject(PeladaRulesApiService);
   readonly confirmAction = signal<'endRound' | 'finishMatch' | null>(null);
   /** Issue #214 — lado do gol esperando a escolha do autor. */
   readonly goalSide = signal<'HOME' | 'AWAY' | null>(null);
@@ -671,14 +669,6 @@ export class CampoPartidaComponent implements OnInit {
   readonly awayTeamName = awayTeamName;
 
   ngOnInit(): void {
-    // Issue #227 — critério de desempate (pra perguntar quem venceu no empate).
-    const activePelada = this.peladaContext.getActivePelada();
-    if (activePelada) {
-      this.rulesApi.fetchRules(activePelada.id).subscribe({
-        next: (dto) => this.tieRule.set(readTieBreakRule(dto.extra?.['tieBreak'])),
-        error: () => this.tieRule.set(null),
-      });
-    }
     interval(1000)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.tickMs.set(Date.now()));
@@ -860,6 +850,8 @@ export class CampoPartidaComponent implements OnInit {
   }
 
   private applySessionFromApi(session: MatchFieldSessionDto): void {
+    // Issue #227 — critério de desempate DESTA partida (o mesmo que a API usa).
+    this.tieRule.set(readTieBreakRule(session.tieBreak));
     this.fieldSession.set(session);
     this.sessionElapsedAnchorMs.set(Date.now());
   }
