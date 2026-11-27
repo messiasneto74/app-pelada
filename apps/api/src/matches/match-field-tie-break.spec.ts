@@ -49,6 +49,19 @@ describe('Issue #227 — critério de desempate', () => {
     });
   });
 
+  it('com 2 times, "quem já estava" é quem ganhou a anterior (mesmo jogando de visitante)', () => {
+    expect(resolveTie({ rule: 'STAYED', roundNumber: 2, ...tie, previousWinnerSide: 'AWAY' })).toEqual({
+      kind: 'decided',
+      winner: 'AWAY',
+      method: 'STAYED',
+    });
+    expect(resolveTie({ rule: 'LAST_IN', roundNumber: 2, ...tie, previousWinnerSide: 'AWAY' })).toEqual({
+      kind: 'decided',
+      winner: 'HOME',
+      method: 'LAST_IN',
+    });
+  });
+
   it('vencedor do desempate conta como vitória; rodada antiga sem desempate segue empate', () => {
     expect(roundOutcome({ ...tie, tieWinner: 'HOME' })).toBe('HOME');
     expect(roundOutcome({ ...tie, tieWinner: null })).toBe('DRAW');

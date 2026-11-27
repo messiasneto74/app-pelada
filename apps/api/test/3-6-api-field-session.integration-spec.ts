@@ -537,6 +537,39 @@ if (runHarness) {
         expect(need.body.message).toBe('Empate! Escolha quem venceu no par ou ímpar.');
       });
 
+      it('2 times, "quem já estava": fica quem ganhou a anterior mesmo de visitante', async () => {
+        const sub = `field2-${Math.random().toString(36).slice(2, 8)}`;
+        const org = await createUser(prisma, { keycloakSub: `${sub}-org` });
+        const pelada = await createPelada(prisma, { owner: org });
+        await prisma.peladaRules.update({
+          where: { peladaId: pelada.id },
+          data: { teamCount: 2, playersPerTeam: 3, capacity: null, goalkeeperMode: 'ROTATING', extra: { tieBreak: 'STAYED' } },
+        });
+        const match = await createMatch(prisma, { pelada, scheduledAt: new Date('2030-12-02T19:00:00Z') });
+        const orgToken = signTestJwt({ sub: `${sub}-org`, email: org.email ?? 'o@y.z' });
+        const base = `/peladas/${pelada.id}/matches/${match.id}`;
+        for (let i = 0; i < 6; i++) {
+          const p = await prisma.player.create({ data: { peladaId: pelada.id, displayName: `Q${i}`, rating: 6 } });
+          await request(app.getHttpServer())
+            .patch(`${base}/attendance/${p.id}`)
+            .set('Authorization', `Bearer ${orgToken}`)
+            .send({ status: 'CONFIRMED' })
+            .expect(200);
+        }
+        await request(app.getHttpServer()).post(`${base}/attendance/close-list`).set('Authorization', `Bearer ${orgToken}`).expect(201);
+        await request(app.getHttpServer()).post(`${base}/draw`).set('Authorization', `Bearer ${orgToken}`).send({ mode: 'BALANCED', seed: 3 }).expect(201);
+        await request(app.getHttpServer()).post(`${base}/field-session`).set('Authorization', `Bearer ${orgToken}`).send({}).expect(201);
+
+        // rodada 1: visitante ganha 2×1
+        await prisma.matchFieldSession.update({ where: { matchId: match.id }, data: { scoreHome: 1, scoreAway: 2, elapsedMs: 60_000 } });
+        await request(app.getHttpServer()).post(`${base}/field-session/end-round`).set('Authorization', `Bearer ${orgToken}`).send({}).expect(200);
+        // rodada 2 empatada: fica quem ganhou a anterior (o visitante)
+        await prisma.matchFieldSession.update({ where: { matchId: match.id }, data: { scoreHome: 0, scoreAway: 0, elapsedMs: 120_000 } });
+        await request(app.getHttpServer()).post(`${base}/field-session/end-round`).set('Authorization', `Bearer ${orgToken}`).send({}).expect(200);
+        const r2 = await prisma.matchFieldRound.findFirstOrThrow({ where: { matchId: match.id, roundNumber: 2 } });
+        expect([r2.tieWinner, r2.tieMethod]).toEqual(['AWAY', 'STAYED']);
+      });
+
       it('encerrar a partida empatada também pede o desempate', async () => {
         const { base, orgToken } = await startTied('PENALTIS');
         const need = await request(app.getHttpServer())

@@ -303,6 +303,11 @@ export function resolveTie(input: {
   scoreHome: number;
   scoreAway: number;
   chosen?: { winner?: TieSide | null; method?: TieChoiceMethod | null } | null;
+  /**
+   * Lado (nesta rodada) do time que ganhou a rodada anterior. Com 2 times os
+   * lados não trocam, então "quem já estava" não é sempre o mandante.
+   */
+  previousWinnerSide?: TieSide | null;
 }): TieResolution {
   if (input.scoreHome !== input.scoreAway || input.rule === null) {
     return { kind: 'no-tie' };
@@ -324,9 +329,13 @@ export function resolveTie(input: {
         : adminPicks[0]!;
     return { kind: 'decided', winner: chosenWinner, method };
   }
+  // Quem já estava = quem ganhou a anterior; quem entrou por último = o outro.
+  // Sem essa informação, vale o rodízio "ganha fica": o mandante é quem ficou.
+  const stayed: TieSide = input.previousWinnerSide ?? 'HOME';
+  const other: TieSide = stayed === 'HOME' ? 'AWAY' : 'HOME';
   return {
     kind: 'decided',
-    winner: input.rule === 'STAYED' ? 'HOME' : 'AWAY',
+    winner: input.rule === 'STAYED' ? stayed : other,
     method: input.rule,
   };
 }

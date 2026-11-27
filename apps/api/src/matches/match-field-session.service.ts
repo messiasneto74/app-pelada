@@ -934,12 +934,27 @@ export class MatchFieldSessionService {
       return null;
     }
     // Issue #227 — empate: decide pelo critério das Regras (ou escolha do adm).
+    // "Quem já estava" = quem ganhou a rodada anterior (com 2 times os lados não trocam).
+    let previousWinnerSide: TieSide | null = null;
+    if (opts.tie?.rule && session.scoreHome === session.scoreAway && session.roundNumber > 1) {
+      const prev = await tx.matchFieldRound.findFirst({
+        where: { sessionId: session.id, roundNumber: session.roundNumber - 1 },
+      });
+      if (prev) {
+        const outcome = roundOutcome(prev);
+        const prevWinnerTeamId =
+          outcome === 'HOME' ? prev.homeDrawTeamId : outcome === 'AWAY' ? prev.awayDrawTeamId : null;
+        if (prevWinnerTeamId === home.id) previousWinnerSide = 'HOME';
+        else if (prevWinnerTeamId === away.id) previousWinnerSide = 'AWAY';
+      }
+    }
     const tie = resolveTie({
       rule: opts.tie?.rule ?? null,
       roundNumber: session.roundNumber,
       scoreHome: session.scoreHome,
       scoreAway: session.scoreAway,
       chosen: opts.tie?.chosen,
+      previousWinnerSide,
     });
     if (tie.kind === 'need-choice') {
       throw new BadRequestException(
