@@ -11,6 +11,9 @@ export type ScoringMode = 'rating' | 'attributes';
 
 export type FixedGkRotation = 'RESULT' | 'SIDE' | 'MANUAL_ONLY';
 
+/** Issue #234 — como a presença é marcada (padrão das partidas novas). */
+export type PresenceModeRule = 'ORGANIZER_CLOSES' | 'SELF_CONFIRM' | 'NAME_LIST';
+
 export type PeladaRulesFormValues = {
   /** Issue #227 — critério de desempate (null = ainda não escolhido: empate é empate). */
   tieBreak: 'PAR_IMPAR' | 'PENALTIS' | 'LAST_IN' | 'STAYED' | null;
@@ -110,6 +113,9 @@ export function validatePeladaRulesForm(values: PeladaRulesFormValues): string |
   }
   if (!Number.isInteger(values.roundMinutes) || values.roundMinutes < 1 || values.roundMinutes > 120) {
     return 'Tempo de cada partida: entre 1 e 120 minutos.';
+  }
+  if (!Number.isInteger(values.waitlistSlots) || values.waitlistSlots < 0 || values.waitlistSlots > 50) {
+    return 'Lista de espera: entre 0 (sem limite) e 50 vagas.';
   }
   if (values.feeCents < 0) {
     return 'Contribuição por partida: valor não pode ser negativo.';

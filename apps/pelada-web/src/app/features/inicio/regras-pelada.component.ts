@@ -160,6 +160,38 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
       </pelada-card>
 
       <pelada-card title="Presença e pagamento">
+        <!-- Issue #234 — o adm escolhe como a presença é marcada. -->
+        <p class="presence-mode__title">Como marcar presença</p>
+        @for (opt of presenceOptions; track opt.value) {
+          <label class="presence-option">
+            <input
+              type="radio"
+              name="rules-presence-mode"
+              [value]="opt.value"
+              [checked]="values().presenceMode === opt.value"
+              (change)="patchPresenceMode(opt.value)"
+            />
+            <span class="presence-option__main">
+              <span class="presence-option__label">{{ opt.label }}</span>
+              <span class="pelada-muted presence-option__hint">{{ opt.hint }}</span>
+            </span>
+          </label>
+        }
+        <pelada-field
+          label="Vagas na lista de espera"
+          forId="waitlist-slots"
+          hint="0 = sem limite. Com a lista cheia, ninguém mais entra."
+        >
+          <input
+            id="waitlist-slots"
+            type="number"
+            min="0"
+            max="50"
+            peladaInput
+            [value]="values().waitlistSlots"
+            (input)="patchNumber('waitlistSlots', $event)"
+          />
+        </pelada-field>
         <pelada-switch [(checked)]="fixedListOnly">
           Jogadores fixos na lista
         </pelada-switch>

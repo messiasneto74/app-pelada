@@ -12,6 +12,7 @@ import { PeladasModule } from './peladas/peladas.module';
 import { MatchesModule } from './matches/matches.module';
 import { ProbeModule } from './probe/probe.module';
 import { RegisterModule } from './register/register.module';
+import { LiveModule } from './live/live.module';
 
 /** Monorepo: `.env` na raiz; npm -w roda com cwd em `apps/api`. */
 function resolveEnvFilePaths(): string[] {
@@ -47,6 +48,7 @@ const nonProductionModules = shouldExposeProbeModule(process.env.NODE_ENV)
     RegisterModule,
     PeladasModule,
     MatchesModule,
+    LiveModule,
     ...nonProductionModules,
   ],
   controllers: [AppController],

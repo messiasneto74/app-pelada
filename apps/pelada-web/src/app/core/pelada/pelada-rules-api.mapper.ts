@@ -14,6 +14,8 @@ export type PeladaRulesApiDto = {
   modality: string;
   goalkeeperMode: string;
   fixedListOnly: boolean;
+  /** Issue #234 */
+  presenceMode?: string;
   allowPlayerSelfEdit?: boolean;
   drawWeights: Record<string, unknown>;
   extra: Record<string, unknown>;
@@ -80,6 +82,7 @@ export function peladaRulesToPatchBody(
   values: PeladaRulesFormValues,
 ): Record<string, unknown> {
   return {
+    presenceMode: values.presenceMode,
     playersPerTeam: values.playersPerTeam,
     teamCount: values.teamCount,
     modality: values.modality,
