@@ -1,3 +1,4 @@
+import { PRESENCE_MODE_OPTIONS } from '../../core/match/create-match-form.logic';
 import { TIE_BREAK_OPTIONS } from '../../core/match/tie-break.logic';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, model, OnInit, signal } from '@angular/core';
@@ -297,6 +298,26 @@ import { ScreenHeaderComponent } from '../../ui/screen-header.component';
   `,
   styles: [
     `
+      .presence-mode__title {
+        margin: 0 0 var(--pelada-space-2);
+        font-weight: 700;
+      }
+      .presence-option {
+        display: flex;
+        gap: var(--pelada-space-2);
+        align-items: flex-start;
+        padding: var(--pelada-space-2) 0;
+      }
+      .presence-option__main {
+        display: flex;
+        flex-direction: column;
+      }
+      .presence-option__label {
+        font-weight: 600;
+      }
+      .presence-option__hint {
+        font-size: 0.8125rem;
+      }
       .tie-title {
         margin: var(--pelada-space-3) 0 var(--pelada-space-2);
         font-weight: 700;
@@ -411,13 +432,21 @@ export class RegrasPeladaComponent implements OnInit {
     this.rulesReady.set(true);
   }
 
+  readonly presenceOptions = PRESENCE_MODE_OPTIONS;
   readonly tieOptions = TIE_BREAK_OPTIONS;
+
+  patchPresenceMode(mode: PeladaRulesFormValues['presenceMode']): void {
+    this.values.update((v) => ({ ...v, presenceMode: mode }));
+  }
 
   patchTieBreak(rule: PeladaRulesFormValues['tieBreak']): void {
     this.values.update((v) => ({ ...v, tieBreak: rule }));
   }
 
-  patchNumber(field: 'playersPerTeam' | 'teamCount' | 'roundMinutes', event: Event): void {
+  patchNumber(
+    field: 'playersPerTeam' | 'teamCount' | 'roundMinutes' | 'waitlistSlots',
+    event: Event,
+  ): void {
     const raw = (event.target as HTMLInputElement).value;
     const n = Number.parseInt(raw, 10);
     this.values.update((v) => ({ ...v, [field]: Number.isNaN(n) ? v[field] : n }));
